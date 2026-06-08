@@ -1,0 +1,15 @@
+# Environnement virtuel & cache Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Sorties générées au runtime (rapports / snapshots)
+output/html/
+output/rss/
+output/index.html
+output/news/2026-*.db
+
+# Divers
+.DS_Store
+*.log
