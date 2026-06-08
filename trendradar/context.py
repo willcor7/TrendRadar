@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-应用上下文模块
+Module de contexte d'application
 
-提供配置上下文类，封装所有依赖配置的操作，消除全局状态和包装函数。
+Fournit une classe de contexte qui encapsule les opérations dépendant de la configuration, éliminant l'état global et les fonctions d'enrobage.
 """
 
 from datetime import datetime
@@ -45,142 +45,142 @@ from trendradar.storage import get_storage_manager
 
 class AppContext:
     """
-    应用上下文类
+    Classe de contexte d'application
 
-    封装所有依赖配置的操作，提供统一的接口。
-    消除对全局 CONFIG 的依赖，提高可测试性。
+    Encapsule toutes les opérations dépendant de la configuration et fournit une interface unifiée.
+    Supprime la dépendance au CONFIG global, améliore la testabilité.
 
-    使用示例:
+    Exemple d'utilisation:
         config = load_config()
         ctx = AppContext(config)
 
-        # 时间操作
+        # Opérations sur le temps
         now = ctx.get_time()
         date_folder = ctx.format_date()
 
-        # 存储操作
+        # Opérations de stockage
         storage = ctx.get_storage_manager()
 
-        # 报告生成
+        # Génération du rapport
         html = ctx.generate_html_report(stats, total_titles, ...)
     """
 
     def __init__(self, config: Dict[str, Any]):
         """
-        初始化应用上下文
+        Initialise le contexte d'application
 
         Args:
-            config: 完整的配置字典
+            config: dictionnaire de configuration complet
         """
         self.config = config
         self._storage_manager = None
         self._scheduler = None
 
-    # === 配置访问 ===
+    # === Accès à la configuration ===
 
     @property
     def timezone(self) -> str:
-        """获取配置的时区"""
+        """Renvoie le fuseau horaire configuré"""
         return self.config.get("TIMEZONE", DEFAULT_TIMEZONE)
 
     @property
     def rank_threshold(self) -> int:
-        """获取排名阈值"""
+        """Renvoie le seuil de classement"""
         return self.config.get("RANK_THRESHOLD", 50)
 
     @property
     def weight_config(self) -> Dict:
-        """获取权重配置"""
+        """Renvoie la configuration des pondérations"""
         return self.config.get("WEIGHT_CONFIG", {})
 
     @property
     def platforms(self) -> List[Dict]:
-        """获取平台配置列表"""
+        """Renvoie la liste de configuration des plateformes"""
         return self.config.get("PLATFORMS", [])
 
     @property
     def platform_ids(self) -> List[str]:
-        """获取平台ID列表"""
+        """Renvoie la liste des identifiants de plateformes"""
         return [p["id"] for p in self.platforms]
 
     @property
     def rss_config(self) -> Dict:
-        """获取 RSS 配置"""
+        """Renvoie la configuration RSS"""
         return self.config.get("RSS", {})
 
     @property
     def rss_enabled(self) -> bool:
-        """RSS 是否启用"""
+        """Indique si les flux RSS sont activés"""
         return self.rss_config.get("ENABLED", False)
 
     @property
     def rss_feeds(self) -> List[Dict]:
-        """获取 RSS 源列表"""
+        """Renvoie la liste des sources RSS"""
         return self.rss_config.get("FEEDS", [])
 
     @property
     def display_mode(self) -> str:
-        """获取显示模式 (keyword | platform)"""
+        """Renvoie le mode d'affichage (keyword | platform)"""
         return self.config.get("DISPLAY_MODE", "keyword")
 
     @property
     def show_new_section(self) -> bool:
-        """是否显示新增热点区域"""
+        """Indique s'il faut afficher la zone des nouvelles tendances"""
         return self.config.get("DISPLAY", {}).get("REGIONS", {}).get("NEW_ITEMS", True)
 
     @property
     def region_order(self) -> List[str]:
-        """获取区域显示顺序"""
+        """Renvoie l'ordre d'affichage des zones"""
         default_order = ["hotlist", "rss", "new_items", "standalone", "ai_analysis"]
         return self.config.get("DISPLAY", {}).get("REGION_ORDER", default_order)
 
     @property
     def filter_method(self) -> str:
-        """获取筛选策略: keyword | ai"""
+        """Renvoie la stratégie de filtrage : keyword | ai"""
         return self.config.get("FILTER", {}).get("METHOD", "keyword")
 
     @property
     def ai_priority_sort_enabled(self) -> bool:
-        """AI 模式标签排序开关（与 keyword 的 sort_by_position_first 解耦）"""
+        """Interrupteur de tri des étiquettes en mode IA (découplé du sort_by_position_first du mode keyword)"""
         return self.config.get("FILTER", {}).get("PRIORITY_SORT_ENABLED", False)
 
     @property
     def ai_filter_config(self) -> Dict:
-        """获取 AI 筛选配置"""
+        """Renvoie la configuration du filtrage IA"""
         return self.config.get("AI_FILTER", {})
 
     @property
     def ai_filter_enabled(self) -> bool:
-        """AI 筛选是否启用（基于 filter.method 判断）"""
+        """Indique si le filtrage IA est activé (déterminé d'après filter.method)"""
         return self.filter_method == "ai"
 
-    # === 时间操作 ===
+    # === Opérations sur le temps ===
 
     def get_time(self) -> datetime:
-        """获取当前配置时区的时间"""
+        """Renvoie l'heure courante dans le fuseau horaire configuré"""
         return get_configured_time(self.timezone)
 
     def format_date(self) -> str:
-        """格式化日期文件夹 (YYYY-MM-DD)"""
+        """Met en forme le dossier de date (YYYY-MM-DD)"""
         return format_date_folder(timezone=self.timezone)
 
     def format_time(self) -> str:
-        """格式化时间文件名 (HH-MM)"""
+        """Met en forme le nom de fichier horaire (HH-MM)"""
         return format_time_filename(self.timezone)
 
     def get_time_display(self) -> str:
-        """获取时间显示 (HH:MM)"""
+        """Renvoie l'heure d'affichage (HH:MM)"""
         return get_current_time_display(self.timezone)
 
     @staticmethod
     def convert_time_display(time_str: str) -> str:
-        """将 HH-MM 转换为 HH:MM"""
+        """Convertit HH-MM en HH:MM"""
         return convert_time_for_display(time_str)
 
-    # === 存储操作 ===
+    # === Opérations de stockage ===
 
     def get_storage_manager(self):
-        """获取存储管理器（延迟初始化，单例）"""
+        """Renvoie le gestionnaire de stockage (initialisation paresseuse, singleton)"""
         if self._storage_manager is None:
             storage_config = self.config.get("STORAGE", {})
             remote_config = storage_config.get("REMOTE", {})
@@ -208,35 +208,35 @@ class AppContext:
         return self._storage_manager
 
     def get_output_path(self, subfolder: str, filename: str) -> str:
-        """获取输出路径（扁平化结构：output/类型/日期/文件名）"""
+        """Renvoie le chemin de sortie (structure aplatie : output/type/date/nom_de_fichier)"""
         output_dir = Path("output") / subfolder / self.format_date()
         output_dir.mkdir(parents=True, exist_ok=True)
         return str(output_dir / filename)
 
-    # === 数据处理 ===
+    # === Traitement des données ===
 
     def read_today_titles(
         self, platform_ids: Optional[List[str]] = None, quiet: bool = False
     ) -> Tuple[Dict, Dict, Dict]:
-        """读取当天所有标题"""
+        """Lit tous les titres du jour"""
         return read_all_today_titles(self.get_storage_manager(), platform_ids, quiet=quiet)
 
     def detect_new_titles(
         self, platform_ids: Optional[List[str]] = None, quiet: bool = False
     ) -> Dict:
-        """检测最新批次的新增标题"""
+        """Détecte les nouveaux titres du lot le plus récent"""
         return detect_latest_new_titles(self.get_storage_manager(), platform_ids, quiet=quiet)
 
     def is_first_crawl(self) -> bool:
-        """检测是否是当天第一次爬取"""
+        """Détecte s'il s'agit de la première collecte de la journée"""
         return self.get_storage_manager().is_first_crawl_today()
 
-    # === 频率词处理 ===
+    # === Traitement des mots de fréquence ===
 
     def load_frequency_words(
         self, frequency_file: Optional[str] = None
     ) -> Tuple[List[Dict], List[str], List[str]]:
-        """加载频率词配置"""
+        """Charge la configuration des mots de fréquence"""
         return load_frequency_words(frequency_file)
 
     def matches_word_groups(
@@ -246,10 +246,10 @@ class AppContext:
         filter_words: List[str],
         global_filters: Optional[List[str]] = None,
     ) -> bool:
-        """检查标题是否匹配词组规则"""
+        """Vérifie si le titre correspond aux règles de groupes de mots"""
         return matches_word_groups(title, word_groups, filter_words, global_filters)
 
-    # === 统计分析 ===
+    # === Analyse statistique ===
 
     def count_frequency(
         self,
@@ -263,7 +263,7 @@ class AppContext:
         global_filters: Optional[List[str]] = None,
         quiet: bool = False,
     ) -> Tuple[List[Dict], int]:
-        """统计词频"""
+        """Calcule la fréquence des mots"""
         return count_word_frequency(
             results=results,
             word_groups=word_groups,
@@ -282,7 +282,7 @@ class AppContext:
             quiet=quiet,
         )
 
-    # === 报告生成 ===
+    # === Génération du rapport ===
 
     def prepare_report(
         self,
@@ -293,7 +293,7 @@ class AppContext:
         mode: str = "daily",
         frequency_file: Optional[str] = None,
     ) -> Dict:
-        """准备报告数据"""
+        """Prépare les données du rapport"""
         return prepare_report_data(
             stats=stats,
             failed_ids=failed_ids,
@@ -320,7 +320,7 @@ class AppContext:
         frequency_file: Optional[str] = None,
         report_metadata: Optional[Dict] = None,
     ) -> str:
-        """生成HTML报告"""
+        """Génère le rapport HTML."""
         return generate_html_report(
             stats=stats,
             total_titles=total_titles,
@@ -333,7 +333,7 @@ class AppContext:
             output_dir="output",
             date_folder=self.format_date(),
             time_filename=self.format_time(),
-            render_html_func=lambda *args, **kwargs: self.render_html(*args, rss_items=rss_items, rss_new_items=rss_new_items, ai_analysis=ai_analysis, standalone_data=standalone_data, **kwargs),
+            render_html_func=lambda *args, language="fr", **kwargs: self.render_html(*args, rss_items=rss_items, rss_new_items=rss_new_items, ai_analysis=ai_analysis, standalone_data=standalone_data, language=language, **kwargs),
             report_metadata=report_metadata,
         )
 
@@ -347,8 +347,9 @@ class AppContext:
         rss_new_items: Optional[List[Dict]] = None,
         ai_analysis: Optional[Any] = None,
         standalone_data: Optional[Dict] = None,
+        language: str = "fr",
     ) -> str:
-        """渲染HTML内容"""
+        """Rend le contenu HTML."""
         return render_html_content(
             report_data=report_data,
             total_titles=total_titles,
@@ -362,9 +363,10 @@ class AppContext:
             ai_analysis=ai_analysis,
             show_new_section=self.show_new_section,
             standalone_data=standalone_data,
+            language=language,
         )
 
-    # === 通知内容渲染 ===
+    # === Rendu du contenu de notification ===
 
     def render_feishu(
         self,
@@ -372,7 +374,7 @@ class AppContext:
         update_info: Optional[Dict] = None,
         mode: str = "daily",
     ) -> str:
-        """渲染飞书内容"""
+        """Rend le contenu pour Feishu"""
         return render_feishu_content(
             report_data=report_data,
             update_info=update_info,
@@ -389,7 +391,7 @@ class AppContext:
         update_info: Optional[Dict] = None,
         mode: str = "daily",
     ) -> str:
-        """渲染钉钉内容"""
+        """Rend le contenu pour DingTalk"""
         return render_dingtalk_content(
             report_data=report_data,
             update_info=update_info,
@@ -411,25 +413,25 @@ class AppContext:
         ai_content: Optional[str] = None,
         standalone_data: Optional[Dict] = None,
         ai_stats: Optional[Dict] = None,
-        report_type: str = "热点分析报告",
+        report_type: str = "Rapport d'analyse des tendances",
     ) -> List[str]:
-        """分批处理消息内容（支持热榜+RSS合并+AI分析+独立展示区）
+        """Découpe le contenu du message en lots (prend en charge tendances + RSS fusionnés + analyse IA + zone d'affichage autonome)
 
         Args:
-            report_data: 报告数据
-            format_type: 格式类型
-            update_info: 更新信息
-            max_bytes: 最大字节数
-            mode: 报告模式
-            rss_items: RSS 统计条目列表
-            rss_new_items: RSS 新增条目列表
-            ai_content: AI 分析内容（已渲染的字符串）
-            standalone_data: 独立展示区数据
-            ai_stats: AI 分析统计数据
-            report_type: 报告类型
+            report_data: données du rapport
+            format_type: type de format
+            update_info: informations de mise à jour
+            max_bytes: nombre maximal d'octets
+            mode: mode du rapport
+            rss_items: liste des entrées statistiques RSS
+            rss_new_items: liste des nouvelles entrées RSS
+            ai_content: contenu de l'analyse IA (déjà rendu sous forme de chaîne)
+            standalone_data: données de la zone d'affichage autonome
+            ai_stats: données statistiques de l'analyse IA
+            report_type: type du rapport
 
         Returns:
-            分批后的消息内容列表
+            liste des contenus de messages après découpage en lots
         """
         return split_content_into_batches(
             report_data=report_data,
@@ -457,11 +459,11 @@ class AppContext:
             show_new_section=self.show_new_section,
         )
 
-    # === 通知发送 ===
+    # === Envoi des notifications ===
 
     def create_notification_dispatcher(self) -> NotificationDispatcher:
-        """创建通知调度器"""
-        # 创建翻译器（如果启用）
+        """Crée le répartiteur de notifications"""
+        # Création du traducteur (si activé)
         translator = None
         trans_config = self.config.get("AI_TRANSLATION", {})
         if trans_config.get("ENABLED", False):
@@ -477,9 +479,9 @@ class AppContext:
 
     def create_scheduler(self) -> Scheduler:
         """
-        创建调度器（延迟初始化，单例）
+        Crée le planificateur (initialisation paresseuse, singleton)
 
-        基于 config.yaml 的 schedule 段 + timeline.yaml 构建。
+        Construit à partir de la section schedule de config.yaml et de timeline.yaml.
         """
         if self._scheduler is None:
             schedule_config = self.config.get("SCHEDULE", {})
@@ -494,11 +496,11 @@ class AppContext:
             )
         return self._scheduler
 
-    # === AI 智能筛选 ===
+    # === Filtrage intelligent par IA ===
 
     @staticmethod
     def _with_ordered_priorities(tags: List[Dict], start_priority: int = 1) -> List[Dict]:
-        """按当前列表顺序补齐优先级（值越小优先级越高）"""
+        """Attribue les priorités selon l'ordre actuel de la liste (plus la valeur est petite, plus la priorité est élevée)"""
         normalized: List[Dict] = []
         priority = start_priority
         for tag_data in tags:
@@ -516,20 +518,20 @@ class AppContext:
 
     def run_ai_filter(self, interests_file: Optional[str] = None) -> Optional[AIFilterResult]:
         """
-        执行 AI 智能筛选完整流程
+        Exécute le flux complet du filtrage intelligent par IA
 
         Args:
-            interests_file: 兴趣描述文件名（位于 config/custom/ai/），None=使用默认 config/ai_interests.txt
+            interests_file: nom du fichier de description des centres d'intérêt (situé dans config/custom/ai/) ; None = utilise par défaut config/ai_interests.txt
 
-        1. 读取兴趣描述文件，计算 hash
-        2. 对比数据库 prompt_hash，决定是否重新提取标签
-        3. 收集待分类新闻（去重）
-        4. 按 batch_size 分组调用 AI 分类
-        5. 保存结果
-        6. 查询 active 结果，按标签分组返回
+        1. Lit le fichier de description des centres d'intérêt et calcule son hash
+        2. Compare avec le prompt_hash en base de données pour décider s'il faut réextraire les étiquettes
+        3. Rassemble les actualités à classer (avec déduplication)
+        4. Appelle l'IA pour classer par groupes de batch_size
+        5. Enregistre les résultats
+        6. Interroge les résultats actifs et les renvoie regroupés par étiquette
 
         Returns:
-            AIFilterResult 或 None（未启用或出错）
+            AIFilterResult, ou None (filtrage non activé ou erreur)
         """
         if not self.ai_filter_enabled:
             return None
@@ -538,78 +540,78 @@ class AppContext:
         ai_config = self.config.get("AI", {})
         debug = self.config.get("DEBUG", False)
 
-        # 创建 AIFilter 实例
+        # Création de l'instance AIFilter
         ai_filter = AIFilter(ai_config, filter_config, self.get_time, debug)
 
-        # 确定实际使用的兴趣文件名
-        # None = 使用默认 config/ai_interests.txt，指定文件名 = config/custom/ai/{name}
+        # Détermination du nom de fichier de centres d'intérêt réellement utilisé
+        # None = utilise par défaut config/ai_interests.txt ; un nom de fichier indiqué = config/custom/ai/{name}
         configured_interests = interests_file or filter_config.get("INTERESTS_FILE")
         effective_interests_file = configured_interests or "ai_interests.txt"
 
         if debug:
-            print(f"[AI筛选][DEBUG] === 配置信息 ===")
-            print(f"[AI筛选][DEBUG] 存储后端: {self.get_storage_manager().backend_name}")
-            print(f"[AI筛选][DEBUG] batch_size={filter_config.get('BATCH_SIZE', 200)}, "
+            print(f"[Filtrage IA][DEBUG] === Informations de configuration ===")
+            print(f"[Filtrage IA][DEBUG] Backend de stockage : {self.get_storage_manager().backend_name}")
+            print(f"[Filtrage IA][DEBUG] batch_size={filter_config.get('BATCH_SIZE', 200)}, "
                   f"batch_interval={filter_config.get('BATCH_INTERVAL', 5)}")
-            print(f"[AI筛选][DEBUG] interests_file={effective_interests_file}")
-            print(f"[AI筛选][DEBUG] prompt_file={filter_config.get('PROMPT_FILE', 'prompt.txt')}")
-            print(f"[AI筛选][DEBUG] extract_prompt_file={filter_config.get('EXTRACT_PROMPT_FILE', 'extract_prompt.txt')}")
+            print(f"[Filtrage IA][DEBUG] interests_file={effective_interests_file}")
+            print(f"[Filtrage IA][DEBUG] prompt_file={filter_config.get('PROMPT_FILE', 'prompt.txt')}")
+            print(f"[Filtrage IA][DEBUG] extract_prompt_file={filter_config.get('EXTRACT_PROMPT_FILE', 'extract_prompt.txt')}")
 
-        # 1. 读取兴趣描述
-        # 传 configured_interests（可能为 None）给 load_interests_content，
-        # 让它区分"默认文件(config/ai_interests.txt)"和"自定义文件(config/custom/ai/)"
+        # 1. Lecture de la description des centres d'intérêt
+        # On transmet configured_interests (qui peut valoir None) à load_interests_content,
+        # afin de distinguer le « fichier par défaut (config/ai_interests.txt) » du « fichier personnalisé (config/custom/ai/) »
         interests_content = ai_filter.load_interests_content(configured_interests)
         if not interests_content:
-            return AIFilterResult(success=False, error="兴趣描述文件为空或不存在")
+            return AIFilterResult(success=False, error="Le fichier de description des centres d'intérêt est vide ou introuvable")
 
         current_hash = ai_filter.compute_interests_hash(interests_content, effective_interests_file)
         storage = self.get_storage_manager()
 
         if debug:
-            print(f"[AI筛选][DEBUG] 兴趣描述 hash: {current_hash}")
-            print(f"[AI筛选][DEBUG] 兴趣描述内容 ({len(interests_content)} 字符):\n{interests_content}")
+            print(f"[Filtrage IA][DEBUG] Hash de la description des centres d'intérêt : {current_hash}")
+            print(f"[Filtrage IA][DEBUG] Contenu de la description des centres d'intérêt ({len(interests_content)} caractères) :\n{interests_content}")
 
-        # 2. 开启批量模式（远程后端延迟上传，所有写操作完成后统一上传）
+        # 2. Activation du mode par lot (le téléversement vers le backend distant est différé : tout est téléversé en une fois une fois les écritures terminées)
         storage.begin_batch()
 
-        # 3. 检查提示词是否变更
+        # 3. Vérification d'un éventuel changement du prompt
         stored_hash = storage.get_latest_prompt_hash(interests_file=effective_interests_file)
 
         if debug:
-            print(f"[AI筛选][DEBUG] 数据库存储 hash: {stored_hash}")
-            print(f"[AI筛选][DEBUG] hash 对比: stored={stored_hash} vs current={current_hash} → {'匹配' if stored_hash == current_hash else '不匹配'}")
+            print(f"[Filtrage IA][DEBUG] Hash stocké en base de données : {stored_hash}")
+            print(f"[Filtrage IA][DEBUG] Comparaison des hash : stored={stored_hash} vs current={current_hash} → {'correspondance' if stored_hash == current_hash else 'pas de correspondance'}")
 
         if stored_hash != current_hash:
             new_version = storage.get_latest_ai_filter_tag_version() + 1
             threshold = filter_config.get("RECLASSIFY_THRESHOLD", 0.6)
 
             if stored_hash is None:
-                # 首次运行，直接提取并保存全部标签
-                print(f"[AI筛选] 首次运行 ({effective_interests_file})，提取标签...")
+                # Première exécution : on extrait et on enregistre directement toutes les étiquettes
+                print(f"[Filtrage IA] Première exécution ({effective_interests_file}), extraction des étiquettes...")
                 tags_data = ai_filter.extract_tags(interests_content)
                 if not tags_data:
                     storage.end_batch()
-                    return AIFilterResult(success=False, error="标签提取失败")
+                    return AIFilterResult(success=False, error="Échec de l'extraction des étiquettes")
                 tags_data = self._with_ordered_priorities(tags_data, start_priority=1)
                 saved_count = storage.save_ai_filter_tags(tags_data, new_version, current_hash, interests_file=effective_interests_file)
-                print(f"[AI筛选] 已保存 {saved_count} 个标签 (版本 {new_version})")
+                print(f"[Filtrage IA] {saved_count} étiquette(s) enregistrée(s) (version {new_version})")
             else:
-                # 兴趣描述已变更，让 AI 对比旧标签和新兴趣，给出更新方案
+                # La description des centres d'intérêt a changé : on demande à l'IA de comparer les anciennes étiquettes aux nouveaux centres d'intérêt et de proposer un plan de mise à jour
                 old_tags = storage.get_active_ai_filter_tags(interests_file=effective_interests_file)
                 update_result = ai_filter.update_tags(old_tags, interests_content)
 
                 if update_result is None:
-                    # AI 标签更新失败，回退到重新提取全部标签
-                    print(f"[AI筛选] AI 标签更新失败，回退到重新提取")
+                    # Échec de la mise à jour des étiquettes par l'IA : repli vers une réextraction de toutes les étiquettes
+                    print(f"[Filtrage IA] Échec de la mise à jour des étiquettes par l'IA ; repli vers une réextraction")
                     tags_data = ai_filter.extract_tags(interests_content)
                     if not tags_data:
                         storage.end_batch()
-                        return AIFilterResult(success=False, error="标签提取失败")
+                        return AIFilterResult(success=False, error="Échec de l'extraction des étiquettes")
                     tags_data = self._with_ordered_priorities(tags_data, start_priority=1)
                     deprecated_count = storage.deprecate_all_ai_filter_tags(interests_file=effective_interests_file)
                     storage.clear_analyzed_news(interests_file=effective_interests_file)
                     saved_count = storage.save_ai_filter_tags(tags_data, new_version, current_hash, interests_file=effective_interests_file)
-                    print(f"[AI筛选] 废弃 {deprecated_count} 个旧标签, 保存 {saved_count} 个新标签 (版本 {new_version})")
+                    print(f"[Filtrage IA] {deprecated_count} ancienne(s) étiquette(s) rendue(s) obsolète(s), {saved_count} nouvelle(s) étiquette(s) enregistrée(s) (version {new_version})")
                 else:
                     change_ratio = update_result["change_ratio"]
                     keep_tags = update_result["keep"]
@@ -617,91 +619,91 @@ class AppContext:
                     remove_tags = update_result["remove"]
 
                     if debug:
-                        print(f"[AI筛选][DEBUG] AI 标签更新: keep={len(keep_tags)}, add={len(add_tags)}, remove={len(remove_tags)}, change_ratio={change_ratio:.2f}, threshold={threshold:.2f}")
+                        print(f"[Filtrage IA][DEBUG] Mise à jour des étiquettes par l'IA : keep={len(keep_tags)}, add={len(add_tags)}, remove={len(remove_tags)}, change_ratio={change_ratio:.2f}, threshold={threshold:.2f}")
 
                     if change_ratio >= threshold:
-                        # 全量重分类：废弃所有旧标签，用 extract_tags 重新提取
-                        print(f"[AI筛选] 兴趣文件变更: {effective_interests_file} (AI change_ratio={change_ratio:.2f} >= threshold={threshold:.2f} → 全量重分类)")
+                        # Reclassification complète : on rend obsolètes toutes les anciennes étiquettes et on réextrait via extract_tags
+                        print(f"[Filtrage IA] Le fichier de centres d'intérêt a changé : {effective_interests_file} (IA change_ratio={change_ratio:.2f} >= threshold={threshold:.2f} → reclassification complète)")
                         tags_data = ai_filter.extract_tags(interests_content)
                         if not tags_data:
                             storage.end_batch()
-                            return AIFilterResult(success=False, error="标签提取失败")
+                            return AIFilterResult(success=False, error="Échec de l'extraction des étiquettes")
                         tags_data = self._with_ordered_priorities(tags_data, start_priority=1)
                         deprecated_count = storage.deprecate_all_ai_filter_tags(interests_file=effective_interests_file)
                         storage.clear_analyzed_news(interests_file=effective_interests_file)
                         saved_count = storage.save_ai_filter_tags(tags_data, new_version, current_hash, interests_file=effective_interests_file)
-                        print(f"[AI筛选] 废弃 {deprecated_count} 个旧标签, 保存 {saved_count} 个新标签 (版本 {new_version})")
+                        print(f"[Filtrage IA] {deprecated_count} ancienne(s) étiquette(s) rendue(s) obsolète(s), {saved_count} nouvelle(s) étiquette(s) enregistrée(s) (version {new_version})")
                     else:
-                        # 增量更新：按 AI 指示操作
-                        print(f"[AI筛选] 兴趣文件变更: {effective_interests_file} (AI change_ratio={change_ratio:.2f} < threshold={threshold:.2f} → 增量更新)")
-                        print(f"[AI筛选]   保留 {len(keep_tags)} 个标签, 新增 {len(add_tags)} 个, 废弃 {len(remove_tags)} 个")
+                        # Mise à jour incrémentale : opérations ciblées indiquées par l'IA
+                        print(f"[Filtrage IA] Le fichier de centres d'intérêt a changé : {effective_interests_file} (IA change_ratio={change_ratio:.2f} < threshold={threshold:.2f} → mise à jour incrémentale)")
+                        print(f"[Filtrage IA]   {len(keep_tags)} étiquette(s) conservée(s), {len(add_tags)} ajoutée(s), {len(remove_tags)} rendue(s) obsolète(s)")
 
-                        # 废弃 AI 标记移除的标签
+                        # On rend obsolètes les étiquettes que l'IA a marquées comme à retirer
                         if remove_tags:
                             remove_set = set(remove_tags)
                             removed_ids = [t["id"] for t in old_tags if t["tag"] in remove_set]
                             if removed_ids:
                                 storage.deprecate_specific_ai_filter_tags(removed_ids)
                                 if debug:
-                                    print(f"[AI筛选][DEBUG] 废弃标签 IDs: {removed_ids}")
+                                    print(f"[Filtrage IA][DEBUG] Identifiants des étiquettes rendues obsolètes : {removed_ids}")
 
-                        # 更新保留标签的描述
+                        # Mise à jour des descriptions des étiquettes conservées
                         keep_with_priority = []
                         if keep_tags:
                             storage.update_ai_filter_tag_descriptions(keep_tags, interests_file=effective_interests_file)
                             keep_with_priority = self._with_ordered_priorities(keep_tags, start_priority=1)
                             storage.update_ai_filter_tag_priorities(keep_with_priority, interests_file=effective_interests_file)
 
-                        # 保存新增标签
+                        # Enregistrement des nouvelles étiquettes
                         if add_tags:
                             add_start = keep_with_priority[-1]["priority"] + 1 if keep_with_priority else 1
                             add_with_priority = self._with_ordered_priorities(add_tags, start_priority=add_start)
                             saved_count = storage.save_ai_filter_tags(add_with_priority, new_version, current_hash, interests_file=effective_interests_file)
                             if debug:
-                                print(f"[AI筛选][DEBUG] 新增保存 {saved_count} 个标签")
+                                print(f"[Filtrage IA][DEBUG] {saved_count} nouvelle(s) étiquette(s) enregistrée(s)")
 
-                        # 更新保留标签的 hash（标记为已处理）
+                        # Mise à jour du hash des étiquettes conservées (marquées comme déjà traitées)
                         storage.update_ai_filter_tags_hash(effective_interests_file, current_hash)
 
-                        # 增量更新：清除不匹配新闻的分析记录，让它们有机会被新标签集重新分析
+                        # Mise à jour incrémentale : on efface les enregistrements d'analyse des actualités non correspondantes, afin qu'elles soient réanalysées sous les nouvelles étiquettes
                         if add_tags:
                             cleared = storage.clear_unmatched_analyzed_news(interests_file=effective_interests_file)
                             if cleared > 0:
-                                print(f"[AI筛选]   清除 {cleared} 条不匹配记录，将在新标签下重新分析")
+                                print(f"[Filtrage IA]   {cleared} enregistrement(s) non correspondant(s) effacé(s) ; ces actualités seront réanalysées sous les nouvelles étiquettes")
 
-        # 3. 获取当前 active 标签
+        # 3. Récupération des étiquettes actuellement actives
         active_tags = storage.get_active_ai_filter_tags(interests_file=effective_interests_file)
         if debug:
-            print(f"[AI筛选][DEBUG] 从数据库获取 active 标签: {len(active_tags)} 个")
+            print(f"[Filtrage IA][DEBUG] Étiquettes actives récupérées depuis la base de données : {len(active_tags)}")
             for t in active_tags:
-                print(f"[AI筛选][DEBUG]   id={t['id']} tag={t['tag']} priority={t.get('priority', 9999)} version={t.get('version')} hash={t.get('prompt_hash', '')[:8]}...")
+                print(f"[Filtrage IA][DEBUG]   id={t['id']} tag={t['tag']} priority={t.get('priority', 9999)} version={t.get('version')} hash={t.get('prompt_hash', '')[:8]}...")
 
         if not active_tags:
             storage.end_batch()
-            return AIFilterResult(success=False, error="没有可用的标签")
+            return AIFilterResult(success=False, error="Aucune étiquette disponible")
 
-        print(f"[AI筛选] 使用 {len(active_tags)} 个标签")
+        print(f"[Filtrage IA] {len(active_tags)} étiquette(s) utilisée(s)")
 
-        # 4. 收集待分类新闻
-        # 热榜
+        # 4. Rassemblement des actualités à classer
+        # Tendances
         all_news = storage.get_all_news_ids()
         analyzed_hotlist = storage.get_analyzed_news_ids("hotlist", interests_file=effective_interests_file)
         pending_news = [n for n in all_news if n["id"] not in analyzed_hotlist]
 
-        # RSS（先做新鲜度过滤，再去除已分类的）
+        # RSS (on applique d'abord le filtrage par fraîcheur, puis on retire les entrées déjà classées)
         pending_rss = []
         freshness_filtered_rss = 0
         if self.rss_enabled:
             all_rss = storage.get_all_rss_ids()
 
-            # 应用新鲜度过滤（与推送阶段一致）
+            # Application du filtrage par fraîcheur (cohérent avec l'étape de diffusion)
             rss_config = self.rss_config
             freshness_config = rss_config.get("FRESHNESS_FILTER", {})
             freshness_enabled = freshness_config.get("ENABLED", True)
             default_max_age_days = freshness_config.get("MAX_AGE_DAYS", 3)
             timezone = self.config.get("TIMEZONE", DEFAULT_TIMEZONE)
 
-            # 构建 feed_id -> max_age_days 的映射
+            # Construction de la correspondance feed_id -> max_age_days
             feed_max_age_map = {}
             for feed_cfg in self.rss_feeds:
                 feed_id = feed_cfg.get("id", "")
@@ -726,33 +728,33 @@ class AppContext:
             analyzed_rss = storage.get_analyzed_news_ids("rss", interests_file=effective_interests_file)
             pending_rss = [n for n in fresh_rss if n["id"] not in analyzed_rss]
 
-        # 始终打印总量/已分析/待分析 的详细数据
+        # On affiche les détails : total / déjà analysés / à analyser
         hotlist_total = len(all_news)
         hotlist_skipped = len(analyzed_hotlist)
         hotlist_pending = len(pending_news)
-        print(f"[AI筛选] 热榜: 总计 {hotlist_total} 条, 已分析跳过 {hotlist_skipped} 条, 本次发送AI分析 {hotlist_pending} 条")
+        print(f"[Filtrage IA] Tendances : {hotlist_total} entrées au total, {hotlist_skipped} déjà analysées et ignorées, {hotlist_pending} envoyées à l'analyse IA pour cette exécution")
         if self.rss_enabled:
             rss_total = len(all_rss)
             rss_skipped = len(analyzed_rss)
             rss_pending = len(pending_rss)
-            freshness_info = f", 新鲜度过滤 {freshness_filtered_rss} 条" if freshness_filtered_rss > 0 else ""
-            print(f"[AI筛选] RSS: 总计 {rss_total} 条{freshness_info}, 已分析跳过 {rss_skipped} 条, 本次发送AI分析 {rss_pending} 条")
+            freshness_info = f", {freshness_filtered_rss} filtrées par fraîcheur" if freshness_filtered_rss > 0 else ""
+            print(f"[Filtrage IA] RSS : {rss_total} entrées au total{freshness_info}, {rss_skipped} déjà analysées et ignorées, {rss_pending} envoyées à l'analyse IA pour cette exécution")
 
         total_pending = len(pending_news) + len(pending_rss)
         if total_pending == 0:
-            print("[AI筛选] 没有新增新闻需要分类")
+            print("[Filtrage IA] Aucune nouvelle actualité à classer")
 
-        # 5. 批量分类
+        # 5. Classification par lot
         batch_size = filter_config.get("BATCH_SIZE", 200)
         batch_interval = filter_config.get("BATCH_INTERVAL", 5)
         total_results = []
-        batch_count = 0  # 跨热榜和 RSS 的全局批次计数
+        batch_count = 0  # Compteur global de lots, couvrant à la fois les tendances et les flux RSS
 
-        # 处理热榜
+        # Traitement des tendances
         for i in range(0, len(pending_news), batch_size):
             if batch_count > 0 and batch_interval > 0:
                 import time
-                print(f"[AI筛选] 批次间隔等待 {batch_interval} 秒...")
+                print(f"[Filtrage IA] Attente de {batch_interval} secondes entre les lots...")
                 time.sleep(batch_interval)
             batch = pending_news[i:i + batch_size]
             titles_for_ai = [
@@ -764,13 +766,13 @@ class AppContext:
                 r["source_type"] = "hotlist"
             total_results.extend(batch_results)
             batch_count += 1
-            print(f"[AI筛选] 热榜批次 {i // batch_size + 1}: {len(batch)} 条 → {len(batch_results)} 条匹配")
+            print(f"[Filtrage IA] Lot de tendances {i // batch_size + 1} : {len(batch)} entrées → {len(batch_results)} correspondances")
 
-        # 处理 RSS
+        # Traitement des flux RSS
         for i in range(0, len(pending_rss), batch_size):
             if batch_count > 0 and batch_interval > 0:
                 import time
-                print(f"[AI筛选] 批次间隔等待 {batch_interval} 秒...")
+                print(f"[Filtrage IA] Attente de {batch_interval} secondes entre les lots...")
                 time.sleep(batch_interval)
             batch = pending_rss[i:i + batch_size]
             titles_for_ai = [
@@ -782,16 +784,16 @@ class AppContext:
                 r["source_type"] = "rss"
             total_results.extend(batch_results)
             batch_count += 1
-            print(f"[AI筛选] RSS 批次 {i // batch_size + 1}: {len(batch)} 条 → {len(batch_results)} 条匹配")
+            print(f"[Filtrage IA] Lot RSS {i // batch_size + 1} : {len(batch)} entrées → {len(batch_results)} correspondances")
 
-        # 6. 保存结果
+        # 6. Enregistrement des résultats
         if total_results:
             saved = storage.save_ai_filter_results(total_results)
-            print(f"[AI筛选] 保存 {saved} 条分类结果")
+            print(f"[Filtrage IA] {saved} résultat(s) de classification enregistré(s)")
             if debug and saved != len(total_results):
-                print(f"[AI筛选][DEBUG] !! 保存数量不一致: 期望 {len(total_results)}, 实际 {saved}（可能有重复记录被跳过）")
+                print(f"[Filtrage IA][DEBUG] !! Nombre d'enregistrements incohérent : attendu {len(total_results)}, réel {saved} (des doublons ont peut-être été ignorés)")
 
-        # 6.5 记录所有已分析的新闻（匹配+不匹配，用于去重）
+        # 6.5 Enregistrement de toutes les actualités déjà analysées (correspondantes + non correspondantes, pour la déduplication)
         matched_hotlist_ids = {r["news_item_id"] for r in total_results if r.get("source_type") == "hotlist"}
         matched_rss_ids = {r["news_item_id"] for r in total_results if r.get("source_type") == "rss"}
 
@@ -812,18 +814,18 @@ class AppContext:
         if pending_news or pending_rss:
             total_analyzed = len(pending_news) + len(pending_rss)
             total_matched = len(matched_hotlist_ids) + len(matched_rss_ids)
-            print(f"[AI筛选] 已记录 {total_analyzed} 条新闻分析状态 (匹配 {total_matched}, 不匹配 {total_analyzed - total_matched})")
+            print(f"[Filtrage IA] État d'analyse enregistré pour {total_analyzed} actualité(s) ({total_matched} correspondante(s), {total_analyzed - total_matched} non correspondante(s))")
 
-        # 7. 结束批量模式（统一上传数据库到远程存储）
+        # 7. Fin du mode par lot (téléversement groupé de la base de données vers le stockage distant)
         storage.end_batch()
 
-        # 8. 查询并组装返回结果
+        # 8. Interrogation, assemblage et renvoi des résultats
         all_results = storage.get_active_ai_filter_results(interests_file=effective_interests_file)
 
         if debug:
-            print(f"[AI筛选][DEBUG] === 最终汇总 ===")
-            print(f"[AI筛选][DEBUG] 数据库 active 分类结果: {len(all_results)} 条")
-            # 按标签统计
+            print(f"[Filtrage IA][DEBUG] === Synthèse finale ===")
+            print(f"[Filtrage IA][DEBUG] Résultats de classification actifs en base de données : {len(all_results)} entrées")
+            # Statistiques par étiquette
             tag_counts: dict = {}
             for r in all_results:
                 tag_name = r.get("tag", "?")
@@ -831,7 +833,7 @@ class AppContext:
                 key = f"{tag_name}({src_type})"
                 tag_counts[key] = tag_counts.get(key, 0) + 1
             for key, count in sorted(tag_counts.items()):
-                print(f"[AI筛选][DEBUG]   {key}: {count} 条")
+                print(f"[Filtrage IA][DEBUG]   {key} : {count} entrées")
 
         return self._build_filter_result(all_results, active_tags, total_pending)
 
@@ -841,7 +843,7 @@ class AppContext:
         tags: List[Dict],
         total_processed: int,
     ) -> AIFilterResult:
-        """将数据库查询结果组装为 AIFilterResult"""
+        """Assemble les résultats issus de la base de données en un objet AIFilterResult"""
         priority_sort_enabled = self.ai_priority_sort_enabled
         tag_priority_map = {}
         for idx, t in enumerate(tags, start=1):
@@ -853,9 +855,9 @@ class AppContext:
             except (TypeError, ValueError):
                 tag_priority_map[tag_name] = idx
 
-        # 按标签分组
+        # Regroupement par étiquette
         tag_groups: Dict[str, Dict] = {}
-        seen_titles: Dict[str, set] = {}  # 每个标签下去重
+        seen_titles: Dict[str, set] = {}  # Déduplication au sein de chaque étiquette
 
         for r in raw_results:
             tag_name = r["tag"]
@@ -895,7 +897,7 @@ class AppContext:
             })
             tag_groups[tag_name]["count"] += 1
 
-        # 根据配置排序：位置优先 / 数量优先
+        # Tri selon la configuration : priorité par position / priorité par nombre
         if priority_sort_enabled:
             sorted_tags = sorted(
                 tag_groups.values(),
@@ -924,30 +926,30 @@ class AppContext:
         rss_new_urls: Optional[set] = None,
     ) -> tuple:
         """
-        将 AI 筛选结果转换为与关键词匹配相同的数据结构
+        Convertit le résultat du filtrage IA dans la même structure de données que la correspondance par mots-clés
 
-        AIFilterResult.tags 中每个 tag 对应一个 "word"（关键词组）。
-        tag.items 中 source_type="hotlist" 的条目进入热榜 stats，
-        source_type="rss" 的条目进入 rss_items stats。
+        Dans AIFilterResult.tags, chaque tag correspond à un « word » (groupe de mots-clés).
+        Dans tag.items, les entrées avec source_type="hotlist" alimentent les stats des tendances,
+        et celles avec source_type="rss" alimentent les stats de rss_items.
 
         Args:
-            ai_filter_result: AI 筛选结果
-            mode: 报告模式 ("daily" | "current" | "incremental")
-            new_titles: 热榜新增标题 {source_id: {title: data}}，用于 is_new 检测
-            rss_new_urls: 新增 RSS 条目的 URL 集合，用于 is_new 检测
+            ai_filter_result: résultat du filtrage IA
+            mode: mode du rapport ("daily" | "current" | "incremental")
+            new_titles: nouveaux titres des tendances {source_id: {title: data}}, utilisé pour la détection de is_new
+            rss_new_urls: ensemble des URL des nouvelles entrées RSS, utilisé pour la détection de is_new
 
         Returns:
-            (hotlist_stats, rss_stats):
-            - hotlist_stats: 与 count_word_frequency() 产出格式一致
-            - rss_stats: 与 rss_items 格式一致
+            (hotlist_stats, rss_stats) :
+            - hotlist_stats : format cohérent avec la sortie de count_word_frequency()
+            - rss_stats : format cohérent avec rss_items
         """
         hotlist_stats = []
         rss_stats = []
         max_news = self.config.get("MAX_NEWS_PER_KEYWORD", 0)
         min_score = self.ai_filter_config.get("MIN_SCORE", 0)
 
-        # current 模式：计算最新时间，只保留当前在榜的热榜新闻
-        # 与 count_word_frequency(mode="current") 的过滤逻辑对齐
+        # Mode current : on calcule l'heure la plus récente et on ne conserve que les actualités tendances actuellement classées
+        # afin de s'aligner sur la logique de filtrage de count_word_frequency(mode="current")
         latest_time = None
         if mode == "current":
             for tag_data in ai_filter_result.tags:
@@ -957,9 +959,9 @@ class AppContext:
                         if last_time and (latest_time is None or last_time > latest_time):
                             latest_time = last_time
             if latest_time:
-                print(f"[AI筛选] current 模式：最新时间 {latest_time}，过滤已下榜新闻")
+                print(f"[Filtrage IA] Mode current : heure la plus récente {latest_time}, filtrage des actualités déjà déclassées")
 
-        # RSS 新鲜度过滤配置（与推送阶段一致）
+        # Configuration du filtrage par fraîcheur des flux RSS (cohérente avec l'étape de diffusion)
         rss_config = self.rss_config
         freshness_config = rss_config.get("FRESHNESS_FILTER", {})
         freshness_enabled = freshness_config.get("ENABLED", True)
@@ -989,36 +991,36 @@ class AppContext:
             for item in items:
                 source_type = item.get("source_type", "hotlist")
 
-                # current 模式：跳过已下榜的热榜新闻
+                # Mode current : on ignore les actualités tendances déjà déclassées
                 if mode == "current" and latest_time and source_type == "hotlist":
                     if item.get("last_time", "") != latest_time:
                         filtered_count += 1
                         continue
 
-                # 分数阈值过滤：跳过相关度低于 min_score 的新闻
+                # Filtrage par seuil de score : on ignore les actualités dont la pertinence est inférieure à min_score
                 if min_score > 0:
                     score = item.get("relevance_score", 0)
                     if score < min_score:
                         continue
 
-                # 构建时间显示
+                # Construction de l'affichage de l'heure
                 first_time = item.get("first_time", "")
                 last_time = item.get("last_time", "")
                 if source_type == "rss":
-                    # RSS 新鲜度过滤：跳过超过 max_age_days 的旧文章
+                    # Filtrage par fraîcheur des flux RSS : on ignore les anciens articles dépassant max_age_days
                     if freshness_enabled and first_time:
                         feed_id = item.get("source_id", "")
                         max_days = feed_max_age_map.get(feed_id, default_max_age_days)
                         if max_days > 0 and not is_within_days(first_time, max_days, timezone):
                             continue
 
-                    # RSS 条目：first_time 是 ISO 格式，用友好格式显示
+                    # Entrée RSS : first_time est au format ISO ; on l'affiche dans un format lisible
                     if first_time:
                         time_display = format_iso_time_friendly(first_time, timezone, include_date=True)
                     else:
                         time_display = ""
                 else:
-                    # 热榜条目：使用 [HH:MM ~ HH:MM] 格式（与 keyword 模式一致）
+                    # Entrée de tendance : on utilise le format [HH:MM ~ HH:MM] (cohérent avec le mode keyword)
                     if first_time and last_time and first_time != last_time:
                         first_display = convert_time_for_display(first_time)
                         last_display = convert_time_for_display(last_time)
@@ -1028,7 +1030,7 @@ class AppContext:
                     else:
                         time_display = ""
 
-                # 计算 is_new（与 keyword 模式 core/analyzer.py:335-342 对齐）
+                # Calcul de is_new (aligné sur le mode keyword, core/analyzer.py:335-342)
                 if source_type == "rss":
                     is_new = False
                     if rss_new_urls:
@@ -1042,9 +1044,9 @@ class AppContext:
                         if item_source_id in new_titles:
                             is_new = item_title in new_titles[item_source_id]
 
-                # incremental 模式下仅保留本轮新增命中的条目。
-                # run_ai_filter() 返回的是 active 结果集合，因此这里需要
-                # 显式过滤掉历史已命中的旧条目，才能与 keyword 模式行为对齐。
+                # En mode incremental, on ne conserve que les nouvelles entrées correspondantes de ce cycle.
+                # run_ai_filter() renvoie l'ensemble des résultats actifs ; il faut donc filtrer ici
+                # les anciennes entrées déjà correspondantes de l'historique, afin de rester aligné sur le mode keyword.
                 if mode == "incremental" and not is_new:
                     continue
 
@@ -1088,16 +1090,16 @@ class AppContext:
 
         if mode == "current" and filtered_count > 0:
             total_kept = sum(s["count"] for s in hotlist_stats)
-            print(f"[AI筛选] current 模式：过滤 {filtered_count} 条已下榜新闻，保留 {total_kept} 条当前在榜")
+            print(f"[Filtrage IA] Mode current : {filtered_count} actualité(s) déjà déclassée(s) filtrée(s), {total_kept} actualité(s) actuellement classée(s) conservée(s)")
 
         if min_score > 0:
             hotlist_kept = sum(s["count"] for s in hotlist_stats)
             rss_kept = sum(s["count"] for s in rss_stats)
             total_kept = hotlist_kept + rss_kept
-            parts = [f"热榜 {hotlist_kept} 条"]
+            parts = [f"Tendances : {hotlist_kept} entrées"]
             if rss_kept > 0:
-                parts.append(f"RSS {rss_kept} 条")
-            print(f"[AI筛选] 分数过滤：min_score={min_score}，保留 {total_kept} 条 score≥{min_score} ({', '.join(parts)})")
+                parts.append(f"RSS : {rss_kept} entrées")
+            print(f"[Filtrage IA] Filtrage par score : min_score={min_score}, {total_kept} entrée(s) conservée(s) avec un score ≥ {min_score} ({', '.join(parts)})")
 
         priority_sort_enabled = self.ai_priority_sort_enabled
         if priority_sort_enabled:
@@ -1109,10 +1111,10 @@ class AppContext:
 
         return hotlist_stats, rss_stats
 
-    # === 资源清理 ===
+    # === Nettoyage des ressources ===
 
     def cleanup(self):
-        """清理资源"""
+        """Nettoie les ressources"""
         if self._storage_manager:
             self._storage_manager.cleanup_old_data()
             self._storage_manager.cleanup()

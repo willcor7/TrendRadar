@@ -1,6 +1,6 @@
 <div align="center">
 
-**[中文](README-MCP-FAQ.md)** | **English**
+**[Français](README-MCP-FAQ.md)** | **English**
 
 </div>
 
@@ -709,13 +709,13 @@ Users often use natural language like "this week", "last 7 days" to express date
 
 **Supported date expressions:**
 
-| Type | Chinese Expression | English Expression |
+| Type | French Expression | English Expression |
 |------|---------|---------|
-| Single Day | 今天、昨天 | today, yesterday |
-| Week | 本周、上周 | this week, last week |
-| Month | 本月、上月 | this month, last month |
-| Last N Days | 最近7天、最近30天 | last 7 days, last 30 days |
-| Dynamic | 最近N天 (any number) | last N days |
+| Single Day | aujourd'hui, hier | today, yesterday |
+| Week | cette semaine, la semaine dernière | this week, last week |
+| Month | ce mois, le mois dernier | this month, last month |
+| Last N Days | 7 derniers jours, 30 derniers jours | last 7 days, last 30 days |
+| Dynamic | N derniers jours (any number) | last N days |
 
 **Usage advantages:**
 

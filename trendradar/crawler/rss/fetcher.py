@@ -1,8 +1,9 @@
 # coding=utf-8
 """
-RSS 抓取器
+Récupérateur RSS
 
-负责从配置的 RSS 源抓取数据并转换为标准格式
+Responsable de la récupération des données depuis les flux RSS configurés et de leur conversion
+au format standard
 """
 
 import time
@@ -19,17 +20,17 @@ from trendradar.utils.time import get_configured_time, is_within_days, DEFAULT_T
 
 @dataclass
 class RSSFeedConfig:
-    """RSS 源配置"""
-    id: str                     # 源 ID
-    name: str                   # 显示名称
-    url: str                    # RSS URL
-    max_items: int = 0          # 最大条目数（0=不限制）
-    enabled: bool = True        # 是否启用
-    max_age_days: Optional[int] = None  # 文章最大年龄（天），覆盖全局设置；None=使用全局，0=禁用过滤
+    """Configuration d'un flux RSS"""
+    id: str                     # ID du flux
+    name: str                   # nom affiché
+    url: str                    # URL du flux RSS
+    max_items: int = 0          # nombre maximal d'entrées (0 = sans limite)
+    enabled: bool = True        # flux activé ou non
+    max_age_days: Optional[int] = None  # âge maximal des articles (jours), prioritaire sur le réglage global ; None = utilise le global, 0 = désactive le filtrage
 
 
 class RSSFetcher:
-    """RSS 抓取器"""
+    """Récupérateur RSS"""
 
     def __init__(
         self,
@@ -43,17 +44,17 @@ class RSSFetcher:
         default_max_age_days: int = 3,
     ):
         """
-        初始化抓取器
+        Initialise le récupérateur
 
         Args:
-            feeds: RSS 源配置列表
-            request_interval: 请求间隔（毫秒）
-            timeout: 请求超时（秒）
-            use_proxy: 是否使用代理
-            proxy_url: 代理 URL
-            timezone: 时区配置（如 'Asia/Shanghai'）
-            freshness_enabled: 是否启用新鲜度过滤
-            default_max_age_days: 默认最大文章年龄（天）
+            feeds: liste des configurations de flux RSS
+            request_interval: intervalle entre les requêtes (millisecondes)
+            timeout: délai d'expiration des requêtes (secondes)
+            use_proxy: utiliser un proxy ou non
+            proxy_url: URL du proxy
+            timezone: fuseau horaire configuré (comme 'Asia/Shanghai')
+            freshness_enabled: activer ou non le filtrage par fraîcheur
+            default_max_age_days: âge maximal des articles par défaut (jours)
         """
         self.feeds = [f for f in feeds if f.enabled]
         self.request_interval = request_interval
@@ -68,7 +69,7 @@ class RSSFetcher:
         self.session = self._create_session()
 
     def _create_session(self) -> requests.Session:
-        """创建请求会话"""
+        """Crée une session de requête"""
         session = requests.Session()
         session.headers.update({
             "User-Agent": "TrendRadar/2.0 RSS Reader (https://github.com/trendradar)",
@@ -90,51 +91,51 @@ class RSSFetcher:
         feed: RSSFeedConfig,
     ) -> Tuple[List[RSSItem], int]:
         """
-        根据新鲜度过滤文章
+        Filtre les articles selon leur fraîcheur
 
         Args:
-            items: 待过滤的文章列表
-            feed: RSS 源配置
+            items: liste des articles à filtrer
+            feed: configuration du flux RSS
 
         Returns:
-            (过滤后的文章列表, 被过滤的文章数)
+            (liste des articles après filtrage, nombre d'articles filtrés)
         """
-        # 如果全局禁用，直接返回
+        # Si le filtrage est désactivé globalement, retourne directement
         if not self.freshness_enabled:
             return items, 0
 
-        # 确定此 feed 的 max_age_days
+        # Détermine le max_age_days de ce flux
         max_days = feed.max_age_days
         if max_days is None:
             max_days = self.default_max_age_days
 
-        # 如果设为 0，禁用此 feed 的过滤
+        # Si la valeur est 0, désactive le filtrage pour ce flux
         if max_days == 0:
             return items, 0
 
-        # 过滤逻辑：无发布时间的文章保留
+        # Logique de filtrage : les articles sans date de publication sont conservés
         filtered = []
         for item in items:
             if not item.published_at:
-                # 无发布时间，保留
+                # Pas de date de publication, on conserve
                 filtered.append(item)
             elif is_within_days(item.published_at, max_days, self.timezone):
-                # 在指定天数内，保留
+                # Dans le nombre de jours indiqué, on conserve
                 filtered.append(item)
-            # 否则过滤掉
+            # Sinon, on filtre
 
         filtered_count = len(items) - len(filtered)
         return filtered, filtered_count
 
     def fetch_feed(self, feed: RSSFeedConfig) -> Tuple[List[RSSItem], Optional[str]]:
         """
-        抓取单个 RSS 源
+        Récupère un seul flux RSS
 
         Args:
-            feed: RSS 源配置
+            feed: configuration du flux RSS
 
         Returns:
-            (条目列表, 错误信息) 元组
+            tuple (liste des entrées, message d'erreur)
         """
         try:
             response = self.session.get(feed.url, timeout=self.timeout)
@@ -142,11 +143,11 @@ class RSSFetcher:
 
             parsed_items = self.parser.parse(response.text, feed.url)
 
-            # 限制条目数量（0=不限制）
+            # Limite le nombre d'entrées (0 = sans limite)
             if feed.max_items > 0:
                 parsed_items = parsed_items[:feed.max_items]
 
-            # 转换为 RSSItem（使用配置的时区）
+            # Conversion en RSSItem (en utilisant le fuseau horaire configuré)
             now = get_configured_time(self.timezone)
             crawl_time = now.strftime("%H:%M")
             items = []
@@ -168,51 +169,51 @@ class RSSFetcher:
                 )
                 items.append(item)
 
-            # 注意：新鲜度过滤已移至推送阶段（_convert_rss_items_to_list）
-            # 这样所有文章都会存入数据库，但旧文章不会推送
-            print(f"[RSS] {feed.name}: 获取 {len(items)} 条")
+            # Remarque : le filtrage par fraîcheur a été déplacé à l'étape d'envoi (_convert_rss_items_to_list).
+            # Ainsi, tous les articles sont enregistrés en base de données, mais les anciens articles ne sont pas envoyés.
+            print(f"[RSS] {feed.name} : {len(items)} entrées récupérées")
             return items, None
 
         except requests.Timeout:
-            error = f"请求超时 ({self.timeout}s)"
-            print(f"[RSS] {feed.name}: {error}")
+            error = f"Délai d'expiration de la requête dépassé ({self.timeout}s)"
+            print(f"[RSS] {feed.name} : {error}")
             return [], error
 
         except requests.RequestException as e:
-            error = f"请求失败: {e}"
-            print(f"[RSS] {feed.name}: {error}")
+            error = f"Échec de la requête : {e}"
+            print(f"[RSS] {feed.name} : {error}")
             return [], error
 
         except ValueError as e:
-            error = f"解析失败: {e}"
-            print(f"[RSS] {feed.name}: {error}")
+            error = f"Échec de l'analyse : {e}"
+            print(f"[RSS] {feed.name} : {error}")
             return [], error
 
         except Exception as e:
-            error = f"未知错误: {e}"
-            print(f"[RSS] {feed.name}: {error}")
+            error = f"Erreur inconnue : {e}"
+            print(f"[RSS] {feed.name} : {error}")
             return [], error
 
     def fetch_all(self) -> RSSData:
         """
-        抓取所有 RSS 源
+        Récupère tous les flux RSS
 
         Returns:
-            RSSData 对象
+            objet RSSData
         """
         all_items: Dict[str, List[RSSItem]] = {}
         id_to_name: Dict[str, str] = {}
         failed_ids: List[str] = []
 
-        # 使用配置的时区
+        # Utilise le fuseau horaire configuré
         now = get_configured_time(self.timezone)
         crawl_time = now.strftime("%H:%M")
         crawl_date = now.strftime("%Y-%m-%d")
 
-        print(f"[RSS] 开始抓取 {len(self.feeds)} 个 RSS 源...")
+        print(f"[RSS] Début de la récupération de {len(self.feeds)} flux RSS...")
 
         for i, feed in enumerate(self.feeds):
-            # 请求间隔（带随机波动）
+            # Intervalle entre les requêtes (avec une légère variation aléatoire)
             if i > 0:
                 interval = self.request_interval / 1000
                 jitter = random.uniform(-0.2, 0.2) * interval
@@ -228,7 +229,7 @@ class RSSFetcher:
                 all_items[feed.id] = items
 
         total_items = sum(len(items) for items in all_items.values())
-        print(f"[RSS] 抓取完成: {len(all_items)} 个源成功, {len(failed_ids)} 个失败, 共 {total_items} 条")
+        print(f"[RSS] Récupération terminée : {len(all_items)} flux réussis, {len(failed_ids)} en échec, {total_items} entrées au total")
 
         return RSSData(
             date=crawl_date,
@@ -241,10 +242,10 @@ class RSSFetcher:
     @classmethod
     def from_config(cls, config: Dict) -> "RSSFetcher":
         """
-        从配置字典创建抓取器
+        Crée un récupérateur à partir d'un dictionnaire de configuration
 
         Args:
-            config: 配置字典，格式如下：
+            config: dictionnaire de configuration, au format suivant :
                 {
                     "enabled": true,
                     "request_interval": 2000,
@@ -258,16 +259,16 @@ class RSSFetcher:
                 }
 
         Returns:
-            RSSFetcher 实例
+            instance de RSSFetcher
         """
-        # 读取新鲜度过滤配置
+        # Lit la configuration du filtrage par fraîcheur
         freshness_config = config.get("freshness_filter", {})
-        freshness_enabled = freshness_config.get("enabled", True)  # 默认启用
-        default_max_age_days = freshness_config.get("max_age_days", 3)  # 默认3天
+        freshness_enabled = freshness_config.get("enabled", True)  # activé par défaut
+        default_max_age_days = freshness_config.get("max_age_days", 3)  # 3 jours par défaut
 
         feeds = []
         for feed_config in config.get("feeds", []):
-            # 读取并验证单个 feed 的 max_age_days（可选）
+            # Lit et valide le max_age_days d'un flux individuel (optionnel)
             max_age_days_raw = feed_config.get("max_age_days")
             max_age_days = None
             if max_age_days_raw is not None:
@@ -275,20 +276,20 @@ class RSSFetcher:
                     max_age_days = int(max_age_days_raw)
                     if max_age_days < 0:
                         feed_id = feed_config.get("id", "unknown")
-                        print(f"[警告] RSS feed '{feed_id}' 的 max_age_days 为负数，将使用全局默认值")
+                        print(f"[Avertissement] Le max_age_days du flux RSS '{feed_id}' est négatif ; la valeur globale par défaut sera utilisée")
                         max_age_days = None
                 except (ValueError, TypeError):
                     feed_id = feed_config.get("id", "unknown")
-                    print(f"[警告] RSS feed '{feed_id}' 的 max_age_days 格式错误：{max_age_days_raw}")
+                    print(f"[Avertissement] Le max_age_days du flux RSS '{feed_id}' a un format incorrect : {max_age_days_raw}")
                     max_age_days = None
 
             feed = RSSFeedConfig(
                 id=feed_config.get("id", ""),
                 name=feed_config.get("name", ""),
                 url=feed_config.get("url", ""),
-                max_items=feed_config.get("max_items", 0),  # 0=不限制
+                max_items=feed_config.get("max_items", 0),  # 0 = sans limite
                 enabled=feed_config.get("enabled", True),
-                max_age_days=max_age_days,  # None=使用全局，0=禁用，>0=覆盖
+                max_age_days=max_age_days,  # None = utilise le global, 0 = désactivé, >0 = écrase
             )
             if feed.id and feed.url:
                 feeds.append(feed)

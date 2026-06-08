@@ -1,4 +1,4 @@
-/* 编辑器区域滚动条 */
+/* Barre de defilement de la zone d'edition */
 #yaml-editor::-webkit-scrollbar,
 #frequency-editor::-webkit-scrollbar,
 #timeline-editor::-webkit-scrollbar,
@@ -34,7 +34,7 @@
     background: #4f4f4f;
 }
 
-/* 高亮编辑器容器 */
+/* Conteneur de l'editeur avec coloration */
 .highlight-editor-wrap {
     position: relative;
     flex: 1;
@@ -42,7 +42,7 @@
     overflow: hidden;
 }
 
-/* 高亮背景层 */
+/* Couche de fond pour la coloration */
 .highlight-backdrop {
     position: absolute;
     top: 0;
@@ -64,7 +64,7 @@
     z-index: 1;
 }
 
-/* 透明输入层 */
+/* Couche de saisie transparente */
 .highlight-textarea {
     position: absolute;
     top: 0;
@@ -86,12 +86,12 @@
     z-index: 2;
 }
 
-/* 注释样式 - 灰色 */
+/* Style des commentaires - gris */
 .syntax-comment {
     color: #6a9955;
 }
 
-/* 右侧面板滚动条 */
+/* Barre de defilement du panneau de droite */
 #modules-container::-webkit-scrollbar {
     width: 8px;
 }
@@ -103,7 +103,7 @@
     border-radius: 4px;
 }
 
-/* 模块卡片样式 */
+/* Style des cartes de module */
 .module-card {
     background: white;
     border-radius: 0.5rem; /* rounded-lg */
@@ -112,7 +112,7 @@
     transition: all 0.2s;
 }
 
-/* 激活态（可编辑） */
+/* Etat actif (editable) */
 .module-card.active {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
@@ -126,7 +126,7 @@
     color: #111827;
 }
 
-/* 禁用态（灰色/只读） */
+/* Etat desactive (gris / lecture seule) */
 .module-card.disabled {
     background-color: #f9fafb; /* gray-50 */
     opacity: 0.8;
@@ -143,7 +143,7 @@
     display: inline-flex;
 }
 
-/* 输入控件统一 */
+/* Uniformisation des controles de saisie */
 input[type="text"],
 input[type="password"],
 input[type="number"],
@@ -163,7 +163,7 @@ input:focus, select:focus {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* 开关样式 (Checkbox Toggle) */
+/* Style des interrupteurs (Checkbox Toggle) */
 .toggle-checkbox:checked {
     right: 0;
     border-color: #3b82f6;
@@ -172,7 +172,7 @@ input:focus, select:focus {
     background-color: #3b82f6;
 }
 
-/* 列表样式 (Platforms & RSS & Sortable) */
+/* Style des listes (Platforms & RSS & Sortable) */
 .sortable-list-item {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -196,13 +196,13 @@ input:focus, select:focus {
     opacity: 0.5;
 }
 
-/* 禁用状态的勾选框 */
+/* Cases a cocher a l'etat desactive */
 input[type="checkbox"]:disabled {
     cursor: not-allowed;
     opacity: 0.5;
 }
 
-/* Tab 切换样式 */
+/* Style de bascule des onglets */
 .tab-button {
     transition: all 0.2s;
 }
@@ -214,7 +214,7 @@ input[type="checkbox"]:disabled {
     display: none;
 }
 
-/* 标签输入样式 */
+/* Style de saisie des etiquettes */
 .tag-input-container {
     display: flex;
     flex-wrap: wrap;
@@ -252,7 +252,7 @@ input[type="checkbox"]:disabled {
     font-size: 0.875rem;
 }
 
-/* 词组卡片样式 */
+/* Style des cartes de groupe de mots */
 .word-group-card {
     background: white;
     border: 1px solid #e5e7eb;
@@ -265,7 +265,7 @@ input[type="checkbox"]:disabled {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 插入区域样式 */
+/* Style des zones d'insertion */
 .insert-zone {
     position: relative;
     height: 8px;
@@ -313,7 +313,7 @@ input[type="checkbox"]:disabled {
     transform: scale(0.95);
 }
 
-/* 编辑区域恢复默认鼠标样式 */
+/* Retablit le curseur par defaut dans la zone d'edition */
 .word-group-card .editable-area {
     cursor: default;
 }
@@ -327,7 +327,7 @@ input[type="checkbox"]:disabled {
     cursor: pointer;
 }
 
-/* 拖拽手柄样式 */
+/* Style des poignees de glisser-deposer */
 .drag-handle {
     cursor: grab;
     transition: all 0.2s;
@@ -336,7 +336,7 @@ input[type="checkbox"]:disabled {
     cursor: grabbing;
 }
 
-/* SortableJS 拖拽样式 */
+/* Style de glisser-deposer SortableJS */
 .sortable-ghost {
     opacity: 0.4;
     background: #dbeafe;
@@ -352,7 +352,7 @@ input[type="checkbox"]:disabled {
     transform: rotate(2deg);
 }
 
-/* 独立区域复选框组 */
+/* Groupe de cases a cocher de la zone autonome */
 .checkbox-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -378,7 +378,7 @@ input[type="checkbox"]:disabled {
 }
 
 /* ==========================================
-   拖拽上传遮罩层
+   Couche de superposition pour le glisser-deposer
    ========================================== */
 .drop-overlay {
     position: absolute;
@@ -411,7 +411,7 @@ input[type="checkbox"]:disabled {
 }
 
 /* ==========================================
-   Toast 提示
+   Notification toast
    ========================================== */
 .toast-notification {
     position: fixed;
@@ -438,7 +438,7 @@ input[type="checkbox"]:disabled {
     font-size: 1.125rem;
 }
 
-/* Toast 类型样式 */
+/* Styles selon le type de toast */
 .toast-success {
     background: #10b981;
     color: white;
@@ -457,7 +457,7 @@ input[type="checkbox"]:disabled {
 }
 
 /* ==========================================
-   弹窗样式
+   Style des fenetres modales
    ========================================== */
 .modal-overlay {
     position: fixed;
@@ -486,7 +486,7 @@ input[type="checkbox"]:disabled {
 }
 
 
-/* 弹簧跳动动画 */
+/* Animation de rebond elastique */
 @keyframes spring-in {
     0% { transform: scale(0.5); opacity: 0; }
     60% { transform: scale(1.1); }
@@ -502,10 +502,10 @@ input[type="checkbox"]:disabled {
 }
 
 /* ==========================================
-   Timeline 编辑器样式
+   Style de l'editeur Timeline
    ========================================== */
 
-/* 预设模式选择卡片 */
+/* Carte de selection du mode predefini */
 .tl-preset-card {
     border: 2px solid #e5e7eb;
     border-radius: 0.75rem;
@@ -546,7 +546,7 @@ input[type="checkbox"]:disabled {
     border-radius: 0 0.625rem 0 0.5rem;
 }
 
-/* 周视图时间线 */
+/* Chronologie de la vue hebdomadaire */
 .tl-week-view {
     background: white;
     border: 1px solid #e5e7eb;
@@ -614,14 +614,14 @@ input[type="checkbox"]:disabled {
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
-/* 时间段颜色 */
+/* Couleurs des plages horaires */
 .tl-block-push { background: #3b82f6; }
 .tl-block-analyze { background: #8b5cf6; }
 .tl-block-push-analyze { background: #6366f1; }
 .tl-block-collect { background: #94a3b8; }
 .tl-block-silent { background: #cbd5e1; }
 
-/* 时间刻度 */
+/* Graduation horaire */
 .tl-hour-markers {
     display: flex;
     padding-left: 2.5rem;
@@ -633,7 +633,7 @@ input[type="checkbox"]:disabled {
     text-align: center;
 }
 
-/* 图例 */
+/* Legende */
 .tl-legend {
     display: flex;
     gap: 0.75rem;
@@ -655,7 +655,7 @@ input[type="checkbox"]:disabled {
     border-radius: 0.125rem;
 }
 
-/* 时间段 Tooltip */
+/* Info-bulle de plage horaire */
 .tl-tooltip {
     position: fixed;
     background: #1f2937;
@@ -679,7 +679,7 @@ input[type="checkbox"]:disabled {
     border-top: 5px solid #1f2937;
 }
 
-/* Custom 模式编辑面板 */
+/* Panneau d'edition du mode Custom */
 .tl-section-title {
     font-size: 0.75rem;
     font-weight: 700;
@@ -722,7 +722,7 @@ input[type="checkbox"]:disabled {
 .tl-toggle-item.on { color: #2563eb; font-weight: 600; }
 .tl-toggle-item.off { color: #9ca3af; }
 
-/* Timeline 小型 toggle 开关 */
+/* Petits interrupteurs de la Timeline */
 .tl-toggle-item .toggle-checkbox {
     width: 1rem;
     height: 1rem;
@@ -739,7 +739,7 @@ input[type="checkbox"]:disabled {
     background-color: #3b82f6;
 }
 
-/* 日计划和周映射 */
+/* Plans journaliers et correspondance hebdomadaire */
 .tl-dayplan-row {
     display: flex;
     align-items: center;
@@ -768,7 +768,7 @@ input[type="checkbox"]:disabled {
     outline: none;
 }
 
-/* Default 配置折叠面板 */
+/* Panneau repliable de la configuration Default */
 .tl-collapsible {
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
@@ -803,9 +803,9 @@ input[type="checkbox"]:disabled {
     transform: rotate(-90deg);
 }
 
-/* Timeline CRUD 新增样式 */
+/* Nouveaux styles CRUD de la Timeline */
 
-/* 预设卡片操作按钮 */
+/* Boutons d'action de la carte de preset */
 .tl-card-actions {
     display: none;
     position: absolute;
@@ -841,7 +841,7 @@ input[type="checkbox"]:disabled {
     border-color: #fca5a5;
 }
 
-/* 新建模式卡片 */
+/* Carte de creation de mode */
 .tl-new-preset-card {
     border-style: dashed;
     border-color: #d1d5db;
@@ -852,7 +852,7 @@ input[type="checkbox"]:disabled {
     background: #faf5ff;
 }
 
-/* section 内的新增按钮 */
+/* Bouton d'ajout dans une section */
 .tl-add-btn {
     font-size: 0.625rem;
     font-weight: 600;
@@ -869,7 +869,7 @@ input[type="checkbox"]:disabled {
     border-color: #93c5fd;
 }
 
-/* period 卡片内联操作 */
+/* Actions en ligne de la carte de plage */
 .tl-inline-btn {
     width: 1.375rem;
     height: 1.375rem;
@@ -898,7 +898,7 @@ input[type="checkbox"]:disabled {
     background: #fef2f2;
 }
 
-/* 日计划中的 period tag */
+/* Etiquette de plage dans un plan journalier */
 .tl-period-tag {
     display: inline-flex;
     align-items: center;
@@ -924,7 +924,7 @@ input[type="checkbox"]:disabled {
     color: white;
 }
 
-/* 添加时间段到日计划的 select */
+/* Liste deroulante d'ajout d'une plage a un plan journalier */
 .tl-add-period-select {
     font-size: 0.625rem;
     padding: 0.0625rem 0.375rem;
@@ -940,7 +940,7 @@ input[type="checkbox"]:disabled {
     color: #3b82f6;
 }
 
-/* 周映射快捷按钮 */
+/* Boutons rapides de correspondance hebdomadaire */
 .tl-quick-btn {
     font-size: 0.625rem;
     font-weight: 500;
@@ -958,7 +958,7 @@ input[type="checkbox"]:disabled {
     border-color: #93c5fd;
 }
 
-/* 当前时间指示线 */
+/* Ligne indiquant l'heure actuelle */
 .tl-now-line {
     position: absolute;
     top: -2px;
@@ -979,7 +979,7 @@ input[type="checkbox"]:disabled {
     background: #ef4444;
 }
 
-/* 周视图色块点击态 */
+/* Etat de clic des blocs de la vue hebdomadaire */
 .tl-period-block {
     cursor: pointer;
 }
@@ -988,7 +988,7 @@ input[type="checkbox"]:disabled {
     box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
 }
 
-/* period 卡片高亮动画 */
+/* Animation de surbrillance de la carte de plage */
 .tl-period-highlight {
     animation: tl-highlight-pulse 1.5s ease-out;
 }
@@ -998,7 +998,7 @@ input[type="checkbox"]:disabled {
     100% { box-shadow: none; }
 }
 
-/* 内联编辑输入框 */
+/* Champ de saisie d'edition en ligne */
 .tl-inline-input {
     background: white;
     border: 1px solid #93c5fd;
@@ -1017,7 +1017,7 @@ input[type="checkbox"]:disabled {
     background: rgba(59, 130, 246, 0.06);
 }
 
-/* 日计划 Tag 拖拽排序 */
+/* Tri par glisser-deposer des etiquettes de plan journalier */
 .tl-period-tag {
     cursor: grab;
 }
@@ -1033,9 +1033,9 @@ input[type="checkbox"]:disabled {
 }
 
 /* ==========================================
-   支持侧栏
+   Barre laterale de soutien
    ========================================== */
-/* 外层容器：承担宽度和 flex 布局角色 */
+/* Conteneur externe : gere la largeur et la disposition flex */
 .support-sidebar-wrap {
     width: 20%;
     min-width: 180px;
@@ -1049,7 +1049,7 @@ input[type="checkbox"]:disabled {
     max-width: 0;
 }
 
-/* 内层侧栏：填满 wrap */
+/* Barre laterale interne : remplit le conteneur */
 .support-sidebar {
     width: 100%;
     height: 100%;
@@ -1061,7 +1061,7 @@ input[type="checkbox"]:disabled {
     pointer-events: none;
 }
 
-/* 折叠/展开按钮 */
+/* Bouton replier / deplier */
 .sidebar-toggle-btn {
     position: absolute;
     left: 0;
@@ -1088,7 +1088,7 @@ input[type="checkbox"]:disabled {
     background: #f3f4f6;
     color: #6b7280;
 }
-/* 折叠后按钮始终可见，箭头朝左 */
+/* Une fois replie, le bouton reste visible, fleche vers la gauche */
 .sidebar-toggle-btn.is-collapsed {
     opacity: 1;
 }
@@ -1096,7 +1096,7 @@ input[type="checkbox"]:disabled {
     transform: rotate(180deg);
 }
 
-/* 侧栏滚动条 */
+/* Barre de defilement de la barre laterale */
 .sidebar-scroll::-webkit-scrollbar {
     width: 4px;
 }
@@ -1111,7 +1111,7 @@ input[type="checkbox"]:disabled {
     background: #d1d5db;
 }
 
-/* 侧栏卡片 */
+/* Carte de la barre laterale */
 .sidebar-card {
     background: white;
     border: 1px solid #f3f4f6;
@@ -1128,7 +1128,7 @@ input[type="checkbox"]:disabled {
     transform: translateY(-2px);
 }
 
-/* 侧栏卡片图标 */
+/* Icone de carte de la barre laterale */
 .sidebar-card-icon {
     width: 2rem;
     height: 2rem;
@@ -1144,7 +1144,7 @@ input[type="checkbox"]:disabled {
     transform: rotate(8deg) scale(1.1);
 }
 
-/* 侧栏 CTA 按钮 */
+/* Bouton d'appel a l'action de la barre laterale */
 .sidebar-cta {
     text-align: center;
     padding: 0.375rem 0.5rem;
@@ -1155,7 +1155,7 @@ input[type="checkbox"]:disabled {
     letter-spacing: 0.02em;
 }
 
-/* 侧栏二维码 */
+/* QR code de la barre laterale */
 .sidebar-qr {
     width: 100%;
     max-width: 120px;
@@ -1167,7 +1167,7 @@ input[type="checkbox"]:disabled {
     transition: all 0.3s ease;
 }
 
-/* 链接样式重置 */
+/* Reinitialisation du style des liens */
 a.sidebar-card {
     color: inherit;
 }
@@ -1176,7 +1176,7 @@ a.sidebar-card:hover {
     text-decoration: none;
 }
 
-/* 侧栏标题区引语 */
+/* Citation de l'en-tete de la barre laterale */
 .sidebar-quote {
     max-height: 0;
     overflow: hidden;
@@ -1190,7 +1190,7 @@ a.sidebar-card:hover {
     margin-top: 0.375rem;
 }
 
-/* 可点击的二维码卡片 */
+/* Carte de QR code cliquable */
 .sidebar-card-clickable {
     cursor: pointer;
     position: relative;
@@ -1200,7 +1200,7 @@ a.sidebar-card:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* 点击放大提示 */
+/* Indication « cliquer pour agrandir » */
 .sidebar-enlarge-hint {
     position: absolute;
     bottom: 0;

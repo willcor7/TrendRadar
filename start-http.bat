@@ -2,22 +2,22 @@
 chcp 65001 >nul
 
 echo ============================================================
-echo   TrendRadar MCP Server (HTTP 模式)
+echo   TrendRadar MCP Server (mode HTTP)
 echo ============================================================
 echo.
 
-REM 检查虚拟环境
+REM Vérifier l'environnement virtuel
 if not exist ".venv\Scripts\python.exe" (
-    echo ❌ [错误] 虚拟环境未找到
-    echo 请先运行 setup-windows.bat 或 setup-windows-en.bat 进行部署
+    echo ❌ [Erreur] Environnement virtuel introuvable
+    echo Veuillez d'abord lancer setup-windows.bat ou setup-windows-en.bat pour l'installation
     echo.
     pause
     exit /b 1
 )
 
-echo [模式] HTTP (适合远程访问)
-echo [地址] http://localhost:3333/mcp
-echo [提示] 按 Ctrl+C 停止服务
+echo [Mode] HTTP (adapté à l'accès distant)
+echo [Adresse] http://localhost:3333/mcp
+echo [Astuce] Appuyez sur Ctrl+C pour arrêter le service
 echo.
 
 uv run python -m mcp_server.server --transport http --host 0.0.0.0 --port 3333

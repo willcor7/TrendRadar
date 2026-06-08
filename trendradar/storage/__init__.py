@@ -1,11 +1,11 @@
 # coding=utf-8
 """
-存储模块 - 支持多种存储后端
+Module de stockage - prend en charge plusieurs backends de stockage
 
-支持的存储后端:
-- local: 本地 SQLite + TXT/HTML 文件
-- remote: 远程云存储（S3 兼容协议：R2/OSS/COS/S3 等）
-- auto: 根据环境自动选择（GitHub Actions 用 remote，其他用 local）
+Backends de stockage pris en charge :
+- local : SQLite local + fichiers TXT/HTML
+- remote : stockage cloud distant (protocole compatible S3 : R2/OSS/COS/S3, etc.)
+- auto : sélection automatique selon l'environnement (GitHub Actions utilise remote, sinon local)
 """
 
 from trendradar.storage.base import (
@@ -20,7 +20,7 @@ from trendradar.storage.sqlite_mixin import SQLiteStorageMixin
 from trendradar.storage.local import LocalStorageBackend
 from trendradar.storage.manager import StorageManager, get_storage_manager
 
-# 远程后端可选导入（需要 boto3）
+# Import optionnel du backend distant (nécessite boto3)
 try:
     from trendradar.storage.remote import RemoteStorageBackend
     HAS_REMOTE = True
@@ -29,7 +29,7 @@ except ImportError:
     HAS_REMOTE = False
 
 __all__ = [
-    # 基础类
+    # Classes de base
     "StorageBackend",
     "NewsItem",
     "NewsData",
@@ -37,13 +37,13 @@ __all__ = [
     "RSSData",
     # Mixin
     "SQLiteStorageMixin",
-    # 转换函数
+    # Fonction de conversion
     "convert_crawl_results_to_news_data",
-    # 后端实现
+    # Implémentations de backend
     "LocalStorageBackend",
     "RemoteStorageBackend",
     "HAS_REMOTE",
-    # 管理器
+    # Gestionnaire
     "StorageManager",
     "get_storage_manager",
 ]

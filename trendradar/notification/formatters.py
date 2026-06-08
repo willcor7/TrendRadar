@@ -1,26 +1,27 @@
 # coding=utf-8
 """
-通知内容格式转换模块
+Module de conversion de format du contenu des notifications
 
-提供不同推送平台间的格式转换功能
+Fournit la conversion de format entre les différentes plateformes d'envoi
 """
 
 import re
 
 
 def strip_markdown(text: str) -> str:
-    """去除文本中的 markdown 语法格式，用于个人微信推送
+    """Supprime la syntaxe markdown d'un texte, pour l'envoi via WeChat personnel
 
     Args:
-        text: 包含 markdown 格式的文本
+        text: texte contenant du format markdown
 
     Returns:
-        纯文本内容
+        contenu en texte brut
     """
-    # 转换链接 [text](url) -> text url（保留 URL）
+    # convertit les liens [text](url) -> text url (conserve l'URL)
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1 \2', text)
 
-    # 先保护 URL，避免后续 markdown 清洗误伤链接中的下划线等字符
+    # protège d'abord les URL pour éviter que le nettoyage markdown suivant n'altère
+    # les caractères comme les tirets bas à l'intérieur des liens
     protected_urls: list[str] = []
 
     def _protect_url(match: re.Match) -> str:
@@ -29,40 +30,40 @@ def strip_markdown(text: str) -> str:
 
     text = re.sub(r'https?://[^\s<>\]]+', _protect_url, text)
 
-    # 去除粗体 **text** 或 __text__
+    # supprime le gras **text** ou __text__
     text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
     text = re.sub(r'(?<!\w)__(?!\s)(.+?)(?<!\s)__(?!\w)', r'\1', text)
 
-    # 去除斜体 *text* 或 _text_
+    # supprime l'italique *text* ou _text_
     text = re.sub(r'\*(.+?)\*', r'\1', text)
     text = re.sub(r'(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)', r'\1', text)
 
-    # 去除删除线 ~~text~~
+    # supprime le barré ~~text~~
     text = re.sub(r'~~(.+?)~~', r'\1', text)
 
-    # 去除图片 ![alt](url) -> alt
+    # supprime les images ![alt](url) -> alt
     text = re.sub(r'!\[(.+?)\]\(.+?\)', r'\1', text)
 
-    # 去除行内代码 `code`
+    # supprime le code en ligne `code`
     text = re.sub(r'`(.+?)`', r'\1', text)
 
-    # 去除引用符号 >
+    # supprime le symbole de citation >
     text = re.sub(r'^>\s*', '', text, flags=re.MULTILINE)
 
-    # 去除标题符号 # ## ### 等
+    # supprime les symboles de titre # ## ### etc.
     text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
 
-    # 去除水平分割线 --- 或 ***
+    # supprime les séparateurs horizontaux --- ou ***
     text = re.sub(r'^[\-\*]{3,}\s*$', '', text, flags=re.MULTILINE)
 
-    # 去除 HTML 标签 <font color='xxx'>text</font> -> text
+    # supprime les balises HTML <font color='xxx'>text</font> -> text
     text = re.sub(r'<font[^>]*>(.+?)</font>', r'\1', text)
     text = re.sub(r'<[^>]+>', '', text)
 
-    # 清理多余的空行（保留最多两个连续空行）
+    # nettoie les lignes vides superflues (conserve au plus deux lignes vides consécutives)
     text = re.sub(r'\n{3,}', '\n\n', text)
 
-    # 还原之前保护的 URL
+    # restaure les URL protégées précédemment
     for idx, url in enumerate(protected_urls):
         text = text.replace(f"@@URLTOKEN{idx}@@", url)
 
@@ -71,23 +72,23 @@ def strip_markdown(text: str) -> str:
 
 def convert_markdown_to_mrkdwn(content: str) -> str:
     """
-    将标准 Markdown 转换为 Slack 的 mrkdwn 格式
+    Convertit du Markdown standard au format mrkdwn de Slack
 
-    转换规则：
-    - **粗体** → *粗体*
-    - [文本](url) → <url|文本>
-    - 保留其他格式（代码块、列表等）
+    Règles de conversion :
+    - **gras** → *gras*
+    - [texte](url) → <url|texte>
+    - conserve les autres formats (blocs de code, listes, etc.)
 
     Args:
-        content: Markdown 格式的内容
+        content: contenu au format Markdown
 
     Returns:
-        Slack mrkdwn 格式的内容
+        contenu au format mrkdwn de Slack
     """
-    # 1. 转换链接格式: [文本](url) → <url|文本>
+    # 1. convertit le format des liens : [texte](url) → <url|texte>
     content = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<\2|\1>', content)
 
-    # 2. 转换粗体: **文本** → *文本*
+    # 2. convertit le gras : **texte** → *texte*
     content = re.sub(r'\*\*([^*]+)\*\*', r'*\1*', content)
 
     return content

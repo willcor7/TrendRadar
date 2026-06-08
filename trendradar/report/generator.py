@@ -1,14 +1,16 @@
 # coding=utf-8
 """
-报告生成模块
+Module de génération de rapports.
 
-提供报告数据准备和 HTML 生成功能：
-- prepare_report_data: 准备报告数据
-- generate_html_report: 生成 HTML 报告
+Fournit la préparation des données et la génération HTML :
+- prepare_report_data : prépare les données du rapport
+- generate_html_report : génère le rapport HTML
 """
 
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
+
+from trendradar.i18n import REPORT_LANGS
 
 
 def prepare_report_data(
@@ -21,19 +23,19 @@ def prepare_report_data(
     show_new_section: bool = True,
 ) -> Dict:
     """
-    准备报告数据
+    Prépare les données du rapport.
 
     Args:
-        stats: 统计结果列表
-        failed_ids: 失败的 ID 列表
-        new_titles: 新增标题
-        id_to_name: ID 到名称的映射
-        mode: 报告模式 (daily/incremental/current)
-        rank_threshold: 排名阈值
-        show_new_section: 是否显示新增热点区域
+        stats: liste des résultats de statistiques
+        failed_ids: liste des IDs en échec
+        new_titles: nouveaux titres
+        id_to_name: correspondance ID vers nom
+        mode: mode du rapport (daily/incremental/current)
+        rank_threshold: seuil de classement
+        show_new_section: afficher ou non la zone des nouvelles tendances
 
     Returns:
-        Dict: 准备好的报告数据
+        Dict: données du rapport préparées
     """
     processed_new_titles = []
 
@@ -43,7 +45,7 @@ def prepare_report_data(
         for t in stat.get("titles", [])
     }
 
-    # 过滤新增标题：只保留在 stats 中存活的标题（即通过了 AI/关键词过滤的标题）
+    # Filtre les nouveaux titres : ne garde que ceux présents dans stats (donc passés par le filtre IA/mots-clés)
     filtered_new_titles = {}
     if new_titles and id_to_name:
         for source_id, titles_data in new_titles.items():
@@ -57,10 +59,10 @@ def prepare_report_data(
         original_new_count = sum(len(titles) for titles in new_titles.values()) if new_titles else 0
         filtered_new_count = sum(len(titles) for titles in filtered_new_titles.values()) if filtered_new_titles else 0
         if original_new_count > 0:
-            print(f"新增热点过滤后：{filtered_new_count} 条保留（原始 {original_new_count} 条）")
+            print(f"Après filtrage des nouvelles tendances : {filtered_new_count} conservées (sur {original_new_count} initiales)")
 
-    # 在增量模式下或配置关闭时隐藏新增新闻区域（但计数已完成）
-    # 当全部热榜条目都是新增时（首次运行），也隐藏以避免与主区域完全重复
+    # En mode incrémental ou si la configuration le désactive, masque la zone des nouvelles actualités (le décompte reste fait)
+    # Si toutes les entrées de tendances sont nouvelles (première exécution), on masque aussi pour éviter une duplication complète avec la zone principale
     all_new_titles = {title for titles in filtered_new_titles.values() for title in titles}
     all_are_new = bool(all_new_titles) and all_new_titles == stats_title_set
     hide_new_section = mode == "incremental" or not show_new_section or all_are_new
@@ -128,7 +130,7 @@ def prepare_report_data(
             }
         )
 
-    # total_new_count 始终从过滤结果计算（用于头部统计），不受 hide_new_section 影响
+    # total_new_count est toujours calculé sur le résultat filtré (pour les statistiques d'en-tête), indépendamment de hide_new_section
     total_new_count = sum(len(titles) for titles in filtered_new_titles.values())
 
     return {
@@ -155,39 +157,37 @@ def generate_html_report(
     report_metadata: Optional[Dict] = None,
 ) -> str:
     """
-    生成 HTML 报告
+    Génère le rapport HTML, en deux langues (FR + EN).
 
-    每次生成 HTML 后会：
-    1. 保存时间戳快照到 output/html/日期/时间.html（历史记录）
-    2. 复制到 output/html/latest/{mode}.html（最新报告）
-    3. 复制到 output/index.html 和根目录 index.html（入口）
+    Pour chaque langue de REPORT_LANGS, la fonction produit :
+    1. un instantané horodaté output/html/<date>/<heure>_<lang>.html (historique)
+    2. une copie dans output/html/latest/<mode>_<lang>.html (dernier rapport)
+
+    Pour la langue par défaut ("fr"), elle écrit en plus, pour ne rien casser des
+    appelants existants :
+    - l'instantané non suffixé output/html/<date>/<heure>.html
+    - output/html/latest/<mode>.html
+    - output/index.html (montage Docker Volume)
+    - index.html à la racine (GitHub Pages)
 
     Args:
-        stats: 统计结果列表
-        total_titles: 总标题数
-        failed_ids: 失败的 ID 列表
-        new_titles: 新增标题
-        id_to_name: ID 到名称的映射
-        mode: 报告模式 (daily/incremental/current)
-        update_info: 更新信息
-        rank_threshold: 排名阈值
-        output_dir: 输出目录
-        date_folder: 日期文件夹名称
-        time_filename: 时间文件名
-        render_html_func: HTML 渲染函数
+        stats: liste des résultats de statistiques
+        total_titles: nombre total de titres
+        failed_ids: liste des IDs en échec
+        new_titles: nouveaux titres
+        id_to_name: correspondance ID vers nom
+        mode: mode du rapport (daily/incremental/current)
+        update_info: informations de mise à jour
+        rank_threshold: seuil de classement
+        output_dir: répertoire de sortie
+        date_folder: nom du dossier de date
+        time_filename: nom de fichier basé sur l'heure
+        render_html_func: fonction de rendu HTML
 
     Returns:
-        str: 生成的 HTML 文件路径（时间戳快照路径）
+        str: chemin du fichier HTML par défaut (instantané FR non suffixé)
     """
-    # 时间戳快照文件名
-    snapshot_filename = f"{time_filename}.html"
-
-    # 构建输出路径（扁平化结构：output/html/日期/）
-    snapshot_path = Path(output_dir) / "html" / date_folder
-    snapshot_path.mkdir(parents=True, exist_ok=True)
-    snapshot_file = str(snapshot_path / snapshot_filename)
-
-    # 准备报告数据
+    # Prépare les données du rapport
     report_data = prepare_report_data(
         stats,
         failed_ids,
@@ -206,35 +206,51 @@ def generate_html_report(
             if key in report_metadata:
                 report_data[key] = report_metadata[key]
 
-    # 渲染 HTML 内容
-    if render_html_func:
-        html_content = render_html_func(
-            report_data, total_titles, mode, update_info
-        )
-    else:
-        # 默认简单 HTML
-        html_content = f"<html><body><h1>Report</h1><pre>{report_data}</pre></body></html>"
-
-    # 1. 保存时间戳快照（历史记录）
-    with open(snapshot_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    # 2. 复制到 html/latest/{mode}.html（最新报告）
+    # Construit les chemins de sortie (structure aplatie : output/html/<date>/)
+    snapshot_path = Path(output_dir) / "html" / date_folder
+    snapshot_path.mkdir(parents=True, exist_ok=True)
     latest_dir = Path(output_dir) / "html" / "latest"
     latest_dir.mkdir(parents=True, exist_ok=True)
-    latest_file = latest_dir / f"{mode}.html"
-    with open(latest_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
 
-    # 3. 复制到 index.html（入口）
-    # output/index.html（供 Docker Volume 挂载访问）
-    output_index = Path(output_dir) / "index.html"
-    with open(output_index, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    default_lang = REPORT_LANGS[0] if REPORT_LANGS else "fr"
 
-    # 根目录 index.html（供 GitHub Pages 访问）
-    root_index = Path("index.html")
-    with open(root_index, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    def _render(language: str) -> str:
+        """Rend le HTML pour une langue ; tolère un render_html_func sans paramètre language."""
+        if render_html_func:
+            try:
+                return render_html_func(
+                    report_data, total_titles, mode, update_info, language=language
+                )
+            except TypeError:
+                # Compat : ancien render_html_func sans paramètre language
+                return render_html_func(report_data, total_titles, mode, update_info)
+        # HTML simple par défaut
+        return f"<html lang=\"{language}\"><body><h1>Report</h1><pre>{report_data}</pre></body></html>"
 
-    return snapshot_file
+    default_snapshot_file = str(snapshot_path / f"{time_filename}.html")
+
+    for language in REPORT_LANGS:
+        html_content = _render(language)
+
+        # 1. Instantané horodaté suffixé par la langue (historique)
+        with open(snapshot_path / f"{time_filename}_{language}.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        # 2. Dernier rapport suffixé par la langue
+        with open(latest_dir / f"{mode}_{language}.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        # Pour la langue par défaut, écrit aussi les chemins historiques non suffixés
+        if language == default_lang:
+            with open(default_snapshot_file, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            with open(latest_dir / f"{mode}.html", "w", encoding="utf-8") as f:
+                f.write(html_content)
+            # output/index.html (montage Docker Volume)
+            with open(Path(output_dir) / "index.html", "w", encoding="utf-8") as f:
+                f.write(html_content)
+            # index.html à la racine (GitHub Pages)
+            with open(Path("index.html"), "w", encoding="utf-8") as f:
+                f.write(html_content)
+
+    return default_snapshot_file

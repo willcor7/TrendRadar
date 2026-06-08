@@ -1,5 +1,5 @@
 """
-服务层模块
+Module de la couche service
 
-提供数据访问、缓存、解析等核心服务。
+Fournit les services principaux : accès aux données, cache, analyse, etc.
 """

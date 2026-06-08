@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-本地存储后端 - SQLite + TXT/HTML
+Backend de stockage local - SQLite + TXT/HTML
 
-使用 SQLite 作为主存储，支持可选的 TXT 快照和 HTML 报告
+Utilise SQLite comme stockage principal, avec prise en charge optionnelle des instantanés TXT et des rapports HTML
 """
 
 import sqlite3
@@ -25,12 +25,12 @@ from trendradar.utils.time import (
 
 class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
     """
-    本地存储后端
+    Backend de stockage local
 
-    使用 SQLite 数据库存储新闻数据，支持：
-    - 按日期组织的 SQLite 数据库文件
-    - 可选的 TXT 快照（用于调试）
-    - HTML 报告生成
+    Utilise une base de données SQLite pour stocker les données d'actualités, avec prise en charge de :
+    - fichiers de base de données SQLite organisés par date
+    - instantanés TXT optionnels (utiles pour le débogage)
+    - génération de rapports HTML
     """
 
     def __init__(
@@ -41,13 +41,13 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         timezone: str = DEFAULT_TIMEZONE,
     ):
         """
-        初始化本地存储后端
+        Initialise le backend de stockage local
 
         Args:
-            data_dir: 数据目录路径
-            enable_txt: 是否启用 TXT 快照
-            enable_html: 是否启用 HTML 报告
-            timezone: 时区配置
+            data_dir: chemin du répertoire de données
+            enable_txt: activer ou non les instantanés TXT
+            enable_html: activer ou non les rapports HTML
+            timezone: configuration du fuseau horaire
         """
         self.data_dir = Path(data_dir)
         self.enable_txt = enable_txt
@@ -64,35 +64,35 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self.enable_txt
 
     # ========================================
-    # SQLiteStorageMixin 抽象方法实现
+    # Implémentation des méthodes abstraites de SQLiteStorageMixin
     # ========================================
 
     def _get_configured_time(self) -> datetime:
-        """获取配置时区的当前时间"""
+        """Récupère l'heure actuelle dans le fuseau horaire configuré"""
         return get_configured_time(self.timezone)
 
     def _format_date_folder(self, date: Optional[str] = None) -> str:
-        """格式化日期文件夹名 (ISO 格式: YYYY-MM-DD)"""
+        """Formate le nom du dossier de date (format ISO : YYYY-MM-DD)"""
         return format_date_folder(date, self.timezone)
 
     def _format_time_filename(self) -> str:
-        """格式化时间文件名 (格式: HH-MM)"""
+        """Formate le nom de fichier basé sur l'heure (format : HH-MM)"""
         return format_time_filename(self.timezone)
 
     def _get_db_path(self, date: Optional[str] = None, db_type: str = "news") -> Path:
         """
-        获取 SQLite 数据库路径
+        Récupère le chemin de la base de données SQLite
 
-        新结构（扁平）：output/{type}/{date}.db
+        Nouvelle structure (à plat) : output/{type}/{date}.db
         - output/news/2025-12-28.db
         - output/rss/2025-12-28.db
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            数据库文件路径
+            le chemin du fichier de base de données
         """
         date_str = self._format_date_folder(date)
         db_dir = self.data_dir / db_type
@@ -101,14 +101,14 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def _get_connection(self, date: Optional[str] = None, db_type: str = "news") -> sqlite3.Connection:
         """
-        获取数据库连接（带缓存）
+        Récupère une connexion à la base de données (avec mise en cache)
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            数据库连接
+            une connexion à la base de données
         """
         db_path = str(self._get_db_path(date, db_type))
 
@@ -121,114 +121,114 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self._db_connections[db_path]
 
     # ========================================
-    # StorageBackend 接口实现（委托给 mixin）
+    # Implémentation de l'interface StorageBackend (déléguée au mixin)
     # ========================================
 
     def save_news_data(self, data: NewsData) -> bool:
-        """保存新闻数据到 SQLite"""
+        """Enregistre les données d'actualités dans SQLite"""
         db_path = self._get_db_path(data.date)
         if not db_path.exists():
-            # 确保目录存在
+            # Garantit l'existence du répertoire
             db_path.parent.mkdir(parents=True, exist_ok=True)
 
         success, new_count, updated_count, title_changed_count, off_list_count = \
-            self._save_news_data_impl(data, "[本地存储]")
+            self._save_news_data_impl(data, "[stockage local]")
 
         if success:
-            # 输出详细的存储统计日志
-            log_parts = [f"[本地存储] 处理完成：新增 {new_count} 条"]
+            # Affiche un journal détaillé des statistiques de stockage
+            log_parts = [f"[stockage local] traitement terminé : {new_count} nouvelles entrées"]
             if updated_count > 0:
-                log_parts.append(f"更新 {updated_count} 条")
+                log_parts.append(f"{updated_count} entrées mises à jour")
             if title_changed_count > 0:
-                log_parts.append(f"标题变更 {title_changed_count} 条")
+                log_parts.append(f"{title_changed_count} titres modifiés")
             if off_list_count > 0:
-                log_parts.append(f"脱榜 {off_list_count} 条")
-            print("，".join(log_parts))
+                log_parts.append(f"{off_list_count} entrées sorties du classement")
+            print(", ".join(log_parts))
 
         return success
 
     def get_today_all_data(self, date: Optional[str] = None) -> Optional[NewsData]:
-        """获取指定日期的所有新闻数据（合并后）"""
+        """Récupère toutes les données d'actualités d'une date donnée (après fusion)"""
         db_path = self._get_db_path(date)
         if not db_path.exists():
             return None
         return self._get_today_all_data_impl(date)
 
     def get_latest_crawl_data(self, date: Optional[str] = None) -> Optional[NewsData]:
-        """获取最新一次抓取的数据"""
+        """Récupère les données de la collecte la plus récente"""
         db_path = self._get_db_path(date)
         if not db_path.exists():
             return None
         return self._get_latest_crawl_data_impl(date)
 
     def detect_new_titles(self, current_data: NewsData) -> Dict[str, Dict]:
-        """检测新增的标题"""
+        """Détecte les nouveaux titres"""
         return self._detect_new_titles_impl(current_data)
 
     def is_first_crawl_today(self, date: Optional[str] = None) -> bool:
-        """检查是否是当天第一次抓取"""
+        """Vérifie s'il s'agit de la première collecte du jour"""
         db_path = self._get_db_path(date)
         if not db_path.exists():
             return True
         return self._is_first_crawl_today_impl(date)
 
     def get_crawl_times(self, date: Optional[str] = None) -> List[str]:
-        """获取指定日期的所有抓取时间列表"""
+        """Récupère la liste de toutes les heures de collecte d'une date donnée"""
         db_path = self._get_db_path(date)
         if not db_path.exists():
             return []
         return self._get_crawl_times_impl(date)
 
     # ========================================
-    # 时间段执行记录（调度系统）
+    # Enregistrement des exécutions par tranche horaire (système de planification)
     # ========================================
 
     def has_period_executed(self, date_str: str, period_key: str, action: str) -> bool:
-        """检查指定时间段的某个 action 是否已执行"""
+        """Vérifie si une action donnée a déjà été exécutée pour une tranche horaire donnée"""
         return self._has_period_executed_impl(date_str, period_key, action)
 
     def record_period_execution(self, date_str: str, period_key: str, action: str) -> bool:
-        """记录时间段的 action 执行"""
+        """Enregistre l'exécution d'une action pour une tranche horaire"""
         success = self._record_period_execution_impl(date_str, period_key, action)
         if success:
             now_str = self._get_configured_time().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[本地存储] 时间段执行记录已保存: {period_key}/{action} at {now_str}")
+            print(f"[stockage local] enregistrement d'exécution de tranche horaire sauvegardé : {period_key}/{action} à {now_str}")
         return success
 
     # ========================================
-    # RSS 数据存储方法
+    # Méthodes de stockage des données RSS
     # ========================================
 
     def save_rss_data(self, data: RSSData) -> bool:
-        """保存 RSS 数据到 SQLite"""
-        success, new_count, updated_count = self._save_rss_data_impl(data, "[本地存储]")
+        """Enregistre les données RSS dans SQLite"""
+        success, new_count, updated_count = self._save_rss_data_impl(data, "[stockage local]")
 
         if success:
-            # 输出统计日志
-            log_parts = [f"[本地存储] RSS 处理完成：新增 {new_count} 条"]
+            # Affiche le journal des statistiques
+            log_parts = [f"[stockage local] traitement RSS terminé : {new_count} nouvelles entrées"]
             if updated_count > 0:
-                log_parts.append(f"更新 {updated_count} 条")
-            print("，".join(log_parts))
+                log_parts.append(f"{updated_count} entrées mises à jour")
+            print(", ".join(log_parts))
 
         return success
 
     def get_rss_data(self, date: Optional[str] = None) -> Optional[RSSData]:
-        """获取指定日期的所有 RSS 数据"""
+        """Récupère toutes les données RSS d'une date donnée"""
         return self._get_rss_data_impl(date)
 
     def detect_new_rss_items(self, current_data: RSSData) -> Dict[str, List[RSSItem]]:
-        """检测新增的 RSS 条目"""
+        """Détecte les nouvelles entrées RSS"""
         return self._detect_new_rss_items_impl(current_data)
 
     def get_latest_rss_data(self, date: Optional[str] = None) -> Optional[RSSData]:
-        """获取最新一次抓取的 RSS 数据"""
+        """Récupère les données RSS de la collecte la plus récente"""
         db_path = self._get_db_path(date, db_type="rss")
         if not db_path.exists():
             return None
         return self._get_latest_rss_data_impl(date)
 
     # ========================================
-    # AI 智能筛选
+    # Filtrage intelligent par IA
     # ========================================
 
     def get_active_ai_filter_tags(self, date=None, interests_file="ai_interests.txt"):
@@ -283,20 +283,20 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self._get_all_rss_ids_impl(date)
 
     # ========================================
-    # 本地特有功能：TXT/HTML 快照
+    # Fonctionnalités propres au stockage local : instantanés TXT/HTML
     # ========================================
 
     def save_txt_snapshot(self, data: NewsData) -> Optional[str]:
         """
-        保存 TXT 快照
+        Enregistre un instantané TXT
 
-        新结构：output/txt/{date}/{time}.txt
+        Nouvelle structure : output/txt/{date}/{time}.txt
 
         Args:
-            data: 新闻数据
+            data: données d'actualités
 
         Returns:
-            保存的文件路径
+            le chemin du fichier enregistré
         """
         if not self.enable_txt:
             return None
@@ -312,13 +312,13 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                 for source_id, news_list in data.items.items():
                     source_name = data.id_to_name.get(source_id, source_id)
 
-                    # 写入来源标题
+                    # Écrit le titre de la source
                     if source_name and source_name != source_id:
                         f.write(f"{source_id} | {source_name}\n")
                     else:
                         f.write(f"{source_id}\n")
 
-                    # 按排名排序
+                    # Trie par classement
                     sorted_news = sorted(news_list, key=lambda x: x.rank)
 
                     for item in sorted_news:
@@ -331,31 +331,31 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
                     f.write("\n")
 
-                # 写入失败的来源
+                # Écrit les sources en échec
                 if data.failed_ids:
-                    f.write("==== 以下ID请求失败 ====\n")
+                    f.write("==== Échec de la requête pour les ID suivants ====\n")
                     for failed_id in data.failed_ids:
                         f.write(f"{failed_id}\n")
 
-            print(f"[本地存储] TXT 快照已保存: {file_path}")
+            print(f"[stockage local] instantané TXT enregistré : {file_path}")
             return str(file_path)
 
         except Exception as e:
-            print(f"[本地存储] 保存 TXT 快照失败: {e}")
+            print(f"[stockage local] échec de l'enregistrement de l'instantané TXT : {e}")
             return None
 
     def save_html_report(self, html_content: str, filename: str) -> Optional[str]:
         """
-        保存 HTML 报告
+        Enregistre un rapport HTML
 
-        新结构：output/html/{date}/{filename}
+        Nouvelle structure : output/html/{date}/{filename}
 
         Args:
-            html_content: HTML 内容
-            filename: 文件名
+            html_content: contenu HTML
+            filename: nom du fichier
 
         Returns:
-            保存的文件路径
+            le chemin du fichier enregistré
         """
         if not self.enable_html:
             return None
@@ -370,43 +370,43 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
-            print(f"[本地存储] HTML 报告已保存: {file_path}")
+            print(f"[stockage local] rapport HTML enregistré : {file_path}")
             return str(file_path)
 
         except Exception as e:
-            print(f"[本地存储] 保存 HTML 报告失败: {e}")
+            print(f"[stockage local] échec de l'enregistrement du rapport HTML : {e}")
             return None
 
     # ========================================
-    # 本地特有功能：资源清理
+    # Fonctionnalités propres au stockage local : libération des ressources
     # ========================================
 
     def cleanup(self) -> None:
-        """清理资源（关闭数据库连接）"""
+        """Libère les ressources (ferme les connexions à la base de données)"""
         for db_path, conn in self._db_connections.items():
             try:
                 conn.close()
-                print(f"[本地存储] 关闭数据库连接: {db_path}")
+                print(f"[stockage local] fermeture de la connexion à la base de données : {db_path}")
             except Exception as e:
-                print(f"[本地存储] 关闭连接失败 {db_path}: {e}")
+                print(f"[stockage local] échec de la fermeture de la connexion {db_path} : {e}")
 
         self._db_connections.clear()
 
     def cleanup_old_data(self, retention_days: int) -> int:
         """
-        清理过期数据
+        Nettoie les données expirées
 
-        新结构清理逻辑：
-        - output/news/{date}.db  -> 删除过期的 .db 文件
-        - output/rss/{date}.db   -> 删除过期的 .db 文件
-        - output/txt/{date}/     -> 删除过期的日期目录
-        - output/html/{date}/    -> 删除过期的日期目录
+        Logique de nettoyage de la nouvelle structure :
+        - output/news/{date}.db  -> supprime les fichiers .db expirés
+        - output/rss/{date}.db   -> supprime les fichiers .db expirés
+        - output/txt/{date}/     -> supprime les répertoires de dates expirés
+        - output/html/{date}/    -> supprime les répertoires de dates expirés
 
         Args:
-            retention_days: 保留天数（0 表示不清理）
+            retention_days: nombre de jours de conservation (0 signifie pas de nettoyage)
 
         Returns:
-            删除的文件/目录数量
+            le nombre de fichiers/répertoires supprimés
         """
         if retention_days <= 0:
             return 0
@@ -415,8 +415,8 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
 
         def parse_date_from_name(name: str) -> Optional[datetime]:
-            """从文件名或目录名解析日期 (ISO 格式: YYYY-MM-DD)"""
-            # 移除 .db 后缀
+            """Analyse la date à partir d'un nom de fichier ou de répertoire (format ISO : YYYY-MM-DD)"""
+            # Retire le suffixe .db
             name = name.replace('.db', '')
             try:
                 date_match = re.match(r'(\d{4})-(\d{2})-(\d{2})', name)
@@ -435,7 +435,7 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
             if not self.data_dir.exists():
                 return 0
 
-            # 清理数据库文件 (news/, rss/)
+            # Nettoie les fichiers de base de données (news/, rss/)
             for db_type in ["news", "rss"]:
                 db_dir = self.data_dir / db_type
                 if not db_dir.exists():
@@ -444,7 +444,7 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                 for db_file in db_dir.glob("*.db"):
                     file_date = parse_date_from_name(db_file.name)
                     if file_date and file_date < cutoff_date:
-                        # 先关闭数据库连接
+                        # Ferme d'abord la connexion à la base de données
                         db_path = str(db_file)
                         if db_path in self._db_connections:
                             try:
@@ -453,15 +453,15 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                             except Exception:
                                 pass
 
-                        # 删除文件
+                        # Supprime le fichier
                         try:
                             db_file.unlink()
                             deleted_count += 1
-                            print(f"[本地存储] 清理过期数据: {db_type}/{db_file.name}")
+                            print(f"[stockage local] nettoyage des données expirées : {db_type}/{db_file.name}")
                         except Exception as e:
-                            print(f"[本地存储] 删除文件失败 {db_file}: {e}")
+                            print(f"[stockage local] échec de la suppression du fichier {db_file} : {e}")
 
-            # 清理快照目录 (txt/, html/)
+            # Nettoie les répertoires d'instantanés (txt/, html/)
             for snapshot_type in ["txt", "html"]:
                 snapshot_dir = self.data_dir / snapshot_type
                 if not snapshot_dir.exists():
@@ -476,19 +476,19 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                         try:
                             shutil.rmtree(date_folder)
                             deleted_count += 1
-                            print(f"[本地存储] 清理过期数据: {snapshot_type}/{date_folder.name}")
+                            print(f"[stockage local] nettoyage des données expirées : {snapshot_type}/{date_folder.name}")
                         except Exception as e:
-                            print(f"[本地存储] 删除目录失败 {date_folder}: {e}")
+                            print(f"[stockage local] échec de la suppression du répertoire {date_folder} : {e}")
 
             if deleted_count > 0:
-                print(f"[本地存储] 共清理 {deleted_count} 个过期文件/目录")
+                print(f"[stockage local] {deleted_count} fichiers/répertoires expirés nettoyés au total")
 
             return deleted_count
 
         except Exception as e:
-            print(f"[本地存储] 清理过期数据失败: {e}")
+            print(f"[stockage local] échec du nettoyage des données expirées : {e}")
             return deleted_count
 
     def __del__(self):
-        """析构函数，确保关闭连接"""
+        """Destructeur, garantit la fermeture des connexions"""
         self.cleanup()

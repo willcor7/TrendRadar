@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-配置加载模块
+Module de chargement de la configuration
 
-负责从 YAML 配置文件和环境变量加载配置。
+Responsable du chargement de la configuration depuis les fichiers YAML et les variables d'environnement.
 """
 
 import os
@@ -16,7 +16,7 @@ from trendradar.utils.time import DEFAULT_TIMEZONE
 
 
 def _get_env_bool(key: str) -> Optional[bool]:
-    """从环境变量获取布尔值，如果未设置返回 None"""
+    """Récupère une valeur booléenne depuis une variable d'environnement ; retourne None si elle n'est pas définie"""
     value = os.environ.get(key, "").strip().lower()
     if not value:
         return None
@@ -24,7 +24,7 @@ def _get_env_bool(key: str) -> Optional[bool]:
 
 
 def _get_env_int(key: str, default: int = 0) -> int:
-    """从环境变量获取整数值"""
+    """Récupère une valeur entière depuis une variable d'environnement"""
     value = os.environ.get(key, "").strip()
     if not value:
         return default
@@ -35,7 +35,7 @@ def _get_env_int(key: str, default: int = 0) -> int:
 
 
 def _get_env_int_or_none(key: str) -> Optional[int]:
-    """从环境变量获取整数值，未设置时返回 None"""
+    """Récupère une valeur entière depuis une variable d'environnement ; retourne None si elle n'est pas définie"""
     value = os.environ.get(key, "").strip()
     if not value:
         return None
@@ -46,12 +46,12 @@ def _get_env_int_or_none(key: str) -> Optional[int]:
 
 
 def _get_env_str(key: str, default: str = "") -> str:
-    """从环境变量获取字符串值"""
+    """Récupère une valeur de type chaîne depuis une variable d'environnement"""
     return os.environ.get(key, "").strip() or default
 
 
 def _load_app_config(config_data: Dict) -> Dict:
-    """加载应用配置"""
+    """Charge la configuration de l'application"""
     app_config = config_data.get("app", {})
     advanced = config_data.get("advanced", {})
     return {
@@ -64,7 +64,7 @@ def _load_app_config(config_data: Dict) -> Dict:
 
 
 def _load_crawler_config(config_data: Dict) -> Dict:
-    """加载爬虫配置"""
+    """Charge la configuration du collecteur"""
     advanced = config_data.get("advanced", {})
     crawler_config = advanced.get("crawler", {})
     platforms_config = config_data.get("platforms", {})
@@ -78,10 +78,10 @@ def _load_crawler_config(config_data: Dict) -> Dict:
 
 
 def _load_report_config(config_data: Dict) -> Dict:
-    """加载报告配置"""
+    """Charge la configuration des rapports"""
     report_config = config_data.get("report", {})
 
-    # 环境变量覆盖
+    # Surcharge par variables d'environnement
     sort_by_position_env = _get_env_bool("SORT_BY_POSITION_FIRST")
     max_news_env = _get_env_int("MAX_NEWS_PER_KEYWORD")
 
@@ -95,7 +95,7 @@ def _load_report_config(config_data: Dict) -> Dict:
 
 
 def _load_notification_config(config_data: Dict) -> Dict:
-    """加载通知配置"""
+    """Charge la configuration des notifications"""
     notification = config_data.get("notification", {})
     advanced = config_data.get("advanced", {})
     batch_size = advanced.get("batch_size", {})
@@ -115,13 +115,13 @@ def _load_notification_config(config_data: Dict) -> Dict:
 
 def _load_schedule_config(config_data: Dict) -> Dict:
     """
-    加载统一调度配置
+    Charge la configuration de planification unifiée.
 
-    从 config.yaml 的 schedule 段读取，支持环境变量覆盖。
+    Lue depuis la section schedule de config.yaml ; prend en charge la surcharge par variables d'environnement.
     """
     schedule = config_data.get("schedule", {})
 
-    # 环境变量覆盖
+    # Surcharge par variables d'environnement
     enabled_env = _get_env_bool("SCHEDULE_ENABLED")
     preset_env = _get_env_str("SCHEDULE_PRESET")
 
@@ -136,17 +136,17 @@ def _load_schedule_config(config_data: Dict) -> Dict:
 
 def _load_timeline_data(config_dir: str = "config") -> Dict:
     """
-    加载 timeline.yaml
+    Charge timeline.yaml.
 
     Args:
-        config_dir: 配置目录路径
+        config_dir: chemin du répertoire de configuration
 
     Returns:
-        timeline.yaml 的完整数据，找不到时返回空模板
+        les données complètes de timeline.yaml ; retourne un modèle vide s'il est introuvable
     """
     timeline_path = Path(config_dir) / "timeline.yaml"
     if not timeline_path.exists():
-        print(f"[调度] timeline.yaml 未找到: {timeline_path}，使用空模板")
+        print(f"[planification] timeline.yaml introuvable : {timeline_path}, utilisation d'un modèle vide")
         return {
             "presets": {},
             "custom": {
@@ -167,12 +167,12 @@ def _load_timeline_data(config_dir: str = "config") -> Dict:
     with open(timeline_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    print(f"[调度] timeline.yaml 加载成功: {timeline_path}")
+    print(f"[planification] timeline.yaml chargé avec succès : {timeline_path}")
     return data or {}
 
 
 def _load_weight_config(config_data: Dict) -> Dict:
-    """加载权重配置"""
+    """Charge la configuration des poids"""
     advanced = config_data.get("advanced", {})
     weight = advanced.get("weight", {})
     return {
@@ -183,30 +183,30 @@ def _load_weight_config(config_data: Dict) -> Dict:
 
 
 def _load_rss_config(config_data: Dict) -> Dict:
-    """加载 RSS 配置"""
+    """Charge la configuration RSS"""
     rss = config_data.get("rss", {})
     advanced = config_data.get("advanced", {})
     advanced_rss = advanced.get("rss", {})
     advanced_crawler = advanced.get("crawler", {})
 
-    # RSS 代理配置：优先使用 RSS 专属代理，否则复用 crawler 的 default_proxy
+    # Configuration du proxy RSS : on privilégie le proxy dédié au RSS, sinon on réutilise le default_proxy du collecteur
     rss_proxy_url = advanced_rss.get("proxy_url", "") or advanced_crawler.get("default_proxy", "")
 
-    # 新鲜度过滤配置
+    # Configuration du filtrage par fraîcheur
     freshness_filter = rss.get("freshness_filter", {})
 
-    # 验证并设置 max_age_days 默认值
+    # On valide et on fixe la valeur par défaut de max_age_days
     raw_max_age = freshness_filter.get("max_age_days", 3)
     try:
         max_age_days = int(raw_max_age)
         if max_age_days < 0:
-            print(f"[警告] RSS freshness_filter.max_age_days 为负数 ({max_age_days})，使用默认值 3")
+            print(f"[avertissement] RSS freshness_filter.max_age_days est négatif ({max_age_days}), utilisation de la valeur par défaut 3")
             max_age_days = 3
     except (ValueError, TypeError):
-        print(f"[警告] RSS freshness_filter.max_age_days 格式错误 ({raw_max_age})，使用默认值 3")
+        print(f"[avertissement] RSS freshness_filter.max_age_days : format incorrect ({raw_max_age}), utilisation de la valeur par défaut 3")
         max_age_days = 3
 
-    # RSS 配置直接从 config.yaml 读取，不再支持环境变量
+    # La configuration RSS est lue directement depuis config.yaml et ne prend plus en charge les variables d'environnement
     return {
         "ENABLED": rss.get("enabled", False),
         "REQUEST_INTERVAL": advanced_rss.get("request_interval", 2000),
@@ -215,34 +215,34 @@ def _load_rss_config(config_data: Dict) -> Dict:
         "PROXY_URL": rss_proxy_url,
         "FEEDS": rss.get("feeds", []),
         "FRESHNESS_FILTER": {
-            "ENABLED": freshness_filter.get("enabled", True),  # 默认启用
+            "ENABLED": freshness_filter.get("enabled", True),  # activé par défaut
             "MAX_AGE_DAYS": max_age_days,
         },
     }
 
 
 def _load_display_config(config_data: Dict) -> Dict:
-    """加载推送内容显示配置"""
+    """Charge la configuration d'affichage du contenu envoyé"""
     display = config_data.get("display", {})
     regions = display.get("regions", {})
     standalone = display.get("standalone", {})
 
-    # 默认区域顺序
+    # Ordre des zones par défaut
     default_region_order = ["hotlist", "rss", "new_items", "standalone", "ai_analysis"]
     region_order = display.get("region_order", default_region_order)
 
-    # 验证 region_order 中的值是否合法
+    # On vérifie que les valeurs de region_order sont valides
     valid_regions = {"hotlist", "rss", "new_items", "standalone", "ai_analysis"}
     region_order = [r for r in region_order if r in valid_regions]
 
-    # 如果过滤后为空，使用默认顺序
+    # Si la liste est vide après filtrage, on utilise l'ordre par défaut
     if not region_order:
         region_order = default_region_order
 
     return {
-        # 区域显示顺序
+        # Ordre d'affichage des zones
         "REGION_ORDER": region_order,
-        # 区域开关
+        # Interrupteurs des zones
         "REGIONS": {
             "HOTLIST": regions.get("hotlist", True),
             "NEW_ITEMS": regions.get("new_items", True),
@@ -250,7 +250,7 @@ def _load_display_config(config_data: Dict) -> Dict:
             "STANDALONE": regions.get("standalone", False),
             "AI_ANALYSIS": regions.get("ai_analysis", True),
         },
-        # 独立展示区配置
+        # Configuration de la zone d'affichage autonome
         "STANDALONE": {
             "PLATFORMS": standalone.get("platforms", []),
             "RSS_FEEDS": standalone.get("rss_feeds", []),
@@ -260,23 +260,23 @@ def _load_display_config(config_data: Dict) -> Dict:
 
 
 def _load_ai_config(config_data: Dict) -> Dict:
-    """加载 AI 模型配置（LiteLLM 格式）"""
+    """Charge la configuration du modèle IA (format LiteLLM)"""
     ai_config = config_data.get("ai", {})
 
     timeout_env = _get_env_int_or_none("AI_TIMEOUT")
 
     return {
-        # LiteLLM 核心配置
+        # Configuration principale LiteLLM
         "MODEL": _get_env_str("AI_MODEL") or ai_config.get("model", ""),
         "API_KEY": _get_env_str("AI_API_KEY") or ai_config.get("api_key", ""),
         "API_BASE": _get_env_str("AI_API_BASE") or ai_config.get("api_base", ""),
 
-        # 生成参数
+        # Paramètres de génération
         "TIMEOUT": timeout_env if timeout_env is not None else ai_config.get("timeout", 120),
         "TEMPERATURE": ai_config.get("temperature", 1.0),
         "MAX_TOKENS": ai_config.get("max_tokens", 5000),
 
-        # LiteLLM 高级选项
+        # Options avancées LiteLLM
         "NUM_RETRIES": ai_config.get("num_retries", 2),
         "FALLBACK_MODELS": ai_config.get("fallback_models", []),
         "EXTRA_PARAMS": ai_config.get("extra_params", {}),
@@ -284,7 +284,7 @@ def _load_ai_config(config_data: Dict) -> Dict:
 
 
 def _load_ai_analysis_config(config_data: Dict) -> Dict:
-    """加载 AI 分析配置（功能配置，模型配置见 _load_ai_config）"""
+    """Charge la configuration de l'analyse IA (configuration fonctionnelle ; pour la configuration du modèle, voir _load_ai_config)"""
     ai_config = config_data.get("ai_analysis", {})
 
     enabled_env = _get_env_bool("AI_ANALYSIS_ENABLED")
@@ -302,7 +302,7 @@ def _load_ai_analysis_config(config_data: Dict) -> Dict:
 
 
 def _load_ai_translation_config(config_data: Dict) -> Dict:
-    """加载 AI 翻译配置（功能配置，模型配置见 _load_ai_config）"""
+    """Charge la configuration de la traduction IA (configuration fonctionnelle ; pour la configuration du modèle, voir _load_ai_config)"""
     trans_config = config_data.get("ai_translation", {})
 
     enabled_env = _get_env_bool("AI_TRANSLATION_ENABLED")
@@ -322,13 +322,13 @@ def _load_ai_translation_config(config_data: Dict) -> Dict:
 
 
 def _load_ai_filter_config(config_data: Dict) -> Dict:
-    """加载 AI 智能筛选配置（由 filter.method 控制是否启用）"""
+    """Charge la configuration du filtrage intelligent par IA (l'activation est contrôlée par filter.method)"""
     ai_filter = config_data.get("ai_filter", {})
 
     return {
         "BATCH_SIZE": ai_filter.get("batch_size", 200),
         "BATCH_INTERVAL": ai_filter.get("batch_interval", 5),
-        "INTERESTS_FILE": ai_filter.get("interests_file"),  # None = 使用默认 config/ai_interests.txt
+        "INTERESTS_FILE": ai_filter.get("interests_file"),  # None = utilise par défaut config/ai_interests.txt
         "PROMPT_FILE": ai_filter.get("prompt_file", "prompt.txt"),
         "EXTRACT_PROMPT_FILE": ai_filter.get("extract_prompt_file", "extract_prompt.txt"),
         "UPDATE_TAGS_PROMPT_FILE": ai_filter.get("update_tags_prompt_file", "update_tags_prompt.txt"),
@@ -338,17 +338,17 @@ def _load_ai_filter_config(config_data: Dict) -> Dict:
 
 
 def _load_filter_config(config_data: Dict) -> Dict:
-    """加载筛选策略配置"""
+    """Charge la configuration de la stratégie de filtrage"""
     filter_cfg = config_data.get("filter", {})
 
-    # 环境变量兼容：AI_FILTER_ENABLED=true → method=ai
+    # Compatibilité avec les variables d'environnement : AI_FILTER_ENABLED=true → method=ai
     env_ai_filter = _get_env_bool("AI_FILTER_ENABLED")
 
     method = filter_cfg.get("method", "keyword")
     if env_ai_filter is True:
         method = "ai"
 
-    # 兼容旧配置：如果 ai_filter.enabled=true 且未显式设置 filter.method
+    # Compatibilité avec l'ancienne configuration : si ai_filter.enabled=true et que filter.method n'est pas défini explicitement
     if method == "keyword" and not filter_cfg.get("method"):
         ai_filter = config_data.get("ai_filter", {})
         if ai_filter.get("enabled", False):
@@ -356,12 +356,12 @@ def _load_filter_config(config_data: Dict) -> Dict:
 
     return {
         "METHOD": method,  # "keyword" | "ai"
-        "PRIORITY_SORT_ENABLED": filter_cfg.get("priority_sort_enabled", False),  # AI 模式标签优先级排序开关
+        "PRIORITY_SORT_ENABLED": filter_cfg.get("priority_sort_enabled", False),  # interrupteur du tri par priorité des étiquettes en mode IA
     }
 
 
 def _load_storage_config(config_data: Dict) -> Dict:
-    """加载存储配置"""
+    """Charge la configuration du stockage"""
     storage = config_data.get("storage", {})
     formats = storage.get("formats", {})
     local = storage.get("local", {})
@@ -399,11 +399,11 @@ def _load_storage_config(config_data: Dict) -> Dict:
 
 
 def _load_webhook_config(config_data: Dict) -> Dict:
-    """加载 Webhook 配置"""
+    """Charge la configuration des Webhooks"""
     notification = config_data.get("notification", {})
     channels = notification.get("channels", {})
 
-    # 各渠道配置
+    # Configuration de chaque canal
     feishu = channels.get("feishu", {})
     dingtalk = channels.get("dingtalk", {})
     wework = channels.get("wework", {})
@@ -415,17 +415,17 @@ def _load_webhook_config(config_data: Dict) -> Dict:
     generic = channels.get("generic_webhook", {})
 
     return {
-        # 飞书
+        # Feishu
         "FEISHU_WEBHOOK_URL": _get_env_str("FEISHU_WEBHOOK_URL") or feishu.get("webhook_url", ""),
-        # 钉钉
+        # DingTalk
         "DINGTALK_WEBHOOK_URL": _get_env_str("DINGTALK_WEBHOOK_URL") or dingtalk.get("webhook_url", ""),
-        # 企业微信
+        # WeCom
         "WEWORK_WEBHOOK_URL": _get_env_str("WEWORK_WEBHOOK_URL") or wework.get("webhook_url", ""),
         "WEWORK_MSG_TYPE": _get_env_str("WEWORK_MSG_TYPE") or wework.get("msg_type", "markdown"),
         # Telegram
         "TELEGRAM_BOT_TOKEN": _get_env_str("TELEGRAM_BOT_TOKEN") or telegram.get("bot_token", ""),
         "TELEGRAM_CHAT_ID": _get_env_str("TELEGRAM_CHAT_ID") or telegram.get("chat_id", ""),
-        # 邮件
+        # e-mail
         "EMAIL_FROM": _get_env_str("EMAIL_FROM") or email.get("from", ""),
         "EMAIL_PASSWORD": _get_env_str("EMAIL_PASSWORD") or email.get("password", ""),
         "EMAIL_TO": _get_env_str("EMAIL_TO") or email.get("to", ""),
@@ -439,34 +439,34 @@ def _load_webhook_config(config_data: Dict) -> Dict:
         "BARK_URL": _get_env_str("BARK_URL") or bark.get("url", ""),
         # Slack
         "SLACK_WEBHOOK_URL": _get_env_str("SLACK_WEBHOOK_URL") or slack.get("webhook_url", ""),
-        # 通用 Webhook
+        # Webhook générique
         "GENERIC_WEBHOOK_URL": _get_env_str("GENERIC_WEBHOOK_URL") or generic.get("webhook_url", ""),
         "GENERIC_WEBHOOK_TEMPLATE": _get_env_str("GENERIC_WEBHOOK_TEMPLATE") or generic.get("payload_template", ""),
     }
 
 
 def _print_notification_sources(config: Dict) -> None:
-    """打印通知渠道配置来源信息"""
+    """Affiche les informations sur la source de configuration des canaux de notification"""
     notification_sources = []
     max_accounts = config["MAX_ACCOUNTS_PER_CHANNEL"]
 
     if config["FEISHU_WEBHOOK_URL"]:
         accounts = parse_multi_account_config(config["FEISHU_WEBHOOK_URL"])
         count = min(len(accounts), max_accounts)
-        source = "环境变量" if os.environ.get("FEISHU_WEBHOOK_URL") else "配置文件"
-        notification_sources.append(f"飞书({source}, {count}个账号)")
+        source = "variable d'environnement" if os.environ.get("FEISHU_WEBHOOK_URL") else "fichier de configuration"
+        notification_sources.append(f"Feishu ({source}, {count} compte(s))")
 
     if config["DINGTALK_WEBHOOK_URL"]:
         accounts = parse_multi_account_config(config["DINGTALK_WEBHOOK_URL"])
         count = min(len(accounts), max_accounts)
-        source = "环境变量" if os.environ.get("DINGTALK_WEBHOOK_URL") else "配置文件"
-        notification_sources.append(f"钉钉({source}, {count}个账号)")
+        source = "variable d'environnement" if os.environ.get("DINGTALK_WEBHOOK_URL") else "fichier de configuration"
+        notification_sources.append(f"DingTalk ({source}, {count} compte(s))")
 
     if config["WEWORK_WEBHOOK_URL"]:
         accounts = parse_multi_account_config(config["WEWORK_WEBHOOK_URL"])
         count = min(len(accounts), max_accounts)
-        source = "环境变量" if os.environ.get("WEWORK_WEBHOOK_URL") else "配置文件"
-        notification_sources.append(f"企业微信({source}, {count}个账号)")
+        source = "variable d'environnement" if os.environ.get("WEWORK_WEBHOOK_URL") else "fichier de configuration"
+        notification_sources.append(f"WeCom ({source}, {count} compte(s))")
 
     if config["TELEGRAM_BOT_TOKEN"] and config["TELEGRAM_CHAT_ID"]:
         tokens = parse_multi_account_config(config["TELEGRAM_BOT_TOKEN"])
@@ -478,12 +478,12 @@ def _print_notification_sources(config: Dict) -> None:
         )
         if valid and count > 0:
             count = min(count, max_accounts)
-            token_source = "环境变量" if os.environ.get("TELEGRAM_BOT_TOKEN") else "配置文件"
-            notification_sources.append(f"Telegram({token_source}, {count}个账号)")
+            token_source = "variable d'environnement" if os.environ.get("TELEGRAM_BOT_TOKEN") else "fichier de configuration"
+            notification_sources.append(f"Telegram ({token_source}, {count} compte(s))")
 
     if config["EMAIL_FROM"] and config["EMAIL_PASSWORD"] and config["EMAIL_TO"]:
-        from_source = "环境变量" if os.environ.get("EMAIL_FROM") else "配置文件"
-        notification_sources.append(f"邮件({from_source})")
+        from_source = "variable d'environnement" if os.environ.get("EMAIL_FROM") else "fichier de configuration"
+        notification_sources.append(f"e-mail ({from_source})")
 
     if config["NTFY_SERVER_URL"] and config["NTFY_TOPIC"]:
         topics = parse_multi_account_config(config["NTFY_TOPIC"])
@@ -495,118 +495,118 @@ def _print_notification_sources(config: Dict) -> None:
             )
             if valid and count > 0:
                 count = min(count, max_accounts)
-                server_source = "环境变量" if os.environ.get("NTFY_SERVER_URL") else "配置文件"
-                notification_sources.append(f"ntfy({server_source}, {count}个账号)")
+                server_source = "variable d'environnement" if os.environ.get("NTFY_SERVER_URL") else "fichier de configuration"
+                notification_sources.append(f"ntfy ({server_source}, {count} compte(s))")
         else:
             count = min(len(topics), max_accounts)
-            server_source = "环境变量" if os.environ.get("NTFY_SERVER_URL") else "配置文件"
-            notification_sources.append(f"ntfy({server_source}, {count}个账号)")
+            server_source = "variable d'environnement" if os.environ.get("NTFY_SERVER_URL") else "fichier de configuration"
+            notification_sources.append(f"ntfy ({server_source}, {count} compte(s))")
 
     if config["BARK_URL"]:
         accounts = parse_multi_account_config(config["BARK_URL"])
         count = min(len(accounts), max_accounts)
-        bark_source = "环境变量" if os.environ.get("BARK_URL") else "配置文件"
-        notification_sources.append(f"Bark({bark_source}, {count}个账号)")
+        bark_source = "variable d'environnement" if os.environ.get("BARK_URL") else "fichier de configuration"
+        notification_sources.append(f"Bark ({bark_source}, {count} compte(s))")
 
     if config["SLACK_WEBHOOK_URL"]:
         accounts = parse_multi_account_config(config["SLACK_WEBHOOK_URL"])
         count = min(len(accounts), max_accounts)
-        slack_source = "环境变量" if os.environ.get("SLACK_WEBHOOK_URL") else "配置文件"
-        notification_sources.append(f"Slack({slack_source}, {count}个账号)")
+        slack_source = "variable d'environnement" if os.environ.get("SLACK_WEBHOOK_URL") else "fichier de configuration"
+        notification_sources.append(f"Slack ({slack_source}, {count} compte(s))")
 
     if config.get("GENERIC_WEBHOOK_URL"):
         accounts = parse_multi_account_config(config["GENERIC_WEBHOOK_URL"])
         count = min(len(accounts), max_accounts)
-        source = "环境变量" if os.environ.get("GENERIC_WEBHOOK_URL") else "配置文件"
-        notification_sources.append(f"通用Webhook({source}, {count}个账号)")
+        source = "variable d'environnement" if os.environ.get("GENERIC_WEBHOOK_URL") else "fichier de configuration"
+        notification_sources.append(f"Webhook générique ({source}, {count} compte(s))")
 
     if notification_sources:
-        print(f"通知渠道配置来源: {', '.join(notification_sources)}")
-        print(f"每个渠道最大账号数: {max_accounts}")
+        print(f"Source de configuration des canaux de notification : {', '.join(notification_sources)}")
+        print(f"Nombre maximal de comptes par canal : {max_accounts}")
     else:
-        print("未配置任何通知渠道")
+        print("Aucun canal de notification configuré")
 
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    加载配置文件
+    Charge le fichier de configuration.
 
     Args:
-        config_path: 配置文件路径，默认从环境变量 CONFIG_PATH 获取或使用 config/config.yaml
+        config_path: chemin du fichier de configuration ; par défaut, récupéré depuis la variable d'environnement CONFIG_PATH ou config/config.yaml
 
     Returns:
-        包含所有配置的字典
+        un dictionnaire contenant toute la configuration
 
     Raises:
-        FileNotFoundError: 配置文件不存在
+        FileNotFoundError: le fichier de configuration n'existe pas
     """
     if config_path is None:
         config_path = os.environ.get("CONFIG_PATH", "config/config.yaml")
 
     if not Path(config_path).exists():
-        raise FileNotFoundError(f"配置文件 {config_path} 不存在")
+        raise FileNotFoundError(f"Le fichier de configuration {config_path} n'existe pas")
 
     with open(config_path, "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
 
-    print(f"配置文件加载成功: {config_path}")
+    print(f"Fichier de configuration chargé avec succès : {config_path}")
 
-    # 合并所有配置
+    # On fusionne toute la configuration
     config = {}
 
-    # 应用配置
+    # Configuration de l'application
     config.update(_load_app_config(config_data))
 
-    # 爬虫配置
+    # Configuration du collecteur
     config.update(_load_crawler_config(config_data))
 
-    # 报告配置
+    # Configuration des rapports
     config.update(_load_report_config(config_data))
 
-    # 通知配置
+    # Configuration des notifications
     config.update(_load_notification_config(config_data))
 
-    # 统一调度配置
+    # Configuration de planification unifiée
     config["SCHEDULE"] = _load_schedule_config(config_data)
     config["_TIMELINE_DATA"] = _load_timeline_data(
         str(Path(config_path).parent) if config_path else "config"
     )
 
-    # 权重配置
+    # Configuration des poids
     config["WEIGHT_CONFIG"] = _load_weight_config(config_data)
 
-    # 平台配置
+    # Configuration des plateformes
     platforms_config = config_data.get("platforms", {})
     config["PLATFORMS"] = [p for p in platforms_config.get("sources", []) if p.get("enabled", True)]
 
-    # RSS 配置
+    # Configuration RSS
     config["RSS"] = _load_rss_config(config_data)
 
-    # AI 模型共享配置
+    # Configuration partagée du modèle IA
     config["AI"] = _load_ai_config(config_data)
 
-    # AI 分析配置
+    # Configuration de l'analyse IA
     config["AI_ANALYSIS"] = _load_ai_analysis_config(config_data)
 
-    # AI 翻译配置
+    # Configuration de la traduction IA
     config["AI_TRANSLATION"] = _load_ai_translation_config(config_data)
 
-    # AI 智能筛选配置
+    # Configuration du filtrage intelligent par IA
     config["AI_FILTER"] = _load_ai_filter_config(config_data)
 
-    # 筛选策略配置
+    # Configuration de la stratégie de filtrage
     config["FILTER"] = _load_filter_config(config_data)
 
-    # 推送内容显示配置
+    # Configuration d'affichage du contenu envoyé
     config["DISPLAY"] = _load_display_config(config_data)
 
-    # 存储配置
+    # Configuration du stockage
     config["STORAGE"] = _load_storage_config(config_data)
 
-    # Webhook 配置
+    # Configuration des Webhooks
     config.update(_load_webhook_config(config_data))
 
-    # 打印通知渠道配置来源
+    # On affiche la source de configuration des canaux de notification
     _print_notification_sources(config)
 
     return config

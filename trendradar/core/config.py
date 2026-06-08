@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-配置工具模块 - 多账号配置解析和验证
+Module utilitaire de configuration - analyse et validation des configurations multi-comptes
 
-提供多账号推送配置的解析、验证和限制功能
+Fournit l'analyse, la validation et la limitation des configurations d'envoi multi-comptes.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -10,28 +10,28 @@ from typing import Dict, List, Optional, Tuple
 
 def parse_multi_account_config(config_value: str, separator: str = ";") -> List[str]:
     """
-    解析多账号配置，返回账号列表
+    Analyse une configuration multi-comptes et retourne la liste des comptes.
 
     Args:
-        config_value: 配置值字符串，多个账号用分隔符分隔
-        separator: 分隔符，默认为 ;
+        config_value: chaîne de configuration, les comptes étant séparés par le séparateur
+        separator: séparateur, ";" par défaut
 
     Returns:
-        账号列表，空字符串会被保留（用于占位）
+        la liste des comptes ; les chaînes vides sont conservées (pour servir de marque-place)
 
     Examples:
         >>> parse_multi_account_config("url1;url2;url3")
         ['url1', 'url2', 'url3']
-        >>> parse_multi_account_config(";token2")  # 第一个账号无token
+        >>> parse_multi_account_config(";token2")  # le premier compte n'a pas de token
         ['', 'token2']
         >>> parse_multi_account_config("")
         []
     """
     if not config_value:
         return []
-    # 保留空字符串用于占位（如 ";token2" 表示第一个账号无token）
+    # On conserve les chaînes vides comme marque-place (par exemple ";token2" indique que le premier compte n'a pas de token)
     accounts = [acc.strip() for acc in config_value.split(separator)]
-    # 过滤掉全部为空的情况
+    # On filtre le cas où tout est vide
     if all(not acc for acc in accounts):
         return []
     return accounts
@@ -43,18 +43,19 @@ def validate_paired_configs(
     required_keys: Optional[List[str]] = None
 ) -> Tuple[bool, int]:
     """
-    验证配对配置的数量是否一致
+    Vérifie que le nombre d'éléments des configurations appariées est cohérent.
 
-    对于需要多个配置项配对的渠道（如 Telegram 的 token 和 chat_id），
-    验证所有配置项的账号数量是否一致。
+    Pour les canaux qui nécessitent l'appariement de plusieurs éléments de configuration
+    (par exemple le token et le chat_id de Telegram), vérifie que le nombre de comptes
+    est cohérent entre tous les éléments de configuration.
 
     Args:
-        configs: 配置字典，key 为配置名，value 为账号列表
-        channel_name: 渠道名称，用于日志输出
-        required_keys: 必须有值的配置项列表
+        configs: dictionnaire de configuration ; la clé est le nom de configuration, la valeur est la liste des comptes
+        channel_name: nom du canal, utilisé pour la sortie des journaux
+        required_keys: liste des éléments de configuration qui doivent avoir une valeur
 
     Returns:
-        (是否验证通过, 账号数量)
+        (validation réussie ou non, nombre de comptes)
 
     Examples:
         >>> validate_paired_configs({
@@ -65,30 +66,30 @@ def validate_paired_configs(
 
         >>> validate_paired_configs({
         ...     "token": ["t1", "t2"],
-        ...     "chat_id": ["c1"]  # 数量不匹配
+        ...     "chat_id": ["c1"]  # le nombre ne correspond pas
         ... }, "Telegram", ["token", "chat_id"])
         (False, 0)
     """
-    # 过滤掉空列表
+    # On filtre les listes vides
     non_empty_configs = {k: v for k, v in configs.items() if v}
 
     if not non_empty_configs:
         return True, 0
 
-    # 检查必须项
+    # On vérifie les éléments obligatoires
     if required_keys:
         for key in required_keys:
             if key not in non_empty_configs or not non_empty_configs[key]:
-                return True, 0  # 必须项为空，视为未配置
+                return True, 0  # un élément obligatoire est vide, considéré comme non configuré
 
-    # 获取所有非空配置的长度
+    # On récupère la longueur de toutes les configurations non vides
     lengths = {k: len(v) for k, v in non_empty_configs.items()}
     unique_lengths = set(lengths.values())
 
     if len(unique_lengths) > 1:
-        print(f"❌ {channel_name} 配置错误：配对配置数量不一致，将跳过该渠道推送")
+        print(f"❌ Erreur de configuration {channel_name} : le nombre des configurations appariées est incohérent, l'envoi sur ce canal sera ignoré")
         for key, length in lengths.items():
-            print(f"   - {key}: {length} 个")
+            print(f"   - {key} : {length}")
         return False, 0
 
     return True, list(unique_lengths)[0] if unique_lengths else 0
@@ -100,44 +101,45 @@ def limit_accounts(
     channel_name: str
 ) -> List[str]:
     """
-    限制账号数量
+    Limite le nombre de comptes.
 
-    当配置的账号数量超过最大限制时，只使用前 N 个账号，
-    并输出警告信息。
+    Lorsque le nombre de comptes configurés dépasse la limite maximale, seuls les
+    N premiers comptes sont utilisés et un message d'avertissement est affiché.
 
     Args:
-        accounts: 账号列表
-        max_count: 最大账号数量
-        channel_name: 渠道名称，用于日志输出
+        accounts: liste des comptes
+        max_count: nombre maximal de comptes
+        channel_name: nom du canal, utilisé pour la sortie des journaux
 
     Returns:
-        限制后的账号列表
+        la liste des comptes après limitation
 
     Examples:
-        >>> limit_accounts(["a1", "a2", "a3"], 2, "飞书")
-        ⚠️ 飞书 配置了 3 个账号，超过最大限制 2，只使用前 2 个
+        >>> limit_accounts(["a1", "a2", "a3"], 2, "Feishu")
+        ⚠️ Feishu : 3 comptes configurés, ce qui dépasse la limite maximale de 2 ; seuls les 2 premiers seront utilisés
         ['a1', 'a2']
     """
     if len(accounts) > max_count:
-        print(f"⚠️ {channel_name} 配置了 {len(accounts)} 个账号，超过最大限制 {max_count}，只使用前 {max_count} 个")
-        print(f"   ⚠️ 警告：如果你是 fork 用户，过多账号可能导致 GitHub Actions 运行时间过长，存在账号风险")
+        print(f"⚠️ {channel_name} : {len(accounts)} comptes configurés, ce qui dépasse la limite maximale de {max_count} ; seuls les {max_count} premiers seront utilisés")
+        print(f"   ⚠️ Avertissement : si vous êtes un utilisateur de fork, un trop grand nombre de comptes peut allonger excessivement le temps d'exécution de GitHub Actions et présenter un risque pour vos comptes")
         return accounts[:max_count]
     return accounts
 
 
 def get_account_at_index(accounts: List[str], index: int, default: str = "") -> str:
     """
-    安全获取指定索引的账号值
+    Récupère de manière sûre la valeur du compte à l'index indiqué.
 
-    当索引超出范围或账号值为空时，返回默认值。
+    Lorsque l'index est hors limites ou que la valeur du compte est vide, la valeur
+    par défaut est retournée.
 
     Args:
-        accounts: 账号列表
-        index: 索引
-        default: 默认值
+        accounts: liste des comptes
+        index: index
+        default: valeur par défaut
 
     Returns:
-        账号值或默认值
+        la valeur du compte ou la valeur par défaut
 
     Examples:
         >>> get_account_at_index(["a", "b", "c"], 1)

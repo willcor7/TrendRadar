@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # AI 内容审核（垃圾检测 + 链接检测 + AI 生成检测）
+      # Modération de contenu par IA (détection de spam + détection de liens + détection de contenu généré par IA)
       - uses: github/ai-moderator@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,9 +32,9 @@ jobs:
           enable-link-spam-detection: true
           enable-ai-detection: true
 
-      # 两层防护：
-      # 1) 账号 < 7 天 → 直接删除/关闭
-      # 2) 账号 >= 7 天 + AI 判定为垃圾 → 也删除/关闭
+      # Double protection :
+      # 1) Compte < 7 jours → suppression/fermeture directe
+      # 2) Compte >= 7 jours + jugé spam par l'IA → suppression/fermeture également
       - name: Spam defense
         uses: actions/github-script@v7
         with:
@@ -42,7 +42,7 @@ jobs:
             const MIN_ACCOUNT_AGE_DAYS = 7;
             const event = context.eventName;
 
-            // 解析事件上下文
+            // Analyse du contexte de l'événement
             let username, authorAssociation, number, nodeId, commentId;
             let isIssue = false, isPR = false, isComment = false;
 
@@ -78,27 +78,27 @@ jobs:
               isPR = true;
             }
 
-            // 跳过项目成员
+            // Ignorer les membres du projet
             if (['OWNER', 'MEMBER', 'COLLABORATOR'].includes(authorAssociation)) {
               core.info(`Skip: ${username} (${authorAssociation})`);
               return;
             }
 
-            // 获取账号年龄
+            // Récupérer l'ancienneté du compte
             const { data: user } = await github.rest.users.getByUsername({ username });
             const accountAgeDays = Math.floor((Date.now() - new Date(user.created_at)) / 86400000);
             const isNewAccount = accountAgeDays < MIN_ACCOUNT_AGE_DAYS;
 
-            // 判断是否需要拦截
+            // Déterminer s'il faut bloquer
             let shouldBlock = false;
             let reason = '';
 
             if (isNewAccount) {
-              // 第一层：新账号直接拦截
+              // Premier niveau : blocage direct des nouveaux comptes
               shouldBlock = true;
               reason = `new account (${accountAgeDays}d < ${MIN_ACCOUNT_AGE_DAYS}d)`;
             } else {
-              // 第二层：老账号检查 AI 垃圾判定
+              // Deuxième niveau : pour les comptes anciens, vérifier le jugement de spam par l'IA
               let isSpam = false;
               if (isComment) {
                 const { node } = await github.graphql(`
@@ -131,32 +131,32 @@ jobs:
 
             core.info(`Blocking ${event} #${number} from ${username}: ${reason}`);
 
-            // 根据拦截原因生成不同提示
+            // Générer un message différent selon la raison du blocage
             const notice = isNewAccount
               ? [
-                  `@${username} 你好，感谢你对本项目的关注！`,
+                  `@${username} Bonjour, merci de l'intérêt que vous portez à ce projet !`,
                   '',
-                  '为维护社区环境、防止垃圾信息和自动化 bot 的干扰，',
-                  `本项目要求 GitHub 账号注册满 **${MIN_ACCOUNT_AGE_DAYS} 天**后才能参与互动。`,
+                  `Afin de préserver l'environnement de la communauté et de prévenir le spam et les interférences des bots automatisés,`,
+                  `ce projet exige que le compte GitHub ait au moins **${MIN_ACCOUNT_AGE_DAYS} jours** d'ancienneté pour pouvoir participer.`,
                   '',
-                  `你的账号注册时间为 ${accountAgeDays} 天，暂时无法参与。`,
-                  `请在账号满 ${MIN_ACCOUNT_AGE_DAYS} 天后重新提交，或通过项目 README 中的联系方式反馈。`,
+                  `Votre compte a ${accountAgeDays} jours d'ancienneté, vous ne pouvez donc pas participer pour l'instant.`,
+                  `Veuillez soumettre à nouveau une fois que votre compte aura atteint ${MIN_ACCOUNT_AGE_DAYS} jours, ou nous contacter via les coordonnées indiquées dans le README du projet.`,
                   '',
-                  '感谢理解与支持 🙏',
+                  'Merci de votre compréhension et de votre soutien 🙏',
                 ].join('\n')
               : [
-                  `@${username} 你好，`,
+                  `@${username} Bonjour,`,
                   '',
-                  '你的内容已被自动审核系统标记为垃圾信息并移除。',
+                  'Votre contenu a été signalé comme spam par le système de modération automatique et a été supprimé.',
                   '',
-                  '**如有误判，还请见谅！** 请通过项目 README 中的联系方式反馈。',
+                  `**En cas d'erreur, veuillez nous en excuser !** Merci de nous contacter via les coordonnées indiquées dans le README du projet.`,
                   '',
-                  '感谢理解 🙏',
+                  'Merci de votre compréhension 🙏',
                 ].join('\n');
 
-            // 执行拦截操作
+            // Exécuter l'action de blocage
             if (isComment) {
-              // 评论：直接删除
+              // Commentaire : suppression directe
               if (isIssue) {
                 await github.rest.issues.deleteComment({
                   ...context.repo,
@@ -169,7 +169,7 @@ jobs:
                 });
               }
             } else if (isIssue) {
-              // 新建 Issue：评论提示 → 关闭 → 锁定
+              // Nouvelle Issue : commentaire d'avertissement → fermeture → verrouillage
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: number,
@@ -187,7 +187,7 @@ jobs:
                 lock_reason: 'spam'
               });
             } else if (isPR) {
-              // 新建 PR：评论提示 → 关闭
+              // Nouvelle PR : commentaire d'avertissement → fermeture
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: number,

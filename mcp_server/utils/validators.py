@@ -1,8 +1,8 @@
 """
-参数验证工具
+Outils de validation des paramètres
 
-提供统一的参数验证功能。
-支持 MCP 客户端将参数序列化为字符串的情况。
+Fournit des fonctions de validation des paramètres unifiées.
+Gère le cas où les clients MCP sérialisent les paramètres sous forme de chaînes.
 """
 
 from datetime import datetime
@@ -16,105 +16,105 @@ from .errors import InvalidParameterError
 from .date_parser import DateParser
 
 
-# ==================== 辅助函数：处理字符串序列化 ====================
+# ==================== Fonctions auxiliaires : gestion de la sérialisation des chaînes ====================
 
 def _parse_string_to_list(value: str) -> List[str]:
     """
-    将字符串解析为列表
+    Analyse une chaîne en liste
 
-    支持格式：
-    - JSON 数组: '["zhihu", "weibo"]'
-    - Python 列表字符串: "['zhihu', 'weibo']"
-    - 逗号分隔: "zhihu, weibo" 或 "zhihu,weibo"
+    Formats pris en charge :
+    - tableau JSON : '["zhihu", "weibo"]'
+    - chaîne de liste Python : "['zhihu', 'weibo']"
+    - séparée par des virgules : "zhihu, weibo" ou "zhihu,weibo"
 
     Args:
-        value: 字符串值
+        value: valeur sous forme de chaîne
 
     Returns:
-        解析后的列表
+        liste analysée
 
     Raises:
-        InvalidParameterError: 解析失败
+        InvalidParameterError: échec de l'analyse
     """
     value = value.strip()
 
     if not value:
         return []
 
-    # 尝试 JSON 解析: '["zhihu", "weibo"]'
+    # Essaie l'analyse JSON : '["zhihu", "weibo"]'
     try:
         parsed = json.loads(value)
         if isinstance(parsed, list):
             return [str(item) for item in parsed]
-        # 如果解析结果不是列表，继续尝试其他方式
+        # Si le résultat de l'analyse n'est pas une liste, on essaie d'autres méthodes
     except json.JSONDecodeError:
         pass
 
-    # 尝试 Python 字面量解析: "['zhihu', 'weibo']"
+    # Essaie l'analyse de littéral Python : "['zhihu', 'weibo']"
     try:
         parsed = ast.literal_eval(value)
         if isinstance(parsed, list):
             return [str(item) for item in parsed]
         if isinstance(parsed, str):
-            # 单个字符串，包装成列表
+            # Chaîne unique, on l'enveloppe dans une liste
             return [parsed]
     except (ValueError, SyntaxError):
         pass
 
-    # 尝试逗号分隔: "zhihu, weibo" 或 "zhihu,weibo"
+    # Essaie la séparation par virgules : "zhihu, weibo" ou "zhihu,weibo"
     if ',' in value:
         items = [item.strip() for item in value.split(',')]
         return [item for item in items if item]
 
-    # 单个值
+    # Valeur unique
     return [value]
 
 
-def _parse_string_to_int(value: str, param_name: str = "参数") -> int:
+def _parse_string_to_int(value: str, param_name: str = "paramètre") -> int:
     """
-    将字符串解析为整数
+    Analyse une chaîne en entier
 
     Args:
-        value: 字符串值
-        param_name: 参数名（用于错误消息）
+        value: valeur sous forme de chaîne
+        param_name: nom du paramètre (pour le message d'erreur)
 
     Returns:
-        解析后的整数
+        entier analysé
 
     Raises:
-        InvalidParameterError: 解析失败
+        InvalidParameterError: échec de l'analyse
     """
     value = value.strip()
 
     try:
-        # 尝试直接转换
+        # Essaie une conversion directe
         return int(value)
     except ValueError:
         pass
 
-    # 尝试解析浮点数后取整
+    # Essaie d'analyser un nombre flottant puis l'arrondit
     try:
         return int(float(value))
     except ValueError:
         raise InvalidParameterError(
-            f"{param_name} 必须是整数，无法解析: {value}",
-            suggestion=f"请提供有效的整数值，如: 10, 50, 100"
+            f"{param_name} doit être un entier, analyse impossible : {value}",
+            suggestion=f"Veuillez fournir une valeur entière valide, par ex. : 10, 50, 100"
         )
 
 
-def _parse_string_to_float(value: str, param_name: str = "参数") -> float:
+def _parse_string_to_float(value: str, param_name: str = "paramètre") -> float:
     """
-    将字符串解析为浮点数
+    Analyse une chaîne en nombre flottant
 
     Args:
-        value: 字符串值
-        param_name: 参数名（用于错误消息）
+        value: valeur sous forme de chaîne
+        param_name: nom du paramètre (pour le message d'erreur)
 
     Returns:
-        解析后的浮点数
+        nombre flottant analysé
 
     Raises:
-        InvalidParameterError: 解析失败
+        InvalidParameterError: échec de l'analyse
     """
     value = value.strip()
 
@@ -122,20 +122,20 @@ def _parse_string_to_float(value: str, param_name: str = "参数") -> float:
         return float(value)
     except ValueError:
         raise InvalidParameterError(
-            f"{param_name} 必须是数字，无法解析: {value}",
-            suggestion=f"请提供有效的数字值，如: 0.6, 3.0"
+            f"{param_name} doit être un nombre, analyse impossible : {value}",
+            suggestion=f"Veuillez fournir une valeur numérique valide, par ex. : 0.6, 3.0"
         )
 
 
 def _parse_string_to_bool(value: str) -> bool:
     """
-    将字符串解析为布尔值
+    Analyse une chaîne en booléen
 
     Args:
-        value: 字符串值
+        value: valeur sous forme de chaîne
 
     Returns:
-        解析后的布尔值
+        booléen analysé
     """
     value = value.strip().lower()
 
@@ -144,11 +144,11 @@ def _parse_string_to_bool(value: str) -> bool:
     elif value in ('false', '0', 'no', 'off', ''):
         return False
     else:
-        # 默认非空字符串为 True
+        # Par défaut, une chaîne non vide vaut True
         return bool(value)
 
 
-# 平台列表 mtime 缓存（避免每次 MCP 调用都重新读取 config.yaml）
+# Cache du mtime de la liste des plateformes (évite de relire config.yaml à chaque appel MCP)
 _platforms_cache: Optional[List[str]] = None
 _platforms_config_mtime: float = 0.0
 _platforms_config_path: Optional[str] = None
@@ -156,16 +156,16 @@ _platforms_config_path: Optional[str] = None
 
 def get_supported_platforms() -> List[str]:
     """
-    从 config.yaml 动态获取支持的平台列表（带 mtime 缓存）
+    Récupère dynamiquement la liste des plateformes prises en charge depuis config.yaml (avec cache mtime)
 
-    仅当 config.yaml 被修改时才重新读取，避免每次 MCP 调用的重复 IO。
+    Ne relit que lorsque config.yaml a été modifié, pour éviter les E/S répétées à chaque appel MCP.
 
     Returns:
-        平台ID列表
+        liste des ID de plateformes
 
     Note:
-        - 读取失败时返回空列表，允许所有平台通过（降级策略）
-        - 平台列表来自 config/config.yaml 中的 platforms 配置
+        - en cas d'échec de lecture, retourne une liste vide et laisse passer toutes les plateformes (stratégie de repli)
+        - la liste des plateformes provient de la configuration platforms dans config/config.yaml
     """
     global _platforms_cache, _platforms_config_mtime, _platforms_config_path
 
@@ -189,66 +189,66 @@ def get_supported_platforms() -> List[str]:
             _platforms_config_mtime = current_mtime
             return _platforms_cache
     except Exception as e:
-        print(f"警告：无法加载平台配置: {e}")
+        print(f"Avertissement : impossible de charger la configuration des plateformes : {e}")
         return []
 
 
 def validate_platforms(platforms: Optional[Union[List[str], str]]) -> List[str]:
     """
-    验证平台列表
+    Valide la liste des plateformes
 
     Args:
-        platforms: 平台ID列表或字符串，None表示使用 config.yaml 中配置的所有平台
-                   支持多种格式：
-                   - None: 使用默认平台
-                   - ["zhihu", "weibo"]: JSON 数组
-                   - '["zhihu", "weibo"]': JSON 数组字符串
-                   - "['zhihu', 'weibo']": Python 列表字符串
-                   - "zhihu, weibo": 逗号分隔字符串
-                   - "zhihu": 单个平台字符串
+        platforms: liste ou chaîne d'ID de plateformes, None signifie utiliser toutes les plateformes configurées dans config.yaml
+                   Plusieurs formats sont pris en charge :
+                   - None : utilise les plateformes par défaut
+                   - ["zhihu", "weibo"] : tableau JSON
+                   - '["zhihu", "weibo"]' : chaîne de tableau JSON
+                   - "['zhihu', 'weibo']" : chaîne de liste Python
+                   - "zhihu, weibo" : chaîne séparée par des virgules
+                   - "zhihu" : chaîne d'une seule plateforme
 
     Returns:
-        验证后的平台列表
+        liste des plateformes validée
 
     Raises:
-        InvalidParameterError: 平台不支持
+        InvalidParameterError: plateforme non prise en charge
 
     Note:
-        - platforms=None 时，返回 config.yaml 中配置的平台列表
-        - 会验证平台ID是否在 config.yaml 的 platforms 配置中
-        - 配置加载失败时，允许所有平台通过（降级策略）
+        - quand platforms=None, retourne la liste des plateformes configurées dans config.yaml
+        - vérifie si l'ID de plateforme figure dans la configuration platforms de config.yaml
+        - en cas d'échec de chargement de la configuration, laisse passer toutes les plateformes (stratégie de repli)
     """
     supported_platforms = get_supported_platforms()
 
     if platforms is None:
-        # 返回配置文件中的平台列表（用户的默认配置）
+        # Retourne la liste des plateformes du fichier de configuration (configuration par défaut de l'utilisateur)
         return supported_platforms if supported_platforms else []
 
-    # 支持字符串形式的列表输入（某些 MCP 客户端会将 JSON 数组序列化为字符串）
+    # Prend en charge une liste fournie sous forme de chaîne (certains clients MCP sérialisent les tableaux JSON en chaînes)
     if isinstance(platforms, str):
         platforms = _parse_string_to_list(platforms)
         if not platforms:
-            # 空字符串或解析后为空，使用默认平台
+            # Chaîne vide ou vide après analyse, utilise les plateformes par défaut
             return supported_platforms if supported_platforms else []
 
     if not isinstance(platforms, list):
-        raise InvalidParameterError("platforms 参数必须是列表类型")
+        raise InvalidParameterError("Le paramètre platforms doit être de type liste")
 
     if not platforms:
-        # 空列表时，返回配置文件中的平台列表
+        # Liste vide : retourne la liste des plateformes du fichier de configuration
         return supported_platforms if supported_platforms else []
 
-    # 如果配置加载失败（supported_platforms为空），允许所有平台通过
+    # Si le chargement de la configuration a échoué (supported_platforms vide), laisse passer toutes les plateformes
     if not supported_platforms:
-        print("警告：平台配置未加载，跳过平台验证")
+        print("Avertissement : configuration des plateformes non chargée, validation des plateformes ignorée")
         return platforms
 
-    # 验证每个平台是否在配置中
+    # Vérifie si chaque plateforme figure dans la configuration
     invalid_platforms = [p for p in platforms if p not in supported_platforms]
     if invalid_platforms:
         raise InvalidParameterError(
-            f"不支持的平台: {', '.join(invalid_platforms)}",
-            suggestion=f"支持的平台（来自config.yaml）: {', '.join(supported_platforms)}"
+            f"Plateformes non prises en charge : {', '.join(invalid_platforms)}",
+            suggestion=f"Plateformes prises en charge (depuis config.yaml) : {', '.join(supported_platforms)}"
         )
 
     return platforms
@@ -256,36 +256,36 @@ def validate_platforms(platforms: Optional[Union[List[str], str]]) -> List[str]:
 
 def validate_limit(limit: Optional[Union[int, str]], default: int = 20, max_limit: int = 1000) -> int:
     """
-    验证数量限制参数
+    Valide le paramètre de limite de quantité
 
     Args:
-        limit: 限制数量（整数或字符串）
-        default: 默认值
-        max_limit: 最大限制
+        limit: quantité limite (entier ou chaîne)
+        default: valeur par défaut
+        max_limit: limite maximale
 
     Returns:
-        验证后的限制值
+        valeur de limite validée
 
     Raises:
-        InvalidParameterError: 参数无效
+        InvalidParameterError: paramètre invalide
     """
     if limit is None:
         return default
 
-    # 支持字符串形式的整数（某些 MCP 客户端会将数字序列化为字符串）
+    # Prend en charge un entier fourni sous forme de chaîne (certains clients MCP sérialisent les nombres en chaînes)
     if isinstance(limit, str):
         limit = _parse_string_to_int(limit, "limit")
 
     if not isinstance(limit, int):
-        raise InvalidParameterError("limit 参数必须是整数类型")
+        raise InvalidParameterError("Le paramètre limit doit être de type entier")
 
     if limit <= 0:
-        raise InvalidParameterError("limit 必须大于0")
+        raise InvalidParameterError("limit doit être supérieur à 0")
 
     if limit > max_limit:
         raise InvalidParameterError(
-            f"limit 不能超过 {max_limit}",
-            suggestion=f"请使用分页或降低limit值"
+            f"limit ne peut pas dépasser {max_limit}",
+            suggestion=f"Veuillez utiliser la pagination ou réduire la valeur de limit"
         )
 
     return limit
@@ -293,61 +293,61 @@ def validate_limit(limit: Optional[Union[int, str]], default: int = 20, max_limi
 
 def validate_date(date_str: str) -> datetime:
     """
-    验证日期格式
+    Valide le format de date
 
     Args:
-        date_str: 日期字符串 (YYYY-MM-DD)
+        date_str: chaîne de date (YYYY-MM-DD)
 
     Returns:
-        datetime对象
+        objet datetime
 
     Raises:
-        InvalidParameterError: 日期格式错误
+        InvalidParameterError: format de date erroné
     """
     try:
         return datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         raise InvalidParameterError(
-            f"日期格式错误: {date_str}",
-            suggestion="请使用 YYYY-MM-DD 格式，例如: 2025-10-11"
+            f"Format de date erroné : {date_str}",
+            suggestion="Veuillez utiliser le format YYYY-MM-DD, par exemple : 2025-10-11"
         )
 
 
 def normalize_date_range(date_range: Optional[Union[dict, str]]) -> Optional[Union[dict, str]]:
     """
-    规范化 date_range 参数
+    Normalise le paramètre date_range
 
-    某些 MCP 客户端（特别是 HTTP 方式）会将 JSON 对象序列化为字符串传入。
-    此函数尝试将 JSON 字符串解析为 dict，如果不是 JSON 格式则保持原样。
+    Certains clients MCP (notamment via HTTP) sérialisent les objets JSON en chaînes lors de la transmission.
+    Cette fonction tente d'analyser la chaîne JSON en dict ; si ce n'est pas du JSON, elle la laisse telle quelle.
 
     Args:
-        date_range: 日期范围，可能是:
-            - dict: {"start": "2025-01-01", "end": "2025-01-07"}
-            - JSON 字符串: '{"start": "2025-01-01", "end": "2025-01-07"}'
-            - 普通字符串: "今天", "昨天", "2025-01-01"
+        date_range: plage de dates, qui peut être :
+            - dict : {"start": "2025-01-01", "end": "2025-01-07"}
+            - chaîne JSON : '{"start": "2025-01-01", "end": "2025-01-07"}'
+            - chaîne simple : "aujourd'hui", "hier", "2025-01-01"
             - None
 
     Returns:
-        规范化后的 date_range（dict 或普通字符串）
+        date_range normalisée (dict ou chaîne simple)
 
     Examples:
         >>> normalize_date_range('{"start":"2025-01-01","end":"2025-01-07"}')
         {"start": "2025-01-01", "end": "2025-01-07"}
-        >>> normalize_date_range("今天")
-        "今天"
+        >>> normalize_date_range("aujourd'hui")
+        "aujourd'hui"
         >>> normalize_date_range({"start": "2025-01-01", "end": "2025-01-07"})
         {"start": "2025-01-01", "end": "2025-01-07"}
     """
     if date_range is None:
         return None
 
-    # 如果已经是 dict，直接返回
+    # Si c'est déjà un dict, on le retourne directement
     if isinstance(date_range, dict):
         return date_range
 
-    # 如果是字符串，尝试解析为 JSON
+    # Si c'est une chaîne, on essaie de l'analyser en JSON
     if isinstance(date_range, str):
-        # 检查是否看起来像 JSON 对象
+        # Vérifie si elle ressemble à un objet JSON
         stripped = date_range.strip()
         if stripped.startswith('{') and stripped.endswith('}'):
             try:
@@ -355,55 +355,55 @@ def normalize_date_range(date_range: Optional[Union[dict, str]]) -> Optional[Uni
                 if isinstance(parsed, dict):
                     return parsed
             except json.JSONDecodeError:
-                pass  # 解析失败，当作普通字符串处理
+                pass  # Échec de l'analyse, on la traite comme une chaîne simple
 
     return date_range
 
 
 def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tuple]:
     """
-    验证日期范围
+    Valide la plage de dates
 
     Args:
-        date_range: 日期范围，支持多种格式：
-            - dict: {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
-            - JSON 字符串: '{"start": "2025-01-01", "end": "2025-01-07"}'
-            - 单日字符串: "2025-01-01"（自动转为同一天的范围）
-            - 自然语言: "今天", "昨天", "本周", "最近7天" 等
+        date_range: plage de dates, plusieurs formats pris en charge :
+            - dict : {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
+            - chaîne JSON : '{"start": "2025-01-01", "end": "2025-01-07"}'
+            - chaîne d'un seul jour : "2025-01-01" (convertie automatiquement en plage d'un même jour)
+            - langage naturel : "aujourd'hui", "hier", "cette semaine", "les 7 derniers jours", etc.
 
     Returns:
-        (start_date, end_date) 元组，或 None
+        tuple (start_date, end_date), ou None
 
     Raises:
-        InvalidParameterError: 日期范围无效
+        InvalidParameterError: plage de dates invalide
     """
     if date_range is None:
         return None
 
-    # 支持字符串形式的输入
+    # Prend en charge une entrée fournie sous forme de chaîne
     if isinstance(date_range, str):
         stripped = date_range.strip()
 
-        # 1. 检查是否是 JSON 对象格式
+        # 1. Vérifie si c'est au format objet JSON
         if stripped.startswith('{') and stripped.endswith('}'):
             try:
                 date_range = json.loads(stripped)
             except json.JSONDecodeError as e:
                 raise InvalidParameterError(
-                    f"date_range JSON 解析失败: {e}",
-                    suggestion='请使用正确的JSON格式: {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}'
+                    f"Échec de l'analyse JSON de date_range : {e}",
+                    suggestion='Veuillez utiliser le format JSON correct : {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}'
                 )
-        # 2. 检查是否是单日字符串格式 YYYY-MM-DD
+        # 2. Vérifie si c'est une chaîne d'un seul jour au format YYYY-MM-DD
         elif len(stripped) == 10 and stripped[4] == '-' and stripped[7] == '-':
             try:
                 single_date = datetime.strptime(stripped, "%Y-%m-%d")
                 return (single_date, single_date)
             except ValueError:
                 raise InvalidParameterError(
-                    f"日期格式错误: {stripped}",
-                    suggestion="请使用 YYYY-MM-DD 格式，例如: 2025-10-11"
+                    f"Format de date erroné : {stripped}",
+                    suggestion="Veuillez utiliser le format YYYY-MM-DD, par exemple : 2025-10-11"
                 )
-        # 3. 尝试自然语言解析
+        # 3. Essaie une analyse en langage naturel
         else:
             try:
                 result = DateParser.resolve_date_range_expression(stripped)
@@ -414,21 +414,21 @@ def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tupl
                     return (start_date, end_date)
                 else:
                     raise InvalidParameterError(
-                        f"无法识别的日期表达式: {stripped}",
-                        suggestion="支持格式: YYYY-MM-DD, {\"start\": \"...\", \"end\": \"...\"}, 或自然语言（今天、本周、最近7天等）"
+                        f"Expression de date non reconnue : {stripped}",
+                        suggestion="Formats pris en charge : YYYY-MM-DD, {\"start\": \"...\", \"end\": \"...\"}, ou langage naturel (aujourd'hui, cette semaine, les 7 derniers jours, etc.)"
                     )
             except InvalidParameterError:
                 raise
             except Exception:
                 raise InvalidParameterError(
-                    f"日期解析失败: {stripped}",
-                    suggestion="支持格式: YYYY-MM-DD, {\"start\": \"...\", \"end\": \"...\"}, 或自然语言（今天、本周、最近7天等）"
+                    f"Échec de l'analyse de la date : {stripped}",
+                    suggestion="Formats pris en charge : YYYY-MM-DD, {\"start\": \"...\", \"end\": \"...\"}, ou langage naturel (aujourd'hui, cette semaine, les 7 derniers jours, etc.)"
                 )
 
     if not isinstance(date_range, dict):
         raise InvalidParameterError(
-            "date_range 必须是字典类型、日期字符串或有效的JSON字符串",
-            suggestion='例如: {"start": "2025-10-01", "end": "2025-10-11"} 或 "2025-10-01"'
+            "date_range doit être un dictionnaire, une chaîne de date ou une chaîne JSON valide",
+            suggestion='par exemple : {"start": "2025-10-01", "end": "2025-10-11"} ou "2025-10-01"'
         )
 
     start_str = date_range.get("start")
@@ -436,8 +436,8 @@ def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tupl
 
     if not start_str or not end_str:
         raise InvalidParameterError(
-            "date_range 必须包含 start 和 end 字段",
-            suggestion='例如: {"start": "2025-10-01", "end": "2025-10-11"}'
+            "date_range doit contenir les champs start et end",
+            suggestion='par exemple : {"start": "2025-10-01", "end": "2025-10-11"}'
         )
 
     start_date = validate_date(start_str)
@@ -445,25 +445,25 @@ def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tupl
 
     if start_date > end_date:
         raise InvalidParameterError(
-            "开始日期不能晚于结束日期",
+            "La date de début ne peut pas être postérieure à la date de fin",
             suggestion=f"start: {start_str}, end: {end_str}"
         )
 
-    # 检查日期是否在未来
+    # Vérifie si la date est dans le futur
     today = datetime.now().date()
     if start_date.date() > today or end_date.date() > today:
-        # 获取可用日期范围提示
+        # Récupère un indice de la plage de dates disponible
         try:
             from ..services.data_service import DataService
             data_service = DataService()
             earliest, latest = data_service.get_available_date_range()
 
             if earliest and latest:
-                available_range = f"{earliest.strftime('%Y-%m-%d')} 至 {latest.strftime('%Y-%m-%d')}"
+                available_range = f"{earliest.strftime('%Y-%m-%d')} à {latest.strftime('%Y-%m-%d')}"
             else:
-                available_range = "无可用数据"
+                available_range = "aucune donnée disponible"
         except Exception:
-            available_range = "未知（请检查 output 目录）"
+            available_range = "inconnue (veuillez vérifier le répertoire output)"
 
         future_dates = []
         if start_date.date() > today:
@@ -472,8 +472,8 @@ def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tupl
             future_dates.append(end_str)
 
         raise InvalidParameterError(
-            f"不允许查询未来日期: {', '.join(future_dates)}（当前日期: {today.strftime('%Y-%m-%d')}）",
-            suggestion=f"当前可用数据范围: {available_range}"
+            f"La consultation de dates futures n'est pas autorisée : {', '.join(future_dates)} (date actuelle : {today.strftime('%Y-%m-%d')})",
+            suggestion=f"Plage de données actuellement disponible : {available_range}"
         )
 
     return (start_date, end_date)
@@ -481,32 +481,32 @@ def validate_date_range(date_range: Optional[Union[dict, str]]) -> Optional[tupl
 
 def validate_keyword(keyword: str) -> str:
     """
-    验证关键词
+    Valide le mot-clé
 
     Args:
-        keyword: 搜索关键词
+        keyword: mot-clé de recherche
 
     Returns:
-        处理后的关键词
+        mot-clé traité
 
     Raises:
-        InvalidParameterError: 关键词无效
+        InvalidParameterError: mot-clé invalide
     """
     if not keyword:
-        raise InvalidParameterError("keyword 不能为空")
+        raise InvalidParameterError("keyword ne peut pas être vide")
 
     if not isinstance(keyword, str):
-        raise InvalidParameterError("keyword 必须是字符串类型")
+        raise InvalidParameterError("keyword doit être de type chaîne")
 
     keyword = keyword.strip()
 
     if not keyword:
-        raise InvalidParameterError("keyword 不能为空白字符")
+        raise InvalidParameterError("keyword ne peut pas être composé uniquement d'espaces")
 
     if len(keyword) > 100:
         raise InvalidParameterError(
-            "keyword 长度不能超过100个字符",
-            suggestion="请使用更简洁的关键词"
+            "La longueur de keyword ne peut pas dépasser 100 caractères",
+            suggestion="Veuillez utiliser un mot-clé plus concis"
         )
 
     return keyword
@@ -514,46 +514,46 @@ def validate_keyword(keyword: str) -> str:
 
 def validate_top_n(top_n: Optional[Union[int, str]], default: int = 10) -> int:
     """
-    验证TOP N参数
+    Valide le paramètre TOP N
 
     Args:
-        top_n: TOP N数量（整数或字符串）
-        default: 默认值
+        top_n: quantité TOP N (entier ou chaîne)
+        default: valeur par défaut
 
     Returns:
-        验证后的值
+        valeur validée
 
     Raises:
-        InvalidParameterError: 参数无效
+        InvalidParameterError: paramètre invalide
     """
     return validate_limit(top_n, default=default, max_limit=100)
 
 
 def validate_mode(mode: Optional[str], valid_modes: List[str], default: str) -> str:
     """
-    验证模式参数
+    Valide le paramètre de mode
 
     Args:
-        mode: 模式字符串
-        valid_modes: 有效模式列表
-        default: 默认模式
+        mode: chaîne de mode
+        valid_modes: liste des modes valides
+        default: mode par défaut
 
     Returns:
-        验证后的模式
+        mode validé
 
     Raises:
-        InvalidParameterError: 模式无效
+        InvalidParameterError: mode invalide
     """
     if mode is None:
         return default
 
     if not isinstance(mode, str):
-        raise InvalidParameterError("mode 必须是字符串类型")
+        raise InvalidParameterError("mode doit être de type chaîne")
 
     if mode not in valid_modes:
         raise InvalidParameterError(
-            f"无效的模式: {mode}",
-            suggestion=f"支持的模式: {', '.join(valid_modes)}"
+            f"Mode invalide : {mode}",
+            suggestion=f"Modes pris en charge : {', '.join(valid_modes)}"
         )
 
     return mode
@@ -561,16 +561,16 @@ def validate_mode(mode: Optional[str], valid_modes: List[str], default: str) -> 
 
 def validate_config_section(section: Optional[str]) -> str:
     """
-    验证配置节参数
+    Valide le paramètre de section de configuration
 
     Args:
-        section: 配置节名称
+        section: nom de la section de configuration
 
     Returns:
-        验证后的配置节
+        section de configuration validée
 
     Raises:
-        InvalidParameterError: 配置节无效
+        InvalidParameterError: section de configuration invalide
     """
     valid_sections = ["all", "crawler", "push", "keywords", "weights"]
     return validate_mode(section, valid_sections, "all")
@@ -584,42 +584,42 @@ def validate_threshold(
     param_name: str = "threshold"
 ) -> float:
     """
-    验证阈值参数（浮点数）
+    Valide le paramètre de seuil (nombre flottant)
 
     Args:
-        threshold: 阈值（浮点数、整数或字符串）
-        default: 默认值
-        min_value: 最小值
-        max_value: 最大值
-        param_name: 参数名（用于错误消息）
+        threshold: seuil (nombre flottant, entier ou chaîne)
+        default: valeur par défaut
+        min_value: valeur minimale
+        max_value: valeur maximale
+        param_name: nom du paramètre (pour le message d'erreur)
 
     Returns:
-        验证后的阈值
+        seuil validé
 
     Raises:
-        InvalidParameterError: 参数无效
+        InvalidParameterError: paramètre invalide
     """
     if threshold is None:
         return default
 
-    # 支持字符串形式的数字（某些 MCP 客户端会将数字序列化为字符串）
+    # Prend en charge un nombre fourni sous forme de chaîne (certains clients MCP sérialisent les nombres en chaînes)
     if isinstance(threshold, str):
         threshold = _parse_string_to_float(threshold, param_name)
 
-    # 整数转浮点数
+    # Conversion entier vers flottant
     if isinstance(threshold, int):
         threshold = float(threshold)
 
     if not isinstance(threshold, float):
         raise InvalidParameterError(
-            f"{param_name} 必须是数字类型",
-            suggestion=f"请提供 {min_value} 到 {max_value} 之间的数字"
+            f"{param_name} doit être de type numérique",
+            suggestion=f"Veuillez fournir un nombre compris entre {min_value} et {max_value}"
         )
 
     if threshold < min_value or threshold > max_value:
         raise InvalidParameterError(
-            f"{param_name} 必须在 {min_value} 到 {max_value} 之间，当前值: {threshold}",
-            suggestion=f"推荐值: {default}"
+            f"{param_name} doit être compris entre {min_value} et {max_value}, valeur actuelle : {threshold}",
+            suggestion=f"Valeur recommandée : {default}"
         )
 
     return threshold
@@ -631,39 +631,39 @@ def validate_date_query(
     max_days_ago: int = 365
 ) -> datetime:
     """
-    验证并解析日期查询字符串
+    Valide et analyse la chaîne de requête de date
 
     Args:
-        date_query: 日期查询字符串
-        allow_future: 是否允许未来日期
-        max_days_ago: 允许查询的最大天数
+        date_query: chaîne de requête de date
+        allow_future: indique si les dates futures sont autorisées
+        max_days_ago: nombre maximal de jours autorisé pour la requête
 
     Returns:
-        解析后的datetime对象
+        objet datetime analysé
 
     Raises:
-        InvalidParameterError: 日期查询无效
+        InvalidParameterError: requête de date invalide
 
     Examples:
-        >>> validate_date_query("昨天")
+        >>> validate_date_query("hier")
         datetime(2025, 10, 10)
         >>> validate_date_query("2025-10-10")
         datetime(2025, 10, 10)
     """
     if not date_query:
         raise InvalidParameterError(
-            "日期查询字符串不能为空",
-            suggestion="请提供日期查询，如：今天、昨天、2025-10-10"
+            "La chaîne de requête de date ne peut pas être vide",
+            suggestion="Veuillez fournir une requête de date, par ex. : aujourd'hui, hier, 2025-10-10"
         )
 
-    # 使用DateParser解析日期
+    # Analyse la date avec DateParser
     parsed_date = DateParser.parse_date_query(date_query)
 
-    # 验证日期不在未来
+    # Vérifie que la date n'est pas dans le futur
     if not allow_future:
         DateParser.validate_date_not_future(parsed_date)
 
-    # 验证日期不太久远
+    # Vérifie que la date n'est pas trop ancienne
     DateParser.validate_date_not_too_old(parsed_date, max_days=max_days_ago)
 
     return parsed_date

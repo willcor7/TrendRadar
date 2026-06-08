@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-RSS 抓取模块
+Module de récupération RSS
 
-提供 RSS 2.0、Atom 和 JSON Feed 1.1 订阅源的解析和抓取功能
+Fournit l'analyse et la récupération des flux RSS 2.0, Atom et JSON Feed 1.1
 """
 
 from .parser import RSSParser

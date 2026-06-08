@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-平台标题格式化模块
+Module de formatage des titres par plateforme.
 
-提供多平台标题格式化功能
+Fournit les fonctions de formatage des titres pour plusieurs plateformes.
 """
 
 from typing import Dict
@@ -13,36 +13,36 @@ from trendradar.report.helpers import clean_title, html_escape, format_rank_disp
 def format_title_for_platform(
     platform: str, title_data: Dict, show_source: bool = True, show_keyword: bool = False
 ) -> str:
-    """统一的标题格式化方法
+    """Méthode unifiée de formatage des titres.
 
-    为不同平台生成对应格式的标题字符串。
+    Génère une chaîne de titre au format adapté à chaque plateforme.
 
     Args:
-        platform: 目标平台，支持:
-            - "feishu": 飞书
-            - "dingtalk": 钉钉
-            - "wework": 企业微信
-            - "bark": Bark
-            - "telegram": Telegram
-            - "ntfy": ntfy
-            - "slack": Slack
-            - "html": HTML 报告
-        title_data: 标题数据字典，包含以下字段:
-            - title: 标题文本
-            - source_name: 来源名称
-            - time_display: 时间显示
-            - count: 出现次数
-            - ranks: 排名列表
-            - rank_threshold: 高亮阈值
-            - url: PC端链接
-            - mobile_url: 移动端链接（优先使用）
-            - is_new: 是否为新增标题（可选）
-            - matched_keyword: 匹配的关键词（可选，platform 模式使用）
-        show_source: 是否显示来源名称（keyword 模式使用）
-        show_keyword: 是否显示关键词标签（platform 模式使用）
+        platform: plateforme cible, valeurs supportées :
+            - "feishu" : Feishu
+            - "dingtalk" : DingTalk
+            - "wework" : WeCom
+            - "bark" : Bark
+            - "telegram" : Telegram
+            - "ntfy" : ntfy
+            - "slack" : Slack
+            - "html" : rapport HTML
+        title_data: dictionnaire des données du titre, contenant les champs suivants :
+            - title : texte du titre
+            - source_name : nom de la source
+            - time_display : affichage de l'heure
+            - count : nombre d'occurrences
+            - ranks : liste des classements
+            - rank_threshold : seuil de mise en évidence
+            - url : lien pour ordinateur de bureau
+            - mobile_url : lien pour mobile (utilisé en priorité)
+            - is_new : indique s'il s'agit d'un nouveau titre (optionnel)
+            - matched_keyword : mot-clé correspondant (optionnel, utilisé en mode platform)
+        show_source: indique s'il faut afficher le nom de la source (utilisé en mode keyword)
+        show_keyword: indique s'il faut afficher l'étiquette du mot-clé (utilisé en mode platform)
 
     Returns:
-        格式化后的标题字符串
+        chaîne du titre formatée
     """
     rank_display = format_rank_display(
         title_data["ranks"], title_data["rank_threshold"], platform,
@@ -54,7 +54,7 @@ def format_title_for_platform(
     if not cleaned_title:
         cleaned_title = link_url or title_data["url"] or ""
 
-    # 获取关键词标签（platform 模式使用）
+    # Récupère l'étiquette du mot-clé (utilisée en mode platform)
     keyword = title_data.get("matched_keyword", "") if show_keyword else ""
 
     if platform == "feishu":
@@ -77,7 +77,7 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" <font color='grey'>- {title_data['time_display']}</font>"
         if title_data["count"] > 1:
-            result += f" <font color='green'>({title_data['count']}次)</font>"
+            result += f" <font color='green'>({title_data['count']} fois)</font>"
 
         return result
 
@@ -101,12 +101,12 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" - {title_data['time_display']}"
         if title_data["count"] > 1:
-            result += f" ({title_data['count']}次)"
+            result += f" ({title_data['count']} fois)"
 
         return result
 
     elif platform in ("wework", "bark"):
-        # WeWork 和 Bark 使用 markdown 格式
+        # WeCom et Bark utilisent le format markdown
         if link_url:
             formatted_title = f"[{cleaned_title}]({link_url})"
         else:
@@ -126,7 +126,7 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" - {title_data['time_display']}"
         if title_data["count"] > 1:
-            result += f" ({title_data['count']}次)"
+            result += f" ({title_data['count']} fois)"
 
         return result
 
@@ -150,7 +150,7 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" <code>- {title_data['time_display']}</code>"
         if title_data["count"] > 1:
-            result += f" <code>({title_data['count']}次)</code>"
+            result += f" <code>({title_data['count']} fois)</code>"
 
         return result
 
@@ -174,14 +174,14 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" `- {title_data['time_display']}`"
         if title_data["count"] > 1:
-            result += f" `({title_data['count']}次)`"
+            result += f" `({title_data['count']} fois)`"
 
         return result
 
     elif platform == "slack":
-        # Slack 使用 mrkdwn 格式
+        # Slack utilise le format mrkdwn
         if link_url:
-            # Slack 链接格式: <url|text>
+            # Format de lien Slack : <url|text>
             formatted_title = f"<{link_url}|{cleaned_title}>"
         else:
             formatted_title = cleaned_title
@@ -195,7 +195,7 @@ def format_title_for_platform(
         else:
             result = f"{title_prefix}{formatted_title}"
 
-        # 排名（使用 * 加粗）
+        # Classement (mis en gras avec *)
         rank_display = format_rank_display(
             title_data["ranks"], title_data["rank_threshold"], "slack",
             rank_timeline=title_data.get("rank_timeline"),
@@ -205,7 +205,7 @@ def format_title_for_platform(
         if title_data["time_display"]:
             result += f" `- {title_data['time_display']}`"
         if title_data["count"] > 1:
-            result += f" `({title_data['count']}次)`"
+            result += f" `({title_data['count']} fois)`"
 
         return result
 
@@ -220,7 +220,7 @@ def format_title_for_platform(
         escaped_title = html_escape(cleaned_title)
         escaped_source_name = html_escape(title_data["source_name"])
 
-        # 构建前缀（来源或关键词）
+        # Construit le préfixe (source ou mot-clé)
         if show_source:
             prefix = f'<span class="source-tag">[{escaped_source_name}]</span> '
         elif show_keyword and keyword:
@@ -241,7 +241,7 @@ def format_title_for_platform(
             escaped_time = html_escape(title_data["time_display"])
             formatted_title += f" <font color='grey'>- {escaped_time}</font>"
         if title_data["count"] > 1:
-            formatted_title += f" <font color='green'>({title_data['count']}次)</font>"
+            formatted_title += f" <font color='green'>({title_data['count']} fois)</font>"
 
         if title_data.get("is_new"):
             formatted_title = f"<div class='new-title'>🆕 {formatted_title}</div>"

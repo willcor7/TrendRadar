@@ -1,16 +1,16 @@
 # coding=utf-8
 """
-报告生成模块
+Module de génération de rapports.
 
-提供报告生成和格式化功能，包括：
-- HTML 报告生成
-- 标题格式化工具
+Fournit les fonctions de génération et de formatage des rapports, notamment :
+- la génération de rapports HTML
+- des outils de formatage des titres
 
-模块结构：
-- helpers: 报告辅助函数（清理、转义、格式化）
-- formatter: 平台标题格式化
-- html: HTML 报告渲染
-- generator: 报告生成器
+Structure du module :
+- helpers : fonctions auxiliaires du rapport (nettoyage, échappement, formatage)
+- formatter : formatage des titres par plateforme
+- html : rendu des rapports HTML
+- generator : génération des rapports
 """
 
 from trendradar.report.helpers import (
@@ -26,15 +26,15 @@ from trendradar.report.generator import (
 )
 
 __all__ = [
-    # 辅助函数
+    # fonctions auxiliaires
     "clean_title",
     "html_escape",
     "format_rank_display",
-    # 格式化函数
+    # fonctions de formatage
     "format_title_for_platform",
-    # HTML 渲染
+    # rendu HTML
     "render_html_content",
-    # 报告生成器
+    # génération des rapports
     "prepare_report_data",
     "generate_html_report",
 ]

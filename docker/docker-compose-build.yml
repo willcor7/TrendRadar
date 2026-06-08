@@ -15,44 +15,44 @@ services:
 
     environment:
       - TZ=Asia/Shanghai
-      # Web 服务器
+      # Serveur web
       - WEBSERVER_PORT=${WEBSERVER_PORT:-8080}
-      # 通知渠道
+      # Canaux de notification
       - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - DINGTALK_WEBHOOK_URL=${DINGTALK_WEBHOOK_URL:-}
       - WEWORK_WEBHOOK_URL=${WEWORK_WEBHOOK_URL:-}
       - WEWORK_MSG_TYPE=${WEWORK_MSG_TYPE:-}
-      # 邮件配置
+      # Configuration e-mail
       - EMAIL_FROM=${EMAIL_FROM:-}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
       - EMAIL_TO=${EMAIL_TO:-}
       - EMAIL_SMTP_SERVER=${EMAIL_SMTP_SERVER:-}
       - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT:-}
-      # ntfy配置
+      # Configuration ntfy
       - NTFY_SERVER_URL=${NTFY_SERVER_URL:-https://ntfy.sh}
       - NTFY_TOPIC=${NTFY_TOPIC:-}
       - NTFY_TOKEN=${NTFY_TOKEN:-}
-      # Bark配置
+      # Configuration Bark
       - BARK_URL=${BARK_URL:-}
-      # Slack配置
+      # Configuration Slack
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
-      # 通用Webhook配置
+      # Configuration Webhook générique
       - GENERIC_WEBHOOK_URL=${GENERIC_WEBHOOK_URL:-}
       - GENERIC_WEBHOOK_TEMPLATE=${GENERIC_WEBHOOK_TEMPLATE:-}
-      # AI 配置（ai_analysis 和 ai_translation 共享模型配置）
+      # Configuration IA (ai_analysis et ai_translation partagent la configuration du modèle)
       - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-}
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_MODEL=${AI_MODEL:-}
       - AI_API_BASE=${AI_API_BASE:-}
-      # 远程存储配置（S3 兼容协议）
+      # Configuration du stockage distant (protocole compatible S3)
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
       - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
       - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
       - S3_REGION=${S3_REGION:-}
-      # 运行模式
+      # Mode d'exécution
       - CRON_SCHEDULE=${CRON_SCHEDULE:-*/30 * * * *}
       - RUN_MODE=${RUN_MODE:-cron}
       - IMMEDIATE_RUN=${IMMEDIATE_RUN:-true}

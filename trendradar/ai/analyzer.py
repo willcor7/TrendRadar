@@ -1,9 +1,9 @@
 # coding=utf-8
 """
-AI 分析器模块
+Module d'analyse IA
 
-调用 AI 大模型对热点新闻进行深度分析
-基于 LiteLLM 统一接口，支持 100+ AI 提供商
+Analyse en profondeur les actualités tendances en appelant un grand modèle de langage.
+Basé sur l'interface unifiée de LiteLLM, il prend en charge plus de 100 fournisseurs d'IA.
 """
 
 import json
@@ -16,37 +16,37 @@ from trendradar.ai.prompt_loader import load_prompt_template
 
 @dataclass
 class AIAnalysisResult:
-    """AI 分析结果"""
-    # 新版 5 核心板块
-    core_trends: str = ""                # 核心热点与舆情态势
-    sentiment_controversy: str = ""      # 舆论风向与争议
-    signals: str = ""                    # 异动与弱信号
-    rss_insights: str = ""               # RSS 深度洞察
-    outlook_strategy: str = ""           # 研判与策略建议
-    standalone_summaries: Dict[str, str] = field(default_factory=dict)  # 独立展示区概括 {源ID: 概括}
+    """Résultat de l'analyse IA"""
+    # Nouvelle version : 5 sections principales
+    core_trends: str = ""                # Tendances majeures et climat de l'opinion
+    sentiment_controversy: str = ""      # Orientation de l'opinion publique et controverses
+    signals: str = ""                    # Mouvements inhabituels et signaux faibles
+    rss_insights: str = ""               # Analyse approfondie des flux RSS
+    outlook_strategy: str = ""           # Analyse prospective et recommandations stratégiques
+    standalone_summaries: Dict[str, str] = field(default_factory=dict)  # Résumés de la zone d'affichage autonome {identifiant de source: résumé}
 
-    # 基础元数据
-    raw_response: str = ""               # 原始响应
-    success: bool = False                # 是否成功
-    skipped: bool = False                # 是否因无内容跳过（非失败）
-    error: str = ""                      # 错误信息
+    # Métadonnées de base
+    raw_response: str = ""               # Réponse brute
+    success: bool = False                # Indique si l'analyse a réussi
+    skipped: bool = False                # Indique si l'analyse a été ignorée faute de contenu (et non par échec)
+    error: str = ""                      # Message d'erreur
 
-    # 新闻数量统计
-    total_news: int = 0                  # 总新闻数（热榜+RSS）
-    analyzed_news: int = 0               # 实际分析的新闻数
-    max_news_limit: int = 0              # 分析上限配置值
-    hotlist_count: int = 0               # 热榜新闻数（总数）
-    rss_count: int = 0                   # RSS 新闻数（总数）
-    hotlist_analyzed: int = 0            # 热榜实际分析数
-    rss_analyzed: int = 0               # RSS 实际分析数
-    standalone_analyzed: int = 0        # 独立展示区实际分析数
-    ai_mode: str = ""                    # AI 分析使用的模式 (daily/current/incremental)
-    include_rss: bool = True             # 是否启用 RSS 分析
-    include_standalone: bool = False     # 是否启用独立展示区分析
+    # Statistiques sur le nombre d'actualités
+    total_news: int = 0                  # Nombre total d'actualités (tendances + RSS)
+    analyzed_news: int = 0               # Nombre d'actualités réellement analysées
+    max_news_limit: int = 0              # Valeur configurée du plafond d'analyse
+    hotlist_count: int = 0               # Nombre d'actualités tendances (total)
+    rss_count: int = 0                   # Nombre d'actualités RSS (total)
+    hotlist_analyzed: int = 0            # Nombre d'actualités tendances réellement analysées
+    rss_analyzed: int = 0               # Nombre d'actualités RSS réellement analysées
+    standalone_analyzed: int = 0        # Nombre d'entrées de la zone d'affichage autonome réellement analysées
+    ai_mode: str = ""                    # Mode utilisé pour l'analyse IA (daily/current/incremental)
+    include_rss: bool = True             # Indique si l'analyse des flux RSS est activée
+    include_standalone: bool = False     # Indique si l'analyse de la zone d'affichage autonome est activée
 
 
 class AIAnalyzer:
-    """AI 分析器"""
+    """Analyseur IA"""
 
     def __init__(
         self,
@@ -56,35 +56,35 @@ class AIAnalyzer:
         debug: bool = False,
     ):
         """
-        初始化 AI 分析器
+        Initialise l'analyseur IA
 
         Args:
-            ai_config: AI 模型配置（LiteLLM 格式）
-            analysis_config: AI 分析功能配置（language, prompt_file 等）
-            get_time_func: 获取当前时间的函数
-            debug: 是否开启调试模式
+            ai_config: configuration du modèle d'IA (format LiteLLM)
+            analysis_config: configuration de la fonction d'analyse IA (language, prompt_file, etc.)
+            get_time_func: fonction renvoyant l'heure courante
+            debug: indique si le mode débogage est activé
         """
         self.ai_config = ai_config
         self.analysis_config = analysis_config
         self.get_time_func = get_time_func
         self.debug = debug
 
-        # 创建 AI 客户端（基于 LiteLLM）
+        # Création du client IA (basé sur LiteLLM)
         self.client = AIClient(ai_config)
 
-        # 验证配置
+        # Vérification de la configuration
         valid, error = self.client.validate_config()
         if not valid:
-            print(f"[AI] 配置警告: {error}")
+            print(f"[AI] Avertissement de configuration : {error}")
 
-        # 从分析配置获取功能参数
+        # Récupération des paramètres de la fonction depuis la configuration d'analyse
         self.max_news = analysis_config.get("MAX_NEWS_FOR_ANALYSIS", 50)
         self.include_rss = analysis_config.get("INCLUDE_RSS", True)
         self.include_rank_timeline = analysis_config.get("INCLUDE_RANK_TIMELINE", False)
         self.include_standalone = analysis_config.get("INCLUDE_STANDALONE", False)
         self.language = analysis_config.get("LANGUAGE", "Chinese")
 
-        # 加载提示词模板
+        # Chargement du modèle de prompt
         self.system_prompt, self.user_prompt_template = load_prompt_template(
             analysis_config.get("PROMPT_FILE", "ai_analysis_prompt.txt"),
             label="AI",
@@ -95,50 +95,50 @@ class AIAnalyzer:
         stats: List[Dict],
         rss_stats: Optional[List[Dict]] = None,
         report_mode: str = "daily",
-        report_type: str = "当日汇总",
+        report_type: str = "Résumé du jour",
         platforms: Optional[List[str]] = None,
         keywords: Optional[List[str]] = None,
         standalone_data: Optional[Dict] = None,
     ) -> AIAnalysisResult:
         """
-        执行 AI 分析
+        Exécute l'analyse IA
 
         Args:
-            stats: 热榜统计数据
-            rss_stats: RSS 统计数据
-            report_mode: 报告模式
-            report_type: 报告类型
-            platforms: 平台列表
-            keywords: 关键词列表
+            stats: données statistiques des tendances
+            rss_stats: données statistiques des flux RSS
+            report_mode: mode du rapport
+            report_type: type du rapport
+            platforms: liste des plateformes
+            keywords: liste des mots-clés
 
         Returns:
-            AIAnalysisResult: 分析结果
+            AIAnalysisResult: résultat de l'analyse
         """
-        
-        # 打印配置信息方便调试
+
+        # Affichage des informations de configuration pour faciliter le débogage
         model = self.ai_config.get("MODEL", "unknown")
         api_key = self.client.api_key or ""
         api_base = self.ai_config.get("API_BASE", "")
         masked_key = f"{api_key[:5]}******" if len(api_key) >= 5 else "******"
         model_display = model.replace("/", "/\u200b") if model else "unknown"
 
-        print(f"[AI] 模型: {model_display}")
-        print(f"[AI] Key : {masked_key}")
+        print(f"[AI] Modèle : {model_display}")
+        print(f"[AI] Clé : {masked_key}")
 
         if api_base:
-            print(f"[AI] 接口: 存在自定义 API 端点")
+            print(f"[AI] Interface : point de terminaison API personnalisé détecté")
 
         timeout = self.ai_config.get("TIMEOUT", 120)
         max_tokens = self.ai_config.get("MAX_TOKENS", 5000)
-        print(f"[AI] 参数: timeout={timeout}, max_tokens={max_tokens}")
+        print(f"[AI] Paramètres : timeout={timeout}, max_tokens={max_tokens}")
 
         if not self.client.api_key:
             return AIAnalysisResult(
                 success=False,
-                error="未配置 AI API Key，请在 config.yaml 或环境变量 AI_API_KEY 中设置"
+                error="Aucune clé d'API IA configurée ; veuillez la définir dans config.yaml ou via la variable d'environnement AI_API_KEY"
             )
 
-        # 准备新闻内容并获取统计数据
+        # Préparation du contenu des actualités et récupération des données statistiques
         news_content, rss_content, hotlist_total, rss_total, analyzed_count, hotlist_analyzed, rss_analyzed = self._prepare_news_content(stats, rss_stats)
         total_news = hotlist_total + rss_total
 
@@ -146,7 +146,7 @@ class AIAnalyzer:
             return AIAnalysisResult(
                 success=False,
                 skipped=True,
-                error="本轮无新增热点内容，跳过 AI 分析",
+                error="Aucun nouveau contenu tendance pour ce cycle ; analyse IA ignorée",
                 total_news=total_news,
                 hotlist_count=hotlist_total,
                 rss_count=rss_total,
@@ -154,27 +154,27 @@ class AIAnalyzer:
                 max_news_limit=self.max_news
             )
 
-        # 构建提示词
+        # Construction du prompt
         current_time = self.get_time_func().strftime("%Y-%m-%d %H:%M:%S")
 
-        # 提取关键词
+        # Extraction des mots-clés
         if not keywords:
             keywords = [s.get("word", "") for s in stats if s.get("word")] if stats else []
 
-        # 使用安全的字符串替换，避免模板中其他花括号（如 JSON 示例）被误解析
+        # On utilise un remplacement de chaîne sûr, afin d'éviter que d'autres accolades du modèle (comme les exemples JSON) soient interprétées à tort
         user_prompt = self.user_prompt_template
         user_prompt = user_prompt.replace("{report_mode}", report_mode)
         user_prompt = user_prompt.replace("{report_type}", report_type)
         user_prompt = user_prompt.replace("{current_time}", current_time)
         user_prompt = user_prompt.replace("{news_count}", str(hotlist_total))
         user_prompt = user_prompt.replace("{rss_count}", str(rss_total))
-        user_prompt = user_prompt.replace("{platforms}", ", ".join(platforms) if platforms else "多平台")
-        user_prompt = user_prompt.replace("{keywords}", ", ".join(keywords[:20]) if keywords else "无")
+        user_prompt = user_prompt.replace("{platforms}", ", ".join(platforms) if platforms else "plusieurs plateformes")
+        user_prompt = user_prompt.replace("{keywords}", ", ".join(keywords[:20]) if keywords else "aucun")
         user_prompt = user_prompt.replace("{news_content}", news_content)
         user_prompt = user_prompt.replace("{rss_content}", rss_content)
         user_prompt = user_prompt.replace("{language}", self.language)
 
-        # 构建独立展示区内容
+        # Construction du contenu de la zone d'affichage autonome
         standalone_content = ""
         standalone_count = 0
         if self.include_standalone and standalone_data:
@@ -183,7 +183,7 @@ class AIAnalyzer:
 
         if self.debug:
             print("\n" + "=" * 80)
-            print("[AI 调试] 发送给 AI 的完整提示词")
+            print("[AI débogage] Prompt complet envoyé à l'IA")
             print("=" * 80)
             if self.system_prompt:
                 print("\n--- System Prompt ---")
@@ -192,31 +192,31 @@ class AIAnalyzer:
             print(user_prompt)
             print("=" * 80 + "\n")
 
-        # 调用 AI API（使用 LiteLLM）
+        # Appel de l'API IA (via LiteLLM)
         try:
             response = self._call_ai(user_prompt)
             result = self._parse_response(response)
 
-            # JSON 解析失败时的重试兜底（仅重试一次）
-            if result.error and "JSON 解析错误" in result.error:
-                print(f"[AI] JSON 解析失败，尝试让 AI 修复...")
+            # Repli avec nouvelle tentative en cas d'échec d'analyse JSON (une seule tentative)
+            if result.error and "Erreur d'analyse JSON" in result.error:
+                print(f"[AI] Échec de l'analyse JSON ; tentative de correction par l'IA...")
                 retry_result = self._retry_fix_json(response, result.error)
                 if retry_result and retry_result.success and not retry_result.error:
-                    print("[AI] JSON 修复成功")
+                    print("[AI] Correction du JSON réussie")
                     retry_result.raw_response = response
                     result = retry_result
                 else:
-                    print("[AI] JSON 修复失败，使用原始文本兜底")
+                    print("[AI] Échec de la correction du JSON ; repli sur le texte brut")
 
-            # 如果配置未启用 RSS 分析，强制清空 AI 返回的 RSS 洞察
+            # Si l'analyse des flux RSS n'est pas activée dans la configuration, on vide de force les insights RSS renvoyés par l'IA
             if not self.include_rss:
                 result.rss_insights = ""
 
-            # 如果配置未启用 standalone 分析，强制清空
+            # Si l'analyse de la zone autonome n'est pas activée dans la configuration, on vide de force le résultat
             if not self.include_standalone:
                 result.standalone_summaries = {}
 
-            # 填充统计数据
+            # Remplissage des données statistiques
             result.total_news = total_news
             result.hotlist_count = hotlist_total
             result.rss_count = rss_total
@@ -232,10 +232,10 @@ class AIAnalyzer:
             error_type = type(e).__name__
             error_msg = str(e)
 
-            # 截断过长的错误消息
+            # On tronque les messages d'erreur trop longs
             if len(error_msg) > 200:
                 error_msg = error_msg[:200] + "..."
-            friendly_msg = f"AI 分析失败 ({error_type}): {error_msg}"
+            friendly_msg = f"Échec de l'analyse IA ({error_type}) : {error_msg}"
 
             return AIAnalysisResult(
                 success=False,
@@ -248,10 +248,10 @@ class AIAnalyzer:
         rss_stats: Optional[List[Dict]] = None,
     ) -> tuple:
         """
-        准备新闻内容文本（增强版）
+        Prépare le texte du contenu des actualités (version enrichie)
 
-        热榜新闻包含：来源、标题、排名范围、时间范围、出现次数
-        RSS 包含：来源、标题、发布时间
+        Une actualité tendance contient : source, titre, plage de classement, plage horaire, nombre d'occurrences
+        Un flux RSS contient : source, titre, date de publication
 
         Returns:
             tuple: (news_content, rss_content, hotlist_total, rss_total, analyzed_count, hotlist_analyzed, rss_analyzed)
@@ -261,17 +261,17 @@ class AIAnalyzer:
         news_count = 0
         rss_count = 0
 
-        # 计算总新闻数
+        # Calcul du nombre total d'actualités
         hotlist_total = sum(len(s.get("titles", [])) for s in stats) if stats else 0
         rss_total = sum(len(s.get("titles", [])) for s in rss_stats) if rss_stats else 0
 
-        # 热榜内容
+        # Contenu des tendances
         if stats:
             for stat in stats:
                 word = stat.get("word", "")
                 titles = stat.get("titles", [])
                 if word and titles:
-                    news_lines.append(f"\n**{word}** ({len(titles)}条)")
+                    news_lines.append(f"\n**{word}** ({len(titles)} entrées)")
                     for t in titles:
                         if not isinstance(t, dict):
                             continue
@@ -279,16 +279,16 @@ class AIAnalyzer:
                         if not title:
                             continue
 
-                        # 来源
+                        # Source
                         source = t.get("source_name", t.get("source", ""))
 
-                        # 构建行
+                        # Construction de la ligne
                         if source:
                             line = f"- [{source}] {title}"
                         else:
                             line = f"- {title}"
 
-                        # 始终显示简化格式：排名范围 + 时间范围 + 出现次数
+                        # Affichage systématique du format simplifié : plage de classement + plage horaire + nombre d'occurrences
                         ranks = t.get("ranks", [])
                         if ranks:
                             min_rank = min(ranks)
@@ -303,13 +303,13 @@ class AIAnalyzer:
 
                         appear_count = t.get("count", 1)
 
-                        line += f" | 排名:{rank_str} | 时间:{time_str} | 出现:{appear_count}次"
+                        line += f" | classement : {rank_str} | heure : {time_str} | occurrences : {appear_count}"
 
-                        # 开启完整时间线时，额外添加轨迹
+                        # Lorsque la chronologie complète est activée, on ajoute la trajectoire
                         if self.include_rank_timeline:
                             rank_timeline = t.get("rank_timeline", [])
                             timeline_str = self._format_rank_timeline(rank_timeline)
-                            line += f" | 轨迹:{timeline_str}"
+                            line += f" | trajectoire : {timeline_str}"
 
                         news_lines.append(line)
 
@@ -319,7 +319,7 @@ class AIAnalyzer:
                 if news_count >= self.max_news:
                     break
 
-        # RSS 内容（仅在启用时构建）
+        # Contenu RSS (construit uniquement si l'option est activée)
         if self.include_rss and rss_stats:
             remaining = self.max_news - news_count
             for stat in rss_stats:
@@ -328,7 +328,7 @@ class AIAnalyzer:
                 word = stat.get("word", "")
                 titles = stat.get("titles", [])
                 if word and titles:
-                    rss_lines.append(f"\n**{word}** ({len(titles)}条)")
+                    rss_lines.append(f"\n**{word}** ({len(titles)} entrées)")
                     for t in titles:
                         if not isinstance(t, dict):
                             continue
@@ -336,13 +336,13 @@ class AIAnalyzer:
                         if not title:
                             continue
 
-                        # 来源
+                        # Source
                         source = t.get("source_name", t.get("feed_name", ""))
 
-                        # 发布时间
+                        # Date de publication
                         time_display = t.get("time_display", "")
 
-                        # 构建行：[来源] 标题 | 发布时间
+                        # Construction de la ligne : [source] titre | date de publication
                         if source:
                             line = f"- [{source}] {title}"
                         else:
@@ -362,7 +362,7 @@ class AIAnalyzer:
         return news_content, rss_content, hotlist_total, rss_total, total_count, news_count, rss_count
 
     def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
+        """Appelle l'API IA (via LiteLLM)"""
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
@@ -372,36 +372,36 @@ class AIAnalyzer:
 
     def _retry_fix_json(self, original_response: str, error_msg: str) -> Optional[AIAnalysisResult]:
         """
-        JSON 解析失败时，请求 AI 修复 JSON（仅重试一次）
+        En cas d'échec d'analyse JSON, demande à l'IA de corriger le JSON (une seule tentative)
 
-        使用轻量 prompt，不重复原始分析的 system prompt，节省 token。
+        Utilise un prompt allégé qui ne reprend pas le system prompt de l'analyse initiale, afin d'économiser des tokens.
 
         Args:
-            original_response: AI 原始响应（JSON 格式有误）
-            error_msg: JSON 解析的错误信息
+            original_response: réponse brute de l'IA (JSON au format incorrect)
+            error_msg: message d'erreur de l'analyse JSON
 
         Returns:
-            修复后的分析结果，失败时返回 None
+            le résultat d'analyse après correction, ou None en cas d'échec
         """
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "你是一个 JSON 修复助手。用户会提供一段格式有误的 JSON 和错误信息，"
-                    "你需要修复 JSON 格式错误并返回正确的 JSON。\n"
-                    "常见问题：字符串值内的双引号未转义、缺少逗号、字符串未正确闭合等。\n"
-                    "只返回纯 JSON，不要包含 markdown 代码块标记（如 ```json）或任何说明文字。"
+                    "Tu es un assistant de correction de JSON. L'utilisateur va te fournir un JSON au format incorrect ainsi qu'un message d'erreur ; "
+                    "tu dois corriger les erreurs de format du JSON et renvoyer un JSON valide.\n"
+                    "Problèmes courants : guillemets doubles non échappés à l'intérieur d'une valeur de chaîne, virgules manquantes, chaînes mal fermées, etc.\n"
+                    "Renvoie uniquement du JSON brut, sans marqueur de bloc de code markdown (comme ```json) ni aucun texte explicatif."
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"以下 JSON 解析失败：\n\n"
-                    f"错误：{error_msg}\n\n"
-                    f"原始内容：\n{original_response}\n\n"
-                    f"请修复以上 JSON 中的格式问题（如值中的双引号改用中文引号「」或转义 \\\"、"
-                    f"缺少逗号、不完整的字符串等），保持原始内容语义不变，只修复格式。"
-                    f"直接返回修复后的纯 JSON。"
+                    f"L'analyse du JSON suivant a échoué :\n\n"
+                    f"Erreur : {error_msg}\n\n"
+                    f"Contenu original :\n{original_response}\n\n"
+                    f"Corrige les problèmes de format du JSON ci-dessus (par exemple en remplaçant les guillemets doubles présents dans une valeur par les guillemets 「」 ou en les échappant avec \\\", "
+                    f"en ajoutant les virgules manquantes, en complétant les chaînes incomplètes, etc.), en préservant le sens du contenu d'origine et en ne corrigeant que le format. "
+                    f"Renvoie directement le JSON brut corrigé."
                 ),
             },
         ]
@@ -410,15 +410,15 @@ class AIAnalyzer:
             response = self.client.chat(messages)
             return self._parse_response(response)
         except Exception as e:
-            print(f"[AI] 重试修复 JSON 异常: {type(e).__name__}: {e}")
+            print(f"[AI] Exception lors de la nouvelle tentative de correction du JSON : {type(e).__name__}: {e}")
             return None
 
     def _format_time_range(self, first_time: str, last_time: str) -> str:
-        """格式化时间范围（简化显示，只保留时分）"""
+        """Met en forme une plage horaire (affichage simplifié, on ne conserve que les heures et minutes)"""
         def extract_time(time_str: str) -> str:
             if not time_str:
                 return "-"
-            # 尝试提取 HH:MM 部分
+            # On tente d'extraire la partie HH:MM
             if " " in time_str:
                 parts = time_str.split(" ")
                 if len(parts) >= 2:
@@ -427,7 +427,7 @@ class AIAnalyzer:
                         return time_part[:5]  # HH:MM
             elif ":" in time_str:
                 return time_str[:5]
-            # 处理 HH-MM 格式
+            # Traitement du format HH-MM
             result = time_str[:5] if len(time_str) >= 5 else time_str
             if len(result) == 5 and result[2] == '-':
                 result = result.replace('-', ':')
@@ -441,7 +441,7 @@ class AIAnalyzer:
         return f"{first}~{last}"
 
     def _format_rank_timeline(self, rank_timeline: List[Dict]) -> str:
-        """格式化排名时间线"""
+        """Met en forme la chronologie des classements"""
         if not rank_timeline:
             return "-"
 
@@ -460,17 +460,17 @@ class AIAnalyzer:
 
     def _prepare_standalone_content(self, standalone_data: Dict) -> tuple:
         """
-        将独立展示区数据转为文本，注入 AI 分析 prompt
+        Convertit les données de la zone d'affichage autonome en texte, pour injection dans le prompt d'analyse IA
 
         Args:
-            standalone_data: 独立展示区数据 {"platforms": [...], "rss_feeds": [...]}
+            standalone_data: données de la zone d'affichage autonome {"platforms": [...], "rss_feeds": [...]}
 
         Returns:
-            tuple: (格式化的文本内容, 独立展示区条目数)
+            tuple: (contenu textuel mis en forme, nombre d'entrées de la zone d'affichage autonome)
         """
         lines = []
 
-        # 热榜平台
+        # Plateformes de tendances
         for platform in standalone_data.get("platforms", []):
             platform_id = platform.get("id", "")
             platform_name = platform.get("name", platform_id)
@@ -486,37 +486,37 @@ class AIAnalyzer:
 
                 line = f"- {title}"
 
-                # 排名信息
+                # Informations de classement
                 ranks = item.get("ranks", [])
                 if ranks:
                     min_rank = min(ranks)
                     max_rank = max(ranks)
                     rank_str = f"{min_rank}" if min_rank == max_rank else f"{min_rank}-{max_rank}"
-                    line += f" | 排名:{rank_str}"
+                    line += f" | classement : {rank_str}"
 
-                # 时间范围
+                # Plage horaire
                 first_time = item.get("first_time", "")
                 last_time = item.get("last_time", "")
                 if first_time:
                     time_str = self._format_time_range(first_time, last_time)
-                    line += f" | 时间:{time_str}"
+                    line += f" | heure : {time_str}"
 
-                # 出现次数
+                # Nombre d'occurrences
                 count = item.get("count", 1)
                 if count > 1:
-                    line += f" | 出现:{count}次"
+                    line += f" | occurrences : {count}"
 
-                # 排名轨迹（如果启用）
+                # Trajectoire de classement (si activée)
                 if self.include_rank_timeline:
                     rank_timeline = item.get("rank_timeline", [])
                     if rank_timeline:
                         timeline_str = self._format_rank_timeline(rank_timeline)
-                        line += f" | 轨迹:{timeline_str}"
+                        line += f" | trajectoire : {timeline_str}"
 
                 lines.append(line)
             lines.append("")
 
-        # RSS 源
+        # Sources RSS
         for feed in standalone_data.get("rss_feeds", []):
             feed_id = feed.get("id", "")
             feed_name = feed.get("name", feed_id)
@@ -546,14 +546,14 @@ class AIAnalyzer:
         return "\n".join(lines), standalone_count
 
     def _parse_response(self, response: str) -> AIAnalysisResult:
-        """解析 AI 响应"""
+        """Analyse la réponse de l'IA"""
         result = AIAnalysisResult(raw_response=response)
 
         if not response or not response.strip():
-            result.error = "AI 返回空响应"
+            result.error = "L'IA a renvoyé une réponse vide"
             return result
 
-        # 提取 JSON 文本（去掉 markdown 代码块标记）
+        # Extraction du texte JSON (en retirant les marqueurs de bloc de code markdown)
         json_str = response
 
         if "```json" in response:
@@ -572,12 +572,12 @@ class AIAnalyzer:
 
         json_str = json_str.strip()
         if not json_str:
-            result.error = "提取的 JSON 内容为空"
+            result.error = "Le contenu JSON extrait est vide"
             result.core_trends = response[:500] + "..." if len(response) > 500 else response
             result.success = True
             return result
 
-        # 第一步：标准 JSON 解析
+        # Première étape : analyse JSON standard
         data = None
         parse_error = None
 
@@ -586,32 +586,32 @@ class AIAnalyzer:
         except json.JSONDecodeError as e:
             parse_error = e
 
-        # 第二步：json_repair 本地修复
+        # Deuxième étape : correction locale via json_repair
         if data is None:
             try:
                 from json_repair import repair_json
                 repaired = repair_json(json_str, return_objects=True)
                 if isinstance(repaired, dict):
                     data = repaired
-                    print("[AI] JSON 本地修复成功（json_repair）")
+                    print("[AI] Correction locale du JSON réussie (json_repair)")
             except Exception:
                 pass
 
-        # 两步都失败，记录错误（后续由 analyze 方法的重试机制处理）
+        # Si les deux étapes échouent, on enregistre l'erreur (traitée ensuite par le mécanisme de nouvelle tentative de la méthode analyze)
         if data is None:
             if parse_error:
                 error_context = json_str[max(0, parse_error.pos - 30):parse_error.pos + 30] if json_str and parse_error.pos else ""
-                result.error = f"JSON 解析错误 (位置 {parse_error.pos}): {parse_error.msg}"
+                result.error = f"Erreur d'analyse JSON (position {parse_error.pos}) : {parse_error.msg}"
                 if error_context:
-                    result.error += f"，上下文: ...{error_context}..."
+                    result.error += f", contexte : ...{error_context}..."
             else:
-                result.error = "JSON 解析失败"
-            # 兜底：使用已提取的 json_str（不含 markdown 标记），避免推送中出现 ```json
+                result.error = "Échec de l'analyse JSON"
+            # Repli : on réutilise le json_str déjà extrait (sans les marqueurs markdown), afin d'éviter l'apparition de ```json dans la diffusion
             result.core_trends = json_str[:500] + "..." if len(json_str) > 500 else json_str
             result.success = True
             return result
 
-        # 解析成功，提取字段
+        # Analyse réussie : extraction des champs
         try:
             result.core_trends = data.get("core_trends", "")
             result.sentiment_controversy = data.get("sentiment_controversy", "")
@@ -619,7 +619,7 @@ class AIAnalyzer:
             result.rss_insights = data.get("rss_insights", "")
             result.outlook_strategy = data.get("outlook_strategy", "")
 
-            # 解析独立展示区概括
+            # Extraction des résumés de la zone d'affichage autonome
             summaries = data.get("standalone_summaries", {})
             if isinstance(summaries, dict):
                 result.standalone_summaries = {
@@ -628,7 +628,7 @@ class AIAnalyzer:
 
             result.success = True
         except (KeyError, TypeError, AttributeError) as e:
-            result.error = f"字段提取错误: {type(e).__name__}: {e}"
+            result.error = f"Erreur d'extraction des champs : {type(e).__name__}: {e}"
             result.core_trends = json_str[:500] + "..." if len(json_str) > 500 else json_str
             result.success = True
 

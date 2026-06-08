@@ -1,203 +1,204 @@
 # ═══════════════════════════════════════════════════════════════
-#                   TrendRadar 时间线配置
+#                   Configuration de la timeline TrendRadar
 #                      Version: 1.2.0
 # ═══════════════════════════════════════════════════════════════
 #
-# 这个文件控制「什么时间做什么事」。
+# Ce fichier contrôle « quoi faire et à quel moment ».
 #
-# 大多数人不需要编辑这个文件。
-# 只需在 config.yaml 中选择一个预设模板即可：
+# La plupart des utilisateurs n'ont pas besoin d'éditer ce fichier.
+# Il suffit de choisir un modèle prédéfini dans config.yaml :
 #
 #   schedule:
-#     preset: "morning_evening"    ← 改这里就行
+#     preset: "morning_evening"    ← il suffit de modifier ceci
 #
 #
-# 可视化配置编辑器地址: https://sansan0.github.io/TrendRadar/
+# Adresse de l'éditeur de configuration visuel : https://sansan0.github.io/TrendRadar/
 #
 #
 # ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-# 📖 基本概念（帮助你理解后面的配置）
+# 📖 Concepts de base (pour vous aider à comprendre la configuration qui suit)
 # ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
 #
 #
-# 🔁 程序是怎么运行的？
+# 🔁 Comment le programme fonctionne-t-il ?
 #
-#   TrendRadar 不是一直在后台运行的，而是被「定时闹钟」周期性唤醒：
+#   TrendRadar ne tourne pas en permanence en arrière-plan : il est réveillé
+#   périodiquement par un « réveil programmé » :
 #
-#     GitHub Actions 用户 → 由 .github/workflows/crawler.yml 中的 cron 定时触发
-#                           默认每小时运行一次（如每小时第 33 分钟）
+#     Utilisateurs GitHub Actions → déclenchés par le cron défini dans .github/workflows/crawler.yml
+#                           par défaut, exécution toutes les heures (par ex. à la 33e minute de chaque heure)
 #
-#     Docker 用户         → 由 docker/.env 中的 CRON_SCHEDULE 定时触发
-#                           默认每 30 分钟运行一次
+#     Utilisateurs Docker         → déclenchés par CRON_SCHEDULE défini dans docker/.env
+#                           par défaut, exécution toutes les 30 minutes
 #
-#   每次被唤醒后，程序按以下三个阶段依次执行：
+#   À chaque réveil, le programme exécute successivement les trois phases suivantes :
 #
-#     1️⃣ 采集（collect）
-#        爬取各热榜平台 + RSS 订阅源的最新数据，存入数据库
+#     1️⃣ Collecte (collect)
+#        Récupère les dernières données des plateformes de palmarès + des sources RSS, puis les stocke en base
 #
 #                  ⬇
 #
-#     2️⃣ 分析（analyze）
-#        调用 AI 大模型对采集到的新闻进行深度分析（可选，需配置 API Key）
+#     2️⃣ Analyse (analyze)
+#        Fait appel à un grand modèle IA pour une analyse approfondie des actualités collectées (optionnel, nécessite une clé API)
 #
 #                  ⬇
 #
-#     3️⃣ 推送（push）
-#        将整理好的热点新闻 + AI 分析结果发送到你的通知渠道
-#        （飞书、钉钉、Telegram、邮件等）
+#     3️⃣ Notification (push)
+#        Envoie les actualités phares organisées + les résultats de l'analyse IA vers vos canaux de notification
+#        (Feishu, DingTalk, Telegram, e-mail, etc.)
 #
-#   这三个阶段都可以独立开关。本文件的作用就是控制：
-#   「在什么时间段，开启/关闭哪些阶段」。
-#
-#
-# 🔌 config.yaml 总开关 与 timeline 时间段开关 的关系
-#
-#   config.yaml 里有几个「总开关」，它们的优先级高于本文件：
-#
-#     platforms.enabled: false   → 永远不爬热榜（无论 timeline 怎么设置）
-#     rss.enabled: false         → 永远不爬 RSS（同上）
-#     notification.enabled: false → 永远不推送（同上）
-#     ai_analysis.enabled: false  → 永远不分析（同上）
-#
-#   只有当总开关为 true 时，timeline 的时间段开关才会生效。
-#   换句话说：总开关决定「能不能做」，timeline 决定「什么时候做」。
+#   Ces trois phases peuvent être activées/désactivées indépendamment. Le rôle de ce fichier est de contrôler :
+#   « pour chaque plage horaire, quelles phases activer/désactiver ».
 #
 #
-# ⏰ 什么是「时间段」和「静默期」？
+# 🔌 Relation entre les interrupteurs généraux de config.yaml et les interrupteurs de plage horaire de la timeline
 #
-#   你可以把一天想象成一条时间线，上面划分了若干个「时间段」。
-#   每个时间段有自己的行为开关（是否采集、是否分析、是否推送）。
+#   config.yaml contient plusieurs « interrupteurs généraux » dont la priorité est supérieure à celle de ce fichier :
 #
-#   而不在任何时间段内的时间，就叫「静默期」（走 default 默认配置）。
-#   静默期通常必须要采集，这样数据一直在积累，
-#   等到推送时，就能汇总出完整的报告。
+#     platforms.enabled: false   → ne jamais crawler les palmarès (quelle que soit la configuration de la timeline)
+#     rss.enabled: false         → ne jamais crawler le RSS (idem)
+#     notification.enabled: false → ne jamais notifier (idem)
+#     ai_analysis.enabled: false  → ne jamais analyser (idem)
+#
+#   Les interrupteurs de plage horaire de la timeline ne prennent effet que si l'interrupteur général est à true.
+#   Autrement dit : l'interrupteur général décide « si l'on peut le faire », la timeline décide « quand le faire ».
 #
 #
-#   💡 静默期越长，积累的数据越丰富（排名变化轨迹、上榜/下榜时间等），
-#   最终提交给 AI 分析的上下文也越完整，分析质量更高。
-#   相比 MCP Server，该方案的全天数据能呈现更完整的热度趋势和变化脉络。
+# ⏰ Qu'est-ce qu'une « plage horaire » et une « période de silence » ?
+#
+#   Vous pouvez imaginer une journée comme une ligne de temps, divisée en plusieurs « plages horaires ».
+#   Chaque plage horaire a ses propres interrupteurs de comportement (collecte ou non, analyse ou non, notification ou non).
+#
+#   Le temps qui n'appartient à aucune plage horaire s'appelle la « période de silence » (elle suit la configuration par défaut « default »).
+#   La période de silence doit généralement collecter, afin que les données s'accumulent en continu,
+#   et qu'au moment de la notification, un rapport complet puisse être synthétisé.
+#
+#
+#   💡 Plus la période de silence est longue, plus les données accumulées sont riches (trajectoire des changements de classement, heures d'entrée/sortie du palmarès, etc.),
+#   et plus le contexte finalement soumis à l'analyse IA est complet, ce qui améliore la qualité de l'analyse.
+#   Par rapport à un serveur MCP, cette approche permet, grâce aux données de toute la journée, de présenter une tendance de popularité et une dynamique de changement plus complètes.
 #
 #
 # ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-# 📋 预设模板一览（选一个就行）
+# 📋 Aperçu des modèles prédéfinis (il suffit d'en choisir un)
 # ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
 #
-#   1️⃣ always_on        全天候，有新增就推（默认）
-#   2️⃣ morning_evening  全天推送 + 晚间汇总（推荐大多数人）
-#   3️⃣ office_hours     工作日三段式：到岗速览→午间热点→收工汇总
-#   4️⃣ night_owl        午后速览 + 深夜全天汇总
-#   5️⃣ custom           完全自定义（需要编辑本文件底部的 custom 段）
+#   1️⃣ always_on        En continu, notification dès qu'il y a une nouveauté (par défaut)
+#   2️⃣ morning_evening  Notification toute la journée + synthèse du soir (recommandé pour la plupart des gens)
+#   3️⃣ office_hours     Trois temps en jours ouvrés : aperçu à l'arrivée → actualités de midi → synthèse en fin de journée
+#   4️⃣ night_owl        Aperçu de l'après-midi + synthèse de toute la journée tard le soir
+#   5️⃣ custom           Entièrement personnalisable (nécessite d'éditer la section custom en bas de ce fichier)
 #
-# 想自定义？两种方式：
-#   1. 直接翻到本文件底部的「自定义模式」部分
-#   2. 在下方 presets 里新增你自己的预设模板
-#      （只要 key 不重复，然后在 config.yaml 里填你的模板名即可）
+# Envie de personnaliser ? Deux possibilités :
+#   1. Allez directement à la partie « Mode personnalisé » en bas de ce fichier
+#   2. Ajoutez votre propre modèle prédéfini dans presets ci-dessous
+#      (il suffit que la clé ne soit pas en double, puis indiquez le nom de votre modèle dans config.yaml)
 #
-# ⚠️ 关于时间段设计的建议：
-#   GitHub Actions： 建议定时任务间隔 ≥ 2 小时。由于系统触发存在随机延迟，间隔过短可能导致任务漏运行。
-#   Docker 用户：cron 定时是准时的，无此限制，按需设置即可。
+# ⚠️ Conseils concernant la conception des plages horaires :
+#   GitHub Actions : il est recommandé d'espacer les tâches planifiées d'au moins 2 heures. Comme le déclenchement par le système comporte un délai aléatoire, un intervalle trop court peut faire manquer l'exécution d'une tâche.
+#   Utilisateurs Docker : le cron est ponctuel, sans cette contrainte ; réglez-le selon vos besoins.
 #
 #
 # ═══════════════════════════════════════════════════════════════
 
 
 # ───────────────────────────────────────────────────────────────
-# 预设模板
+# Modèles prédéfinis
 # ───────────────────────────────────────────────────────────────
 presets:
 
   # ───────────────────────────────────────────────────────────
-  # 1️⃣ always_on - 全天候监控
+  # 1️⃣ always_on - Surveillance en continu
   #
-  # 最简单的模式：全天候采集 + 推送，有新增就通知你。
-  # 不划分时间段，全天使用同一套配置。
-  # 适合：重度用户、实时舆情监控
+  # Le mode le plus simple : collecte + notification en continu, vous êtes notifié dès qu'il y a une nouveauté.
+  # Aucune plage horaire n'est définie, la même configuration est utilisée toute la journée.
+  # Convient à : utilisateurs intensifs, surveillance en temps réel de l'opinion
   #
-  # 全天：推送 ✓ | AI分析 ✗ | 不限推送次数
+  # Toute la journée : notification ✓ | analyse IA ✗ | nombre de notifications illimité
   # ───────────────────────────────────────────────────────────
   always_on:
-    name: "全天监控"
-    description: "全天候监控，有新增立即推送。适合重度用户。"
+    name: "Surveillance permanente"
+    description: "Surveillance en continu, notification immédiate dès qu'il y a une nouveauté. Convient aux utilisateurs intensifs."
 
-    # 默认配置 ── 不在任何时间段内时，使用这组开关
-    # 因为这个模式没有划分时间段，所以 default 就是全天的行为
+    # Configuration par défaut ── ce jeu d'interrupteurs est utilisé en dehors de toute plage horaire
+    # Comme ce mode ne définit aucune plage horaire, default correspond au comportement de toute la journée
     default:
-      collect: true                # 采集数据（爬取热榜 + RSS）
-      analyze: false               # 不做 AI 分析（节省 API 费用）
-      ai_mode: "current"           # AI 分析当前榜单
-      push: true                   # 有新内容就推送
-      report_mode: "incremental"   # 只推送新增内容，避免重复
-      once:                        # 限制每个时间段内只执行一次
-        analyze: false             #   不限制分析次数
-        push: false                #   不限制推送次数
+      collect: true                # Collecter les données (crawler les palmarès + RSS)
+      analyze: false               # Pas d'analyse IA (pour économiser les frais d'API)
+      ai_mode: "current"           # L'IA analyse le palmarès actuel
+      push: true                   # Notifier dès qu'il y a du nouveau contenu
+      report_mode: "incremental"   # Ne notifier que le nouveau contenu, pour éviter les doublons
+      once:                        # Limite l'exécution à une seule fois par plage horaire
+        analyze: false             #   Pas de limite sur le nombre d'analyses
+        push: false                #   Pas de limite sur le nombre de notifications
 
-    # 没有定义任何时间段，全天都走 default
+    # Aucune plage horaire n'est définie, toute la journée suit default
     #
-    # 语法提示：{} 是 YAML 的「空字典」写法，表示里面没有任何内容。
-    # 等价于写成多行但什么都不填。后面的 [] 同理，表示「空列表」。
+    # Astuce de syntaxe : {} est l'écriture YAML d'un « dictionnaire vide », indiquant qu'il ne contient rien.
+    # Équivaut à l'écrire sur plusieurs lignes sans rien renseigner. Le [] qui suit est analogue : il indique une « liste vide ».
     periods: {}
     day_plans:
       all_day:
-        periods: []                   # 空列表 = 这天不启用任何时间段
+        periods: []                   # Liste vide = ce jour-là, aucune plage horaire n'est activée
     week_map:
-      1: "all_day"                 # 周一
-      2: "all_day"                 # 周二
-      3: "all_day"                 # 周三
-      4: "all_day"                 # 周四
-      5: "all_day"                 # 周五
-      6: "all_day"                 # 周六
-      7: "all_day"                 # 周日
+      1: "all_day"                 # Lundi
+      2: "all_day"                 # Mardi
+      3: "all_day"                 # Mercredi
+      4: "all_day"                 # Jeudi
+      5: "all_day"                 # Vendredi
+      6: "all_day"                 # Samedi
+      7: "all_day"                 # Dimanche
 
 
   # ───────────────────────────────────────────────────────────
-  # 2️⃣ morning_evening - 早晚汇总（推荐）
+  # 2️⃣ morning_evening - Synthèse matin et soir (recommandé)
   #
-  # 全天推送当前热点 + 晚间做一次当日全天汇总。
-  # 适合：大多数人
+  # Notification des actualités phares actuelles toute la journée + une synthèse de toute la journée le soir.
+  # Convient à : la plupart des gens
   #
-  # 默认（全天）：推送 ✓ | AI分析 ✓ | 不限推送次数
-  # 晚间汇总：推送 ✓ | AI分析 ✓ | 只推/分析一次
+  # Par défaut (toute la journée) : notification ✓ | analyse IA ✓ | nombre de notifications illimité
+  # Synthèse du soir : notification ✓ | analyse IA ✓ | une seule notification/analyse
   # ───────────────────────────────────────────────────────────
   morning_evening:
-    name: "早晚汇总"
-    description: "全天推送 + 晚间当日汇总。适合大多数人。"
+    name: "Synthèse matin et soir"
+    description: "Notification toute la journée + synthèse du jour le soir. Convient à la plupart des gens."
 
-    # 默认配置 ── 不命中任何时间段时的行为
+    # Configuration par défaut ── comportement quand aucune plage horaire n'est atteinte
     default:
-      collect: true                # 始终采集
-      analyze: true                # AI 分析当前榜单
-      ai_mode: "current"           # AI 分析当前榜单
-      push: true                   # 每次推送当前在榜热点
-      report_mode: "current"       # 当前在榜的新闻
-      # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-      # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-      # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
+      collect: true                # Toujours collecter
+      analyze: true                # L'IA analyse le palmarès actuel
+      ai_mode: "current"           # L'IA analyse le palmarès actuel
+      push: true                   # Notifier à chaque fois les actualités phares actuellement au palmarès
+      report_mode: "current"       # Les actualités actuellement au palmarès
+      # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+      # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+      # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
       once:
-        analyze: false             # 不限制分析次数
-        push: false                # 不限制推送次数
+        analyze: false             # Pas de limite sur le nombre d'analyses
+        push: false                # Pas de limite sur le nombre de notifications
 
-    # 时间段定义 ── 只有晚间汇总需要特殊处理
+    # Définition des plages horaires ── seule la synthèse du soir nécessite un traitement particulier
     periods:
       evening_summary:
-        name: "晚间汇总"
+        name: "Synthèse du soir"
         start: "20:00"
         end: "22:00"
-        # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-        # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-        # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
-        analyze: true              # 晚间做 AI 分析
-        ai_mode: "daily"           # AI 也汇总全天内容
-        report_mode: "daily"       # 切换为当日全部新闻汇总
+        # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+        # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+        # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
+        analyze: true              # Analyse IA le soir
+        ai_mode: "daily"           # L'IA synthétise aussi le contenu de toute la journée
+        report_mode: "daily"       # Bascule vers la synthèse de toutes les actualités du jour
         once:
-          analyze: true            # 窗口内只分析一次
-          push: true               # 窗口内只推送一次
+          analyze: true            # Une seule analyse dans la fenêtre
+          push: true               # Une seule notification dans la fenêtre
 
-    # 日计划 ── 把时间段组装成一天的安排
+    # Plan journalier ── assemble les plages horaires en un programme d'une journée
     day_plans:
       all_day:
         periods: ["evening_summary"]
 
-    # 周映射 ── 每天用哪个日计划（1=周一 ... 7=周日）
+    # Mappage hebdomadaire ── quel plan journalier utiliser chaque jour (1=lundi ... 7=dimanche)
     week_map:
       1: "all_day"
       2: "all_day"
@@ -209,102 +210,102 @@ presets:
 
 
   # ───────────────────────────────────────────────────────────
-  # 3️⃣ office_hours - 办公时间推送
+  # 3️⃣ office_hours - Notifications aux heures de bureau
   #
-  # 工作日三段式推送，周末增量自由推。
-  # 适合：上班族、企业用户
+  # Notifications en trois temps les jours ouvrés, notifications incrémentales libres le week-end.
+  # Convient à : actifs salariés, utilisateurs en entreprise
   #
-  # 默认（静默期）：推送 ✗ | AI分析 ✗
-  # 到岗速览：推送 ✓ | AI分析 ✓ | 只推一次
-  # 午间热点：推送 ✓ | AI分析 ✗ | 只推一次
-  # 收工汇总：推送 ✓ | AI分析 ✓ | 只推一次
-  # 周末自由：推送 ✓ | AI分析 ✗ | 不限推送次数
+  # Par défaut (période de silence) : notification ✗ | analyse IA ✗
+  # Aperçu à l'arrivée : notification ✓ | analyse IA ✓ | une seule notification
+  # Actualités de midi : notification ✓ | analyse IA ✗ | une seule notification
+  # Synthèse en fin de journée : notification ✓ | analyse IA ✓ | une seule notification
+  # Week-end libre : notification ✓ | analyse IA ✗ | nombre de notifications illimité
   # ───────────────────────────────────────────────────────────
   office_hours:
-    name: "办公时间"
-    description: "工作日三段式推送（到岗→午间→收工），周末增量自由推送。"
+    name: "Heures de bureau"
+    description: "Notifications en trois temps les jours ouvrés (arrivée → midi → fin de journée), notifications incrémentales libres le week-end."
 
     default:
       collect: true
       analyze: false
       ai_mode: "current"
-      push: false                  # 默认不推送
+      push: false                  # Pas de notification par défaut
       report_mode: "current"
       once:
-        analyze: true              # 每个时段只分析一次
-        push: true                 # 每个时段只推送一次
+        analyze: true              # Une seule analyse par plage horaire
+        push: true                 # Une seule notification par plage horaire
 
     periods:
       morning_briefing:
-        name: "到岗速览"
+        name: "Aperçu à l'arrivée"
         start: "09:00"
         end: "11:00"
-        analyze: true              # AI 分析当前热点
-        ai_mode: "current"         # AI 分析当前榜单
-        push: true                 # 到岗后看当前热点
-        report_mode: "current"     # 当前在榜的新闻
-        # once 继承 default（analyze: true, push: true）→ 只推/分析一次
+        analyze: true              # L'IA analyse les actualités phares actuelles
+        ai_mode: "current"         # L'IA analyse le palmarès actuel
+        push: true                 # Consulter les actualités phares actuelles à l'arrivée
+        report_mode: "current"     # Les actualités actuellement au palmarès
+        # once hérite de default (analyze: true, push: true) → une seule notification/analyse
 
       noon_update:
-        name: "午间热点"
+        name: "Actualités de midi"
         start: "13:00"
         end: "15:00"
-        push: true                 # 午间推送当前在榜热点
-        report_mode: "current"     # 当前在榜的新闻
-        # analyze 继承 default: false → 午间不做 AI 分析，节省 API
-        # once 继承 default（push: true）→ 只推一次
+        push: true                 # Notification à midi des actualités phares actuellement au palmarès
+        report_mode: "current"     # Les actualités actuellement au palmarès
+        # analyze hérite de default : false → pas d'analyse IA à midi, pour économiser l'API
+        # once hérite de default (push: true) → une seule notification
 
       closing_summary:
-        name: "收工汇总"
+        name: "Synthèse en fin de journée"
         start: "17:00"
         end: "19:00"
-        analyze: true              # AI 做全天汇总分析
-        ai_mode: "daily"           # AI 也分析全天内容
-        push: true                 # 下班前推送当日完整汇总
-        report_mode: "daily"       # 当日全部新闻汇总
-        # once 继承 default（analyze: true, push: true）→ 只推/分析一次
+        analyze: true              # L'IA fait une analyse de synthèse de toute la journée
+        ai_mode: "daily"           # L'IA analyse aussi le contenu de toute la journée
+        push: true                 # Notification de la synthèse complète du jour avant de quitter le travail
+        report_mode: "daily"       # Synthèse de toutes les actualités du jour
+        # once hérite de default (analyze: true, push: true) → une seule notification/analyse
 
       weekend_free:
-        name: "周末自由"
+        name: "Week-end libre"
         start: "08:00"
         end: "23:00"
-        ai_mode: "current"         # AI 分析当前榜单
-        push: true                 # 有新增就推送
-        report_mode: "incremental" # 增量模式：有新增才推，没有就安静
+        ai_mode: "current"         # L'IA analyse le palmarès actuel
+        push: true                 # Notifier dès qu'il y a une nouveauté
+        report_mode: "incremental" # Mode incrémental : notifier seulement s'il y a du nouveau, sinon rester silencieux
         once:
-          analyze: false           # 不限制分析次数
-          push: false              # 不限制推送次数
+          analyze: false           # Pas de limite sur le nombre d'analyses
+          push: false              # Pas de limite sur le nombre de notifications
 
-    # 工作日使用三段式推送；周末使用增量自由模式
+    # Les jours ouvrés utilisent la notification en trois temps ; le week-end utilise le mode incrémental libre
     day_plans:
       workday:
         periods: ["morning_briefing", "noon_update", "closing_summary"]
       weekend:
-        periods: ["weekend_free"]  # 周末：有新增就推，不打扰睡眠
+        periods: ["weekend_free"]  # Week-end : notifier dès qu'il y a une nouveauté, sans perturber le sommeil
 
     week_map:
-      1: "workday"                 # 周一 → 工作日计划
+      1: "workday"                 # Lundi → plan jour ouvré
       2: "workday"
       3: "workday"
       4: "workday"
       5: "workday"
-      6: "weekend"                 # 周六 → 周末计划
-      7: "weekend"                 # 周日 → 周末计划
+      6: "weekend"                 # Samedi → plan week-end
+      7: "weekend"                 # Dimanche → plan week-end
 
 
   # ───────────────────────────────────────────────────────────
-  # 4️⃣ night_owl - 夜猫子模式
+  # 4️⃣ night_owl - Mode couche-tard
   #
-  # 白天安静，午后和深夜各推一次。
-  # 适合：夜间工作者、海外时差用户、自由职业者
+  # Silence en journée, une notification l'après-midi et une tard le soir.
+  # Convient à : travailleurs de nuit, utilisateurs avec décalage horaire à l'étranger, freelances
   #
-  # 默认（白天静默）：推送 ✗ | AI分析 ✗
-  # 午后速览：推送 ✓ | AI分析 ✓ | 只推一次
-  # 深夜汇总：推送 ✓ | AI分析 ✓ | 只推一次
+  # Par défaut (silence en journée) : notification ✗ | analyse IA ✗
+  # Aperçu de l'après-midi : notification ✓ | analyse IA ✓ | une seule notification
+  # Synthèse tard le soir : notification ✓ | analyse IA ✓ | une seule notification
   # ───────────────────────────────────────────────────────────
   night_owl:
-    name: "夜猫子模式"
-    description: "午后速览 + 深夜全天汇总。适合夜间工作者、海外时差用户。"
+    name: "Mode couche-tard"
+    description: "Aperçu de l'après-midi + synthèse de toute la journée tard le soir. Convient aux travailleurs de nuit et aux utilisateurs avec décalage horaire à l'étranger."
 
     default:
       collect: true
@@ -313,29 +314,29 @@ presets:
       push: false
       report_mode: "current"
       once:
-        analyze: true              # 每个时段只分析一次
-        push: true                 # 每个时段只推送一次
+        analyze: true              # Une seule analyse par plage horaire
+        push: true                 # Une seule notification par plage horaire
 
     periods:
       afternoon_peek:
-        name: "午后速览"
+        name: "Aperçu de l'après-midi"
         start: "15:00"
         end: "17:00"
-        analyze: true              # AI 分析当前热点
-        ai_mode: "current"         # AI 分析当前榜单
-        push: true                 # 午后看当前热点
-        report_mode: "current"     # 当前在榜的新闻
-        # once 继承 default（analyze: true, push: true）→ 只推/分析一次
+        analyze: true              # L'IA analyse les actualités phares actuelles
+        ai_mode: "current"         # L'IA analyse le palmarès actuel
+        push: true                 # Consulter les actualités phares actuelles l'après-midi
+        report_mode: "current"     # Les actualités actuellement au palmarès
+        # once hérite de default (analyze: true, push: true) → une seule notification/analyse
 
       late_night:
-        name: "深夜汇总"
+        name: "Synthèse tard le soir"
         start: "22:00"
-        end: "01:00"               # start > end → 自动识别为跨日
-        analyze: true              # AI 做全天汇总分析
-        ai_mode: "daily"           # AI 也分析全天内容
-        push: true                 # 深夜推送当日完整汇总
-        report_mode: "daily"       # 当日全部新闻汇总
-        # once 继承 default（analyze: true, push: true）→ 只推/分析一次
+        end: "01:00"               # start > end → reconnu automatiquement comme chevauchant minuit
+        analyze: true              # L'IA fait une analyse de synthèse de toute la journée
+        ai_mode: "daily"           # L'IA analyse aussi le contenu de toute la journée
+        push: true                 # Notification de la synthèse complète du jour tard le soir
+        report_mode: "daily"       # Synthèse de toutes les actualités du jour
+        # once hérite de default (analyze: true, push: true) → une seule notification/analyse
 
     day_plans:
       all_day:
@@ -352,207 +353,207 @@ presets:
 
 # ═══════════════════════════════════════════════════════════════
 #
-# 5️⃣ 自定义模式
+# 5️⃣ Mode personnalisé
 #
-# 当 config.yaml 中设置 schedule.preset: "custom" 时，
-# 系统会读取下面这段配置。
+# Lorsque schedule.preset: "custom" est défini dans config.yaml,
+# le système lit la section de configuration ci-dessous.
 #
-# 如果上面的预设模板无法满足你的需求，可以在这里自由定义。
+# Si les modèles prédéfinis ci-dessus ne répondent pas à vos besoins, vous pouvez tout définir librement ici.
 #
 # ═══════════════════════════════════════════════════════════════
 #
-# 自定义配置的思路很简单，就像搭积木：
+# La logique de la configuration personnalisée est très simple, comme assembler des briques :
 #
-#   第 1 步：定义「积木块」（periods）
-#            每块积木 = 一个时间段 + 这段时间要做什么
-#            例如：早间 08-10 推送、晚间 19-21 汇总
+#   Étape 1 : définir les « briques » (periods)
+#            Chaque brique = une plage horaire + ce qu'il faut faire pendant cette plage
+#            Par exemple : notification le matin de 08h à 10h, synthèse le soir de 19h à 21h
 #
-#   第 2 步：拼成「一天的安排」（day_plans）
-#            把积木块组合起来，形成一天的日程
-#            例如：工作日用 [早间, 晚间]，周末用 [晚间]
+#   Étape 2 : assembler un « programme d'une journée » (day_plans)
+#            Combinez les briques pour former le programme d'une journée
+#            Par exemple : jours ouvrés [matin, soir], week-end [soir]
 #
-#   第 3 步：指定「每天用哪个安排」（week_map）
-#            周一到周日，分别对应哪个日计划
-#            例如：周一~周五用 workday，周六周日用 weekend
+#   Étape 3 : indiquer « quel programme utiliser chaque jour » (week_map)
+#            Du lundi au dimanche, à quel plan journalier chaque jour correspond
+#            Par exemple : lundi~vendredi utilisent workday, samedi et dimanche utilisent weekend
 #
-#   另外还有一个「默认配置」（default），
-#   当某个时刻不在任何积木块内时，就用默认配置。
-#   积木块里没写的字段，也会自动回退到默认配置。
+#   Il y a aussi une « configuration par défaut » (default) :
+#   lorsqu'un instant n'appartient à aucune brique, on utilise la configuration par défaut.
+#   Les champs non renseignés dans une brique reviennent aussi automatiquement à la configuration par défaut.
 #
 #
-# 下面是一个完整的自定义示例，工作日和周末使用不同的时间段安排：
+# Voici un exemple complet de personnalisation, où les jours ouvrés et le week-end utilisent des plages horaires différentes :
 #
-#   工作日时间段:
-#     深夜静默 23:00-06:00（跨日）：采集 ✓ | 分析 ✓ | 推送 ✗
-#     工作日早间 08:00-10:00：推送 ✓ | incremental
-#     晚间汇总 19:00-21:00：推送 ✓ | 分析 ✓ | daily
-#     其余时间走默认配置（静默采集）
+#   Plages horaires des jours ouvrés :
+#     Silence nocturne 23:00-06:00 (chevauchant minuit) : collecte ✓ | analyse ✓ | notification ✗
+#     Matin jour ouvré 08:00-10:00 : notification ✓ | incremental
+#     Synthèse du soir 19:00-21:00 : notification ✓ | analyse ✓ | daily
+#     Le reste du temps suit la configuration par défaut (collecte silencieuse)
 #
-#   周末时间段:
-#     深夜静默 23:00-06:00（跨日）：采集 ✓ | 分析 ✓ | 推送 ✗
-#     周末早间 10:00-12:00：推送 ✓ | daily
-#     晚间汇总 19:00-21:00：推送 ✓ | 分析 ✓ | daily
-#     其余时间走默认配置（静默采集）
+#   Plages horaires du week-end :
+#     Silence nocturne 23:00-06:00 (chevauchant minuit) : collecte ✓ | analyse ✓ | notification ✗
+#     Matin week-end 10:00-12:00 : notification ✓ | daily
+#     Synthèse du soir 19:00-21:00 : notification ✓ | analyse ✓ | daily
+#     Le reste du temps suit la configuration par défaut (collecte silencieuse)
 
 custom:
-  name: "自定义"
-  description: "完全自由定义时间段、日计划和周映射。"
+  name: "Personnalisé"
+  description: "Définition entièrement libre des plages horaires, des plans journaliers et du mappage hebdomadaire."
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 默认配置
+  # Configuration par défaut
   #
-  # 当前时刻不在任何时间段（积木块）内时，使用这组开关。
-  # 时间段中没有写的字段，也会回退到这里。
+  # Lorsque l'instant courant n'appartient à aucune plage horaire (brique), ce jeu d'interrupteurs est utilisé.
+  # Les champs non renseignés dans une plage horaire reviennent aussi ici.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   default:
-    collect: true                  # 是否采集数据（爬取热榜 + RSS）
-    analyze: false                 # 是否执行 AI 分析
-    ai_mode: "current"            # AI 分析模式:
-                                   #   follow_report → 跟随 report_mode
-                                   #   daily         → 强制全天汇总
-                                   #   current       → 强制当前榜单
-                                   #   incremental   → 强制增量模式
-    push: false                    # 是否发送推送通知
-    report_mode: "current"         # 报告模式:
-                                   #   daily       → 当日所有新闻的汇总
-                                   #   current     → 当前在榜的新闻
-                                   #   incremental → 只推送新增内容
+    collect: true                  # Collecter les données ou non (crawler les palmarès + RSS)
+    analyze: false                 # Exécuter l'analyse IA ou non
+    ai_mode: "current"            # Mode d'analyse IA :
+                                   #   follow_report → suit report_mode
+                                   #   daily         → force la synthèse de toute la journée
+                                   #   current       → force le palmarès actuel
+                                   #   incremental   → force le mode incrémental
+    push: false                    # Envoyer des notifications ou non
+    report_mode: "current"         # Mode de rapport :
+                                   #   daily       → synthèse de toutes les actualités du jour
+                                   #   current     → les actualités actuellement au palmarès
+                                   #   incremental → ne notifier que le nouveau contenu
 
-                                   
+
     # frequency_file: "general.txt"
-                                   # 关键词文件（可选，位于 config/custom/keyword/）
-                                   # 不填则使用默认的 config/frequency_words.txt
-                                   # 时间段（period）中也可以设置此字段来覆盖默认值
-                                   # 例如晚间汇总用科技词库：
+                                   # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+                                   # Si vide, utilise le config/frequency_words.txt par défaut
+                                   # Ce champ peut aussi être défini dans une plage horaire (period) pour remplacer la valeur par défaut
+                                   # Par exemple, utiliser un lexique tech pour la synthèse du soir :
                                    #   frequency_file: "tech.txt"
-                                   # 注意：仅在 filter_method 为 keyword 时生效
-                                   
-    # interests_file: "finance.txt"
-                                   # AI 兴趣描述文件（可选，位于 config/custom/ai/）
-                                   # 不填则使用默认的 config/ai_interests.txt
-                                   # 时间段（period）中也可以设置此字段来覆盖默认值
-                                   # 例如晚间汇总用金融兴趣：
-                                   #   interests_file: "finance.txt"
-                                   # 注意：仅在 filter_method 为 ai 时生效
+                                   # Remarque : prend effet uniquement lorsque filter_method vaut keyword
 
-    # filter_method: "keyword"     # 筛选策略（可选: keyword | ai）
-                                   # 不填则使用全局 config.yaml 的 filter.method
-                                   # 时间段（period）中也可以设置此字段来覆盖
-                                   # 例如晚间汇总用 AI 筛选：
+    # interests_file: "finance.txt"
+                                   # Fichier de description des intérêts IA (optionnel, situé dans config/custom/ai/)
+                                   # Si vide, utilise le config/ai_interests.txt par défaut
+                                   # Ce champ peut aussi être défini dans une plage horaire (period) pour remplacer la valeur par défaut
+                                   # Par exemple, utiliser des intérêts finance pour la synthèse du soir :
+                                   #   interests_file: "finance.txt"
+                                   # Remarque : prend effet uniquement lorsque filter_method vaut ai
+
+    # filter_method: "keyword"     # Stratégie de filtrage (optionnel : keyword | ai)
+                                   # Si vide, utilise le filter.method global de config.yaml
+                                   # Ce champ peut aussi être défini dans une plage horaire (period) pour le remplacer
+                                   # Par exemple, utiliser le filtrage IA pour la synthèse du soir :
                                    #   filter_method: "ai"
     once:
-      analyze: true                # 该时间段内只分析一次（省 API）
-      push: true                   # 该时间段内只推送一次（省打扰）
+      analyze: true                # Une seule analyse dans cette plage horaire (économise l'API)
+      push: true                   # Une seule notification dans cette plage horaire (limite les interruptions)
 
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 第 1 步：定义积木块（时间段）
+  # Étape 1 : définir les briques (plages horaires)
   #
-  # 每个时间段有一个唯一的 key（如 deep_quiet），
-  # 以及 start / end 表示生效的时间范围。
+  # Chaque plage horaire a une clé unique (par ex. deep_quiet),
+  # ainsi que start / end indiquant la plage de temps où elle s'applique.
   #
-  # 只需要写「和 default 不同的字段」，其余自动继承 default。
-  # 例如 weekday_morning 没写 collect，就会继承 default 的 collect: true。
+  # Il suffit d'écrire « les champs qui diffèrent de default », les autres héritent automatiquement de default.
+  # Par exemple, weekday_morning n'écrit pas collect, il hérite donc du collect: true de default.
   #
-  # 提示：如果 start > end（如 22:00 → 07:00），
-  #       系统会自动识别为跨越午夜的时间段。
+  # Astuce : si start > end (par ex. 22:00 → 07:00),
+  #       le système reconnaît automatiquement une plage horaire chevauchant minuit.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   periods:
 
     deep_quiet:
-      name: "深夜静默"
+      name: "Silence nocturne"
       start: "23:00"
-      end: "06:00"                 # 23:00 → 次日 06:00（跨日时间段）
-      # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-      # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-      # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
-      collect: true                # 夜间继续采集数据
-      analyze: true                # 夜间可以跑 AI 分析（反正不推送）
-      push: false                  # 深夜不推送，避免打扰
+      end: "06:00"                 # 23:00 → 06:00 le lendemain (plage horaire chevauchant minuit)
+      # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+      # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+      # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
+      collect: true                # Continuer à collecter les données la nuit
+      analyze: true                # On peut lancer l'analyse IA la nuit (de toute façon, pas de notification)
+      push: false                  # Pas de notification tard le soir, pour éviter de déranger
 
     weekday_morning:
-      name: "工作日早间"
+      name: "Matin jour ouvré"
       start: "08:00"
-      end: "10:00"                 # 跨度 2h，留足触发裕量
-      # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-      # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-      # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
-      push: true                   # 早上推送一次
-      report_mode: "incremental"   # 只推新增内容
-      # once 继承 default（push: true）→ 窗口内只推一次
+      end: "10:00"                 # Étendue de 2 h, pour laisser une marge de déclenchement suffisante
+      # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+      # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+      # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
+      push: true                   # Une notification le matin
+      report_mode: "incremental"   # Ne notifier que le nouveau contenu
+      # once hérite de default (push: true) → une seule notification dans la fenêtre
 
     weekend_morning:
-      name: "周末早间"
+      name: "Matin week-end"
       start: "10:00"
-      end: "12:00"                 # 跨度 2h
-      # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-      # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-      # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
+      end: "12:00"                 # Étendue de 2 h
+      # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+      # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+      # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
       push: true
-      report_mode: "daily"         # 周末看全天汇总
-      # once 继承 default（push: true）→ 窗口内只推一次
+      report_mode: "daily"         # Le week-end, consulter la synthèse de toute la journée
+      # once hérite de default (push: true) → une seule notification dans la fenêtre
 
     evening_summary:
-      name: "晚间汇总"
+      name: "Synthèse du soir"
       start: "19:00"
       end: "21:00"
-      # frequency_file: "xxx.txt"               # 关键词文件（可选，位于 config/custom/keyword/）
-      # interests_file: "xxx.txt"                # AI 兴趣文件（可选，位于 config/custom/ai/）
-      # filter_method: "keyword"                # 筛选策略（可选: keyword | ai，不填用全局 filter.method）
-      analyze: true                # 晚间做 AI 分析
-      ai_mode: "daily"             # AI 也分析全天内容
-      push: true                   # 晚间推送
-      report_mode: "daily"         # 当日全部新闻汇总
-      # once 继承 default（analyze: true, push: true）→ 只分析/推送一次
+      # frequency_file: "xxx.txt"               # Fichier de mots-clés (optionnel, situé dans config/custom/keyword/)
+      # interests_file: "xxx.txt"                # Fichier d'intérêts IA (optionnel, situé dans config/custom/ai/)
+      # filter_method: "keyword"                # Stratégie de filtrage (optionnel : keyword | ai ; si vide, utilise le filter.method global)
+      analyze: true                # Analyse IA le soir
+      ai_mode: "daily"             # L'IA analyse aussi le contenu de toute la journée
+      push: true                   # Notification le soir
+      report_mode: "daily"         # Synthèse de toutes les actualités du jour
+      # once hérite de default (analyze: true, push: true) → une seule analyse/notification
 
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 第 2 步：把积木块拼成日计划
+  # Étape 2 : assembler les briques en plans journaliers
   #
-  # 把上面定义的时间段组合成一天的安排。
-  # 你可以定义多个日计划（如 workday 和 weekend），
-  # 然后在第 3 步的 week_map 中分配给不同的星期。
+  # Combinez les plages horaires définies ci-dessus en un programme d'une journée.
+  # Vous pouvez définir plusieurs plans journaliers (par ex. workday et weekend),
+  # puis les attribuer à différents jours dans le week_map de l'étape 3.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   day_plans:
-    workday:                       # 工作日计划
+    workday:                       # Plan jour ouvré
       periods: ["deep_quiet", "weekday_morning", "evening_summary"]
-    weekend:                       # 周末计划（用 weekend_morning 替换 weekday_morning）
+    weekend:                       # Plan week-end (remplace weekday_morning par weekend_morning)
       periods: ["deep_quiet", "weekend_morning", "evening_summary"]
 
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 第 3 步：指定每天用哪个日计划
+  # Étape 3 : indiquer quel plan journalier utiliser chaque jour
   #
-  # 1=周一  2=周二  3=周三  4=周四  5=周五  6=周六  7=周日
+  # 1=lundi  2=mardi  3=mercredi  4=jeudi  5=vendredi  6=samedi  7=dimanche
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   week_map:
-    1: "workday"                   # 周一 → 工作日计划
-    2: "workday"                   # 周二
-    3: "workday"                   # 周三
-    4: "workday"                   # 周四
-    5: "workday"                   # 周五
-    6: "weekend"                   # 周六 → 周末计划
-    7: "weekend"                   # 周日
+    1: "workday"                   # Lundi → plan jour ouvré
+    2: "workday"                   # Mardi
+    3: "workday"                   # Mercredi
+    4: "workday"                   # Jeudi
+    5: "workday"                   # Vendredi
+    6: "weekend"                   # Samedi → plan week-end
+    7: "weekend"                   # Dimanche
 
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 冲突策略（一般不用改）
+  # Stratégie de conflit (généralement inutile à modifier)
   #
-  # 什么是「冲突」？
-  #   如果你的两个时间段有重叠（比如 A 是 08:00-12:00，B 是 10:00-14:00），
-  #   那么 10:00-12:00 这段时间就同时属于 A 和 B，产生了冲突。
-  #   此时程序需要知道：到底听谁的？
+  # Qu'est-ce qu'un « conflit » ?
+  #   Si deux de vos plages horaires se chevauchent (par ex. A est 08:00-12:00, B est 10:00-14:00),
+  #   alors la tranche 10:00-12:00 appartient à la fois à A et à B, ce qui crée un conflit.
+  #   Le programme doit alors savoir : laquelle suivre ?
   #
-  # 两种处理方式：
+  # Deux modes de traitement :
   #
-  #   error_on_overlap（推荐）
-  #     直接报错，提醒你去修改配置。
-  #     适合大多数人 —— 时间段重叠通常是写错了，报错能及时发现。
+  #   error_on_overlap (recommandé)
+  #     Lève directement une erreur, pour vous rappeler de modifier la configuration.
+  #     Convient à la plupart des gens —— un chevauchement de plages horaires est généralement une erreur, et l'erreur permet de la détecter à temps.
   #
   #   last_wins
-  #     day_plans 的 periods 列表中，写在后面的优先。
-  #     比如 periods: ["A", "B"]，重叠时 B 生效。
-  #     适合场景：你想用一个大范围时间段打底，再用后面的小范围覆盖。
+  #     Dans la liste periods d'un day_plans, celui écrit en dernier est prioritaire.
+  #     Par exemple periods: ["A", "B"], en cas de chevauchement c'est B qui s'applique.
+  #     Cas d'usage : vous voulez poser une grande plage horaire en fond, puis la recouvrir avec une plage plus petite écrite ensuite.
   #
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   overlap:

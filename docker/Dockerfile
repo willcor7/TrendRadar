@@ -26,7 +26,7 @@ RUN set -ex && \
     ;; \
     esac && \
     echo "Downloading supercronic for ${TARGETARCH} from ${SUPERCRONIC_URL}" && \
-    # 重试机制：最多3次，每次超时30秒
+    # Mécanisme de réessai : 3 tentatives maximum, délai d'attente de 30 secondes par tentative
     for i in 1 2 3; do \
         echo "Download attempt $i/3"; \
         if curl -fsSL --connect-timeout 30 --max-time 60 -o "$SUPERCRONIC" "$SUPERCRONIC_URL"; then \
@@ -50,15 +50,15 @@ RUN set -ex && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 从官方镜像拷贝 uv 二进制
+# Copier le binaire uv depuis l'image officielle
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 先安装依赖（利用 Docker 层缓存）
+# Installer d'abord les dépendances (en tirant parti du cache de couches Docker)
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
-# 再复制项目代码并安装项目本身
+# Copier ensuite le code du projet et installer le projet lui-même
 COPY docker/manage.py .
 COPY trendradar/ ./trendradar/
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -66,7 +66,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# 复制 entrypoint.sh 并强制转换为 LF 格式
+# Copier entrypoint.sh et forcer la conversion au format LF
 COPY docker/entrypoint.sh /entrypoint.sh.tmp
 RUN sed -i 's/\r$//' /entrypoint.sh.tmp && \
     mv /entrypoint.sh.tmp /entrypoint.sh && \

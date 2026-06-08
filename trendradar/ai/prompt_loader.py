@@ -1,15 +1,15 @@
 # coding=utf-8
 """
-提示词模板加载工具
+Outil de chargement des modèles de prompts
 
-从配置目录中加载 [system] / [user] 格式的提示词文件，
-供 analyzer、translator、filter 等模块共享使用。
+Charge depuis le répertoire de configuration les fichiers de prompts au format
+[system] / [user], partagés par les modules analyzer, translator, filter, etc.
 """
 
 from pathlib import Path
 from typing import Tuple
 
-# 项目 config 根目录
+# Répertoire racine config du projet
 _CONFIG_ROOT = Path(__file__).parent.parent.parent / "config"
 
 
@@ -19,21 +19,21 @@ def load_prompt_template(
     label: str = "AI",
 ) -> Tuple[str, str]:
     """
-    加载提示词模板文件，解析 [system] 和 [user] 部分。
+    Charge un fichier de modèle de prompt et analyse les parties [system] et [user].
 
     Args:
-        prompt_file: 提示词文件名
-        config_subdir: config 下的子目录（如 "ai_filter"），为空则直接在 config/ 下查找
-        label: 日志标签，用于提示文件缺失时的打印
+        prompt_file: nom du fichier de prompt
+        config_subdir: sous-répertoire dans config (par exemple "ai_filter") ; si vide, la recherche se fait directement dans config/
+        label: étiquette de journal, utilisée pour l'affichage lorsque le fichier est manquant
 
     Returns:
-        (system_prompt, user_prompt_template) 元组
+        tuple (system_prompt, user_prompt_template)
     """
     config_dir = _CONFIG_ROOT / config_subdir if config_subdir else _CONFIG_ROOT
     prompt_path = config_dir / prompt_file
 
     if not prompt_path.exists():
-        print(f"[{label}] 提示词文件不存在: {prompt_path}")
+        print(f"[{label}] Fichier de prompt introuvable : {prompt_path}")
         return "", ""
 
     content = prompt_path.read_text(encoding="utf-8")

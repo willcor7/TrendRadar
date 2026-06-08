@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-消息分批处理模块
+Module de découpage des messages en lots
 
-提供消息内容分批拆分功能，确保消息大小不超过各平台限制
+Découpe le contenu des messages en lots pour ne pas dépasser les limites de chaque plateforme.
 """
 
 from datetime import datetime
@@ -14,23 +14,23 @@ from trendradar.utils.time import DEFAULT_TIMEZONE, format_iso_time_friendly, co
 from trendradar.notification.batch import truncate_at_line_boundary
 
 
-# === 分批安全辅助函数 ===
+# === Fonctions auxiliaires de découpage sécurisé en lots ===
 
 def _split_content_by_lines(
     content: str, footer: str, max_bytes: int, base_header: str
 ) -> List[str]:
-    """将超长内容按行边界拆分成多个完整批次（每个批次带 footer）
+    """Découpe un contenu trop long en plusieurs lots complets aux limites de ligne (chaque lot avec son footer)
 
-    不会丢弃任何内容，溢出部分自动分配到后续批次。
+    Aucun contenu n'est perdu : la partie en débordement est automatiquement répartie sur les lots suivants.
 
     Args:
-        content: 正文内容（不含 footer，可能含 base_header）
-        footer: 尾部内容（更新时间等）
-        max_bytes: 单批次最大字节数
-        base_header: 后续批次的头部
+        content: contenu du corps (sans footer, peut contenir base_header)
+        footer: contenu de pied de page (date de mise à jour, etc.)
+        max_bytes: nombre d'octets maximal par lot
+        base_header: en-tête des lots suivants
 
     Returns:
-        完整批次列表（每个元素 = 正文 + footer，大小 ≤ max_bytes）
+        liste des lots complets (chaque élément = corps + footer, taille ≤ max_bytes)
     """
     footer_size = len(footer.encode("utf-8"))
     result_batches = []
@@ -55,14 +55,14 @@ def _safe_append_batch(
     batches: List[str], content: str, footer: str, max_bytes: int,
     base_header: str = ""
 ) -> None:
-    """安全追加批次，超限时按行拆分成多个批次（不丢弃内容）
+    """Ajoute un lot en toute sécurité, en le découpant en plusieurs lots aux limites de ligne en cas de dépassement (sans perdre de contenu)
 
     Args:
-        batches: 批次列表（原地修改）
-        content: 正文内容（不含 footer）
-        footer: 尾部内容（更新时间等）
-        max_bytes: 最大字节数
-        base_header: 溢出时后续批次的头部
+        batches: liste des lots (modifiée sur place)
+        content: contenu du corps (sans footer)
+        footer: contenu de pied de page (date de mise à jour, etc.)
+        max_bytes: nombre d'octets maximal
+        base_header: en-tête des lots suivants en cas de débordement
     """
     full = content + footer
     if len(full.encode("utf-8")) <= max_bytes:
@@ -73,7 +73,7 @@ def _safe_append_batch(
     if split_batches:
         batches.extend(split_batches)
     else:
-        # 极端情况：单行就超限，强制截断
+        # cas extrême : une seule ligne dépasse déjà la limite, troncature forcée
         batches.append(truncate_at_line_boundary(full, max_bytes))
 
 
@@ -81,23 +81,23 @@ def _safe_new_batch(
     new_content: str, footer: str, max_bytes: int, base_header: str,
     batches: List[str] = None
 ) -> str:
-    """安全创建新批次，超限时将溢出内容拆分到 batches 中，返回最后一段作为 current_batch
+    """Crée un nouveau lot en toute sécurité ; en cas de dépassement, répartit le contenu en débordement dans batches et renvoie le dernier segment comme current_batch
 
     Args:
-        new_content: 新批次完整内容（含 base_header + section_header + ...）
-        footer: 尾部内容
-        max_bytes: 最大字节数
-        base_header: 基础头部
-        batches: 批次列表，溢出部分追加到此（可选）
+        new_content: contenu complet du nouveau lot (contient base_header + section_header + ...)
+        footer: contenu de pied de page
+        max_bytes: nombre d'octets maximal
+        base_header: en-tête de base
+        batches: liste des lots, à laquelle la partie en débordement est ajoutée (optionnel)
 
     Returns:
-        可安全继续追加内容的 current_batch（大小 + footer ≤ max_bytes）
+        le current_batch auquel on peut continuer à ajouter du contenu en toute sécurité (taille + footer ≤ max_bytes)
     """
     if len((new_content + footer).encode("utf-8")) <= max_bytes:
         return new_content
 
     if batches is None:
-        # 无法拆分到 batches，退回行边界截断
+        # impossible de répartir dans batches, on revient à la troncature à la limite d'une ligne
         footer_size = len(footer.encode("utf-8"))
         available = max_bytes - footer_size
         header_size = len(base_header.encode("utf-8"))
@@ -105,22 +105,22 @@ def _safe_new_batch(
             return base_header
         return truncate_at_line_boundary(new_content, available)
 
-    # 拆分：前面的部分存入 batches，最后一段作为 current_batch 返回
+    # découpage : les parties précédentes sont stockées dans batches, le dernier segment est renvoyé comme current_batch
     split_batches = _split_content_by_lines(new_content, footer, max_bytes, base_header)
     if len(split_batches) <= 1:
-        # 无法再拆，直接返回（由后续 _safe_append_batch 兜底）
+        # impossible de découper davantage, on renvoie tel quel (la suite est gérée par _safe_append_batch)
         return new_content
 
-    # 前 N-1 个批次存入 batches
+    # les N-1 premiers lots sont stockés dans batches
     batches.extend(split_batches[:-1])
-    # 最后一个批次去掉 footer 作为 current_batch（后续还会追加内容）
+    # on retire le footer du dernier lot pour en faire le current_batch (du contenu y sera encore ajouté ensuite)
     last = split_batches[-1]
     if last.endswith(footer):
         return last[: -len(footer)]
     return last
 
 
-# 默认批次大小配置
+# configuration par défaut de la taille des lots
 DEFAULT_BATCH_SIZES = {
     "dingtalk": 20000,
     "feishu": 29000,
@@ -128,7 +128,7 @@ DEFAULT_BATCH_SIZES = {
     "default": 4000,
 }
 
-# 默认区域顺序
+# ordre des zones par défaut
 DEFAULT_REGION_ORDER = ["hotlist", "rss", "new_items", "standalone", "ai_analysis"]
 
 
@@ -150,40 +150,40 @@ def split_content_into_batches(
     standalone_data: Optional[Dict] = None,
     rank_threshold: int = 10,
     ai_stats: Optional[Dict] = None,
-    report_type: str = "热点分析报告",
+    report_type: str = "rapport d'analyse des tendances",
     show_new_section: bool = True,
 ) -> List[str]:
-    """分批处理消息内容，确保词组标题+至少第一条新闻的完整性（支持热榜+RSS合并+AI分析+独立展示区）
+    """Découpe le contenu du message en lots, en préservant l'intégrité du titre de groupe + au moins la première actualité (prend en charge Tendances + RSS fusionnés + Analyse IA + Zone d'affichage autonome)
 
-    热榜统计与RSS统计并列显示，热榜新增与RSS新增并列显示。
-    region_order 控制各区域的显示顺序。
-    AI分析内容根据 region_order 中的位置显示。
-    独立展示区根据 region_order 中的位置显示。
+    Les statistiques des tendances et les statistiques RSS sont affichées côte à côte, de même que les nouveautés des tendances et les nouveautés RSS.
+    region_order contrôle l'ordre d'affichage de chaque zone.
+    Le contenu de l'Analyse IA est affiché selon sa position dans region_order.
+    La Zone d'affichage autonome est affichée selon sa position dans region_order.
 
     Args:
-        report_data: 报告数据字典，包含 stats, new_titles, failed_ids, total_new_count
-        format_type: 格式类型 (feishu, dingtalk, wework, telegram, ntfy, bark, slack)
-        update_info: 版本更新信息（可选）
-        max_bytes: 最大字节数（可选，如果不指定则使用默认配置）
-        mode: 报告模式 (daily, incremental, current)
-        batch_sizes: 批次大小配置字典（可选）
-        feishu_separator: 飞书消息分隔符
-        region_order: 区域显示顺序列表
-        get_time_func: 获取当前时间的函数（可选）
-        rss_items: RSS 统计条目列表（按源分组，用于合并推送）
-        rss_new_items: RSS 新增条目列表（可选，用于新增区块）
-        timezone: 时区名称（用于 RSS 时间格式化）
-        display_mode: 显示模式 (keyword=按关键词分组, platform=按平台分组)
-        ai_content: AI 分析内容（已渲染的字符串，可选）
-        standalone_data: 独立展示区数据（可选），包含 platforms 和 rss_feeds 列表
-        ai_stats: AI 分析统计数据（可选），包含 total_news, analyzed_news, max_news_limit 等
+        report_data: dictionnaire des données du rapport, contient stats, new_titles, failed_ids, total_new_count
+        format_type: type de format (feishu, dingtalk, wework, telegram, ntfy, bark, slack)
+        update_info: informations de mise à jour de version (optionnel)
+        max_bytes: nombre d'octets maximal (optionnel, à défaut la configuration par défaut est utilisée)
+        mode: mode du rapport (daily, incremental, current)
+        batch_sizes: dictionnaire de configuration de la taille des lots (optionnel)
+        feishu_separator: séparateur des messages Feishu
+        region_order: liste de l'ordre d'affichage des zones
+        get_time_func: fonction renvoyant l'heure courante (optionnel)
+        rss_items: liste des entrées RSS pour les statistiques (regroupées par source, pour l'envoi fusionné)
+        rss_new_items: liste des nouvelles entrées RSS (optionnel, pour le bloc des nouveautés)
+        timezone: nom du fuseau horaire (pour le formatage de l'heure des entrées RSS)
+        display_mode: mode d'affichage (keyword = regroupement par mot-clé, platform = regroupement par plateforme)
+        ai_content: contenu de l'Analyse IA (chaîne déjà rendue, optionnel)
+        standalone_data: données de la Zone d'affichage autonome (optionnel), contient les listes platforms et rss_feeds
+        ai_stats: données statistiques de l'Analyse IA (optionnel), contient total_news, analyzed_news, max_news_limit, etc.
 
     Returns:
-        分批后的消息内容列表
+        liste du contenu des messages après découpage en lots
     """
     if region_order is None:
         region_order = DEFAULT_REGION_ORDER
-    # 合并批次大小配置
+    # fusionne la configuration de la taille des lots
     sizes = {**DEFAULT_BATCH_SIZES, **(batch_sizes or {})}
 
     if max_bytes is None:
@@ -203,16 +203,16 @@ def split_content_into_batches(
     )
     total_titles = total_hotlist_count
     
-    # 累加 RSS 条目数
+    # ajoute le nombre d'entrées RSS au total
     if rss_items:
         total_titles += sum(stat.get("count", 0) for stat in rss_items)
 
     now = get_time_func() if get_time_func else datetime.now()
 
-    # 构建头部信息
+    # construit les informations d'en-tête
     base_header = ""
 
-    # 格式化粗体标记
+    # marqueurs de mise en gras selon le format
     if format_type == "slack":
         b_s, b_e = "*", "*"
     elif format_type == "telegram":
@@ -220,7 +220,7 @@ def split_content_into_batches(
     else:
         b_s, b_e = "**", "**"
 
-    # 提取统计数据
+    # extrait les données statistiques
     hotlist_total = report_data.get("hotlist_total", total_hotlist_count)
     new_count = report_data.get("total_new_count", 0)
     platform_total = report_data.get("platform_total", 0)
@@ -232,28 +232,28 @@ def split_content_into_batches(
     rss_source_failed = report_data.get("rss_source_failed", 0)
     rss_source_success = max(0, rss_source_total - rss_source_failed)
 
-    # === 上半部分：数据统计 ===
+    # === Partie supérieure : statistiques des données ===
 
-    # 1. 总新闻
+    # 1. Total actualités
     rss_new_count = sum(len(stat.get("titles", [])) for stat in (rss_new_items or []))
     total_new = new_count + rss_new_count
-    total_news_line = f"{b_s}总新闻：{b_e} {total_titles} 条"
+    total_news_line = f"{b_s}Total actualités : {b_e} {total_titles} entrées"
     if total_new > 0:
-        total_news_line += f"（新增 {new_count} + {rss_new_count}）"
+        total_news_line += f" (nouv. {new_count} + {rss_new_count}) "
     base_header += f"{total_news_line}\n"
 
-    # 2. 热榜
-    hotlist_info = f"{b_s}热榜：{b_e} {total_hotlist_count}/{hotlist_total}"
+    # 2. Tendances
+    hotlist_info = f"{b_s}Tendances : {b_e} {total_hotlist_count}/{hotlist_total}"
     if platform_total > 0:
-        hotlist_info += f"（平台 {platform_success}/{platform_total}）"
+        hotlist_info += f" (plateformes {platform_success}/{platform_total}) "
     base_header += f"{hotlist_info}\n"
 
     # 3. RSS
     if rss_source_total > 0:
-        rss_info = f"{b_s}RSS：{b_e} {rss_matched}/{rss_total_items}（源 {rss_source_success}/{rss_source_total}）"
+        rss_info = f"{b_s}RSS : {b_e} {rss_matched}/{rss_total_items} (sources {rss_source_success}/{rss_source_total}) "
         base_header += f"{rss_info}\n"
 
-    # 4. 独立展示区（仅在有数据时显示）
+    # 4. Zone d'affichage autonome (affichée uniquement si des données sont présentes)
     if standalone_data:
         sa_platform_count = sum(len(p.get("items", [])) for p in standalone_data.get("platforms", []))
         sa_rss_count = sum(len(f.get("items", [])) for f in standalone_data.get("rss_feeds", []))
@@ -261,12 +261,12 @@ def split_content_into_batches(
         if sa_total > 0:
             sa_parts = []
             if sa_platform_count > 0:
-                sa_parts.append(f"热榜 {sa_platform_count}")
+                sa_parts.append(f"Tendances {sa_platform_count}")
             if sa_rss_count > 0:
                 sa_parts.append(f"RSS {sa_rss_count}")
-            base_header += f"{b_s}独立展示：{b_e} {sa_total} 条（{' + '.join(sa_parts)}）\n"
+            base_header += f"{b_s}Affichage autonome : {b_e} {sa_total} entrées ({' + '.join(sa_parts)}) \n"
 
-    # 5. AI 分析（仅在有分析数据时显示）
+    # 5. Analyse IA (affichée uniquement si des données d'analyse sont présentes)
     standalone_analyzed = ai_stats.get("standalone_analyzed", 0) if ai_stats else 0
     ai_has_data = ai_stats and (ai_stats.get("analyzed_news", 0) > 0 or standalone_analyzed > 0)
     if ai_has_data:
@@ -283,22 +283,22 @@ def split_content_into_batches(
 
         mode_suffix = ""
         if ai_mode_val and ai_mode_val != mode:
-            mode_map = {"daily": "全天汇总", "current": "当前榜单", "incremental": "增量分析"}
+            mode_map = {"daily": "Synthèse de la journée", "current": "Classement actuel", "incremental": "Analyse incrémentale"}
             mode_suffix = f" [{mode_map.get(ai_mode_val, ai_mode_val)}]"
 
-        base_header += f"{b_s}AI 分析：{b_e} {ai_display}{mode_suffix}\n"
+        base_header += f"{b_s}Analyse IA : {b_e} {ai_display}{mode_suffix}\n"
 
-    # === 空行分隔 ===
+    # === Ligne vide de séparation ===
     base_header += "\n"
 
-    # === 下半部分：元信息 ===
-    base_header += f"{b_s}类型：{b_e} {report_type}\n"
-    base_header += f"{b_s}时间：{b_e} {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
+    # === Partie inférieure : métadonnées ===
+    base_header += f"{b_s}Type : {b_e} {report_type}\n"
+    base_header += f"{b_s}Heure : {b_e} {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
 
     top_words = report_data.get("stats", [])[:3]
     if top_words:
         topics = " | ".join(f"{s['word']}({s['count']})" for s in top_words)
-        base_header += f"{b_s}最热话题：{b_e} {topics}\n"
+        base_header += f"{b_s}Sujet le plus populaire : {b_e} {topics}\n"
 
     if format_type in ("feishu", "dingtalk"):
         base_header += "\n---\n\n"
@@ -307,83 +307,83 @@ def split_content_into_batches(
 
     base_footer = ""
     if format_type in ("wework", "bark"):
-        base_footer = f"\n\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        base_footer = f"\n\n\n> Mis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}"
         if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
+            base_footer += f"\n> TrendRadar nouvelle version détectée **{update_info['remote_version']}**, version actuelle **{update_info['current_version']}**"
     elif format_type == "telegram":
-        base_footer = f"\n\n更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        base_footer = f"\n\nMis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}"
         if update_info:
-            base_footer += f"\nTrendRadar 发现新版本 {update_info['remote_version']}，当前 {update_info['current_version']}"
+            base_footer += f"\nTrendRadar nouvelle version détectée {update_info['remote_version']}, version actuelle {update_info['current_version']}"
     elif format_type == "ntfy":
-        base_footer = f"\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        base_footer = f"\n\n> Mis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}"
         if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
+            base_footer += f"\n> TrendRadar nouvelle version détectée **{update_info['remote_version']}**, version actuelle **{update_info['current_version']}**"
     elif format_type == "feishu":
-        base_footer = f"\n\n<font color='grey'>更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}</font>"
+        base_footer = f"\n\n<font color='grey'>Mis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}</font>"
         if update_info:
-            base_footer += f"\n<font color='grey'>TrendRadar 发现新版本 {update_info['remote_version']}，当前 {update_info['current_version']}</font>"
+            base_footer += f"\n<font color='grey'>TrendRadar nouvelle version détectée {update_info['remote_version']}, version actuelle {update_info['current_version']}</font>"
     elif format_type == "dingtalk":
-        base_footer = f"\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        base_footer = f"\n\n> Mis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}"
         if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
+            base_footer += f"\n> TrendRadar nouvelle version détectée **{update_info['remote_version']}**, version actuelle **{update_info['current_version']}**"
     elif format_type == "slack":
-        base_footer = f"\n\n_更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}_"
+        base_footer = f"\n\n_Mis à jour le : {now.strftime('%Y-%m-%d %H:%M:%S')}_"
         if update_info:
-            base_footer += f"\n_TrendRadar 发现新版本 *{update_info['remote_version']}*，当前 *{update_info['current_version']}_"
+            base_footer += f"\n_TrendRadar nouvelle version détectée *{update_info['remote_version']}*, version actuelle *{update_info['current_version']}_"
 
-    # 根据 display_mode 选择统计标题
-    stats_title = "热点词汇统计" if display_mode == "keyword" else "热点新闻统计"
+    # choisit le titre des statistiques selon display_mode
+    stats_title = "Statistiques des tendances" if display_mode == "keyword" else "Statistiques des actualités"
     stats_header = ""
     if report_data["stats"]:
         if format_type in ("wework", "bark"):
-            stats_header = f"📊 **{stats_title}** (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 **{stats_title}** (total : {total_hotlist_count} entrées)\n\n"
         elif format_type == "telegram":
-            stats_header = f"📊 {stats_title} (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 {stats_title} (total : {total_hotlist_count} entrées)\n\n"
         elif format_type == "ntfy":
-            stats_header = f"📊 **{stats_title}** (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 **{stats_title}** (total : {total_hotlist_count} entrées)\n\n"
         elif format_type == "feishu":
-            stats_header = f"📊 **{stats_title}** (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 **{stats_title}** (total : {total_hotlist_count} entrées)\n\n"
         elif format_type == "dingtalk":
-            stats_header = f"📊 **{stats_title}** (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 **{stats_title}** (total : {total_hotlist_count} entrées)\n\n"
         elif format_type == "slack":
-            stats_header = f"📊 *{stats_title}* (共 {total_hotlist_count} 条)\n\n"
+            stats_header = f"📊 *{stats_title}* (total : {total_hotlist_count} entrées)\n\n"
 
     current_batch = base_header
     current_batch_has_content = False
 
-    # 当没有热榜数据时的处理
-    # 注意：如果有 ai_content，不应该返回"暂无匹配"消息，而应该继续处理 AI 内容
+    # traitement du cas où il n'y a aucune donnée de tendances
+    # remarque : si ai_content est présent, ne pas renvoyer le message "aucune correspondance" ici, mais continuer pour traiter le contenu IA
     if (
         not report_data["stats"]
         and not report_data["new_titles"]
         and not report_data["failed_ids"]
-        and not ai_content  # 有 AI 内容时不返回"暂无匹配"
-        and not rss_items  # 有 RSS 内容时也不返回
-        and not standalone_data  # 有独立展示区数据时也不返回
+        and not ai_content  # si du contenu IA est présent, ne pas renvoyer "aucune correspondance"
+        and not rss_items  # si du contenu RSS est présent, ne pas renvoyer non plus
+        and not standalone_data  # si des données de Zone d'affichage autonome sont présentes, ne pas renvoyer non plus
     ):
         if mode == "incremental":
-            mode_text = "增量模式下暂无新增匹配的热点词汇"
+            mode_text = "Aucune nouvelle tendance correspondante en mode incrémental"
         elif mode == "current":
-            mode_text = "当前榜单模式下暂无匹配的热点词汇"
+            mode_text = "Aucune tendance correspondante pour le classement actuel"
         else:
-            mode_text = "暂无匹配的热点词汇"
+            mode_text = "Aucune tendance correspondante"
         simple_content = f"📭 {mode_text}\n\n"
         final_content = base_header + simple_content + base_footer
         batches.append(final_content)
         return batches
 
-    # 定义处理热点词汇统计的函数
+    # définit la fonction de traitement des Statistiques des tendances
     def process_stats_section(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理热点词汇统计"""
+        """traite les Statistiques des tendances"""
         if not report_data["stats"]:
             return current_batch, current_batch_has_content, batches
 
         total_count = len(report_data["stats"])
 
-        # 根据 add_separator 决定是否添加前置分割线
+        # décide d'ajouter ou non un séparateur en tête selon add_separator
         actual_stats_header = ""
         if add_separator and current_batch_has_content:
-            # 需要添加分割线
+            # un séparateur est nécessaire
             if format_type == "feishu":
                 actual_stats_header = f"\n{feishu_separator}\n\n{stats_header}"
             elif format_type == "dingtalk":
@@ -393,10 +393,10 @@ def split_content_into_batches(
             else:
                 actual_stats_header = f"\n\n{stats_header}"
         else:
-            # 不需要分割线（第一个区域）
+            # pas de séparateur nécessaire (première zone)
             actual_stats_header = stats_header
 
-        # 添加统计标题
+        # ajoute le titre des statistiques
         test_content = current_batch + actual_stats_header
         if (
             len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
@@ -412,75 +412,75 @@ def split_content_into_batches(
             )
             current_batch_has_content = True
 
-        # 逐个处理词组（确保词组标题+第一条新闻的原子性）
+        # traite les groupes de mots un par un (garantit l'atomicité titre du groupe + première actualité)
         for i, stat in enumerate(report_data["stats"]):
             word = stat["word"]
             count = stat["count"]
             sequence_display = f"[{i + 1}/{total_count}]"
 
-            # 构建词组标题
+            # construit le titre du groupe de mots
             word_header = ""
             if format_type in ("wework", "bark"):
                 if count >= 10:
                     word_header = (
-                        f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 elif count >= 5:
                     word_header = (
-                        f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 else:
-                    word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                    word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
             elif format_type == "telegram":
                 if count >= 10:
-                    word_header = f"🔥 {sequence_display} {word} : {count} 条\n\n"
+                    word_header = f"🔥 {sequence_display} {word} : {count} entrées\n\n"
                 elif count >= 5:
-                    word_header = f"📈 {sequence_display} {word} : {count} 条\n\n"
+                    word_header = f"📈 {sequence_display} {word} : {count} entrées\n\n"
                 else:
-                    word_header = f"📌 {sequence_display} {word} : {count} 条\n\n"
+                    word_header = f"📌 {sequence_display} {word} : {count} entrées\n\n"
             elif format_type == "ntfy":
                 if count >= 10:
                     word_header = (
-                        f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 elif count >= 5:
                     word_header = (
-                        f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 else:
-                    word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                    word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
             elif format_type == "feishu":
                 if count >= 10:
-                    word_header = f"🔥 <font color='grey'>{sequence_display}</font> **{word}** : <font color='red'>{count}</font> 条\n\n"
+                    word_header = f"🔥 <font color='grey'>{sequence_display}</font> **{word}** : <font color='red'>{count}</font> entrées\n\n"
                 elif count >= 5:
-                    word_header = f"📈 <font color='grey'>{sequence_display}</font> **{word}** : <font color='orange'>{count}</font> 条\n\n"
+                    word_header = f"📈 <font color='grey'>{sequence_display}</font> **{word}** : <font color='orange'>{count}</font> entrées\n\n"
                 else:
-                    word_header = f"📌 <font color='grey'>{sequence_display}</font> **{word}** : {count} 条\n\n"
+                    word_header = f"📌 <font color='grey'>{sequence_display}</font> **{word}** : {count} entrées\n\n"
             elif format_type == "dingtalk":
                 if count >= 10:
                     word_header = (
-                        f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 elif count >= 5:
                     word_header = (
-                        f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                        f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
                     )
                 else:
-                    word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                    word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
             elif format_type == "slack":
                 if count >= 10:
                     word_header = (
-                        f"🔥 {sequence_display} *{word}* : *{count}* 条\n\n"
+                        f"🔥 {sequence_display} *{word}* : *{count}* entrées\n\n"
                     )
                 elif count >= 5:
                     word_header = (
-                        f"📈 {sequence_display} *{word}* : *{count}* 条\n\n"
+                        f"📈 {sequence_display} *{word}* : *{count}* entrées\n\n"
                     )
                 else:
-                    word_header = f"📌 {sequence_display} *{word}* : {count} 条\n\n"
+                    word_header = f"📌 {sequence_display} *{word}* : {count} entrées\n\n"
 
-            # 构建第一条新闻
-            # display_mode: keyword=显示来源, platform=显示关键词
+            # construit la première actualité
+            # display_mode : keyword = affiche la source, platform = affiche le mot-clé
             show_source = display_mode == "keyword"
             show_keyword = display_mode == "platform"
             first_news_line = ""
@@ -517,7 +517,7 @@ def split_content_into_batches(
                 if len(stat["titles"]) > 1:
                     first_news_line += "\n"
 
-            # 原子性检查：词组标题+第一条新闻必须一起处理
+            # vérification d'atomicité : le titre du groupe de mots et la première actualité doivent être traités ensemble
             word_with_first_news = word_header + first_news_line
             test_content = current_batch + word_with_first_news
 
@@ -538,7 +538,7 @@ def split_content_into_batches(
                 current_batch_has_content = True
                 start_index = 1
 
-            # 处理剩余新闻条目
+            # traite les actualités restantes
             for j in range(start_index, len(stat["titles"])):
                 title_data = stat["titles"][j]
                 if format_type in ("wework", "bark"):
@@ -588,7 +588,7 @@ def split_content_into_batches(
                     current_batch = test_content
                     current_batch_has_content = True
 
-            # 词组间分隔符
+            # séparateur entre les groupes de mots
             if i < len(report_data["stats"]) - 1:
                 separator = ""
                 if format_type in ("wework", "bark"):
@@ -613,44 +613,44 @@ def split_content_into_batches(
 
         return current_batch, current_batch_has_content, batches
 
-    # 定义处理新增新闻的函数
+    # définit la fonction de traitement des nouvelles actualités
     def process_new_titles_section(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理新增新闻"""
+        """traite les nouvelles actualités"""
         if not show_new_section or not report_data["new_titles"]:
             return current_batch, current_batch_has_content, batches
 
-        # 根据 add_separator 决定是否添加前置分割线
+        # décide d'ajouter ou non un séparateur en tête selon add_separator
         new_header = ""
         if add_separator and current_batch_has_content:
-            # 需要添加分割线
+            # un séparateur est nécessaire
             if format_type in ("wework", "bark"):
-                new_header = f"\n\n\n\n🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"\n\n\n\n🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "telegram":
                 new_header = (
-                    f"\n\n🆕 本次新增热点新闻 (共 {report_data['total_new_count']} 条)\n\n"
+                    f"\n\n🆕 Nouvelles tendances de cette exécution (total : {report_data['total_new_count']} entrées)\n\n"
                 )
             elif format_type == "ntfy":
-                new_header = f"\n\n🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"\n\n🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "feishu":
-                new_header = f"\n{feishu_separator}\n\n🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"\n{feishu_separator}\n\n🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "dingtalk":
-                new_header = f"\n---\n\n🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"\n---\n\n🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "slack":
-                new_header = f"\n\n🆕 *本次新增热点新闻* (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"\n\n🆕 *Nouvelles tendances de cette exécution* (total : {report_data['total_new_count']} entrées)\n\n"
         else:
-            # 不需要分割线（第一个区域）
+            # pas de séparateur nécessaire (première zone)
             if format_type in ("wework", "bark"):
-                new_header = f"🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "telegram":
-                new_header = f"🆕 本次新增热点新闻 (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 Nouvelles tendances de cette exécution (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "ntfy":
-                new_header = f"🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "feishu":
-                new_header = f"🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "dingtalk":
-                new_header = f"🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 **Nouvelles tendances de cette exécution** (total : {report_data['total_new_count']} entrées)\n\n"
             elif format_type == "slack":
-                new_header = f"🆕 *本次新增热点新闻* (共 {report_data['total_new_count']} 条)\n\n"
+                new_header = f"🆕 *Nouvelles tendances de cette exécution* (total : {report_data['total_new_count']} entrées)\n\n"
 
         test_content = current_batch + new_header
         if (
@@ -667,23 +667,23 @@ def split_content_into_batches(
             current_batch = test_content
             current_batch_has_content = True
 
-        # 逐个处理新增新闻来源
+        # traite les sources de nouvelles actualités une par une
         for source_data in report_data["new_titles"]:
             source_header = ""
             if format_type in ("wework", "bark"):
-                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} entrées):\n\n"
             elif format_type == "telegram":
-                source_header = f"{source_data['source_name']} ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"{source_data['source_name']} ({len(source_data['titles'])} entrées):\n\n"
             elif format_type == "ntfy":
-                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} entrées):\n\n"
             elif format_type == "feishu":
-                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} entrées):\n\n"
             elif format_type == "dingtalk":
-                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"**{source_data['source_name']}** ({len(source_data['titles'])} entrées):\n\n"
             elif format_type == "slack":
-                source_header = f"*{source_data['source_name']}* ({len(source_data['titles'])} 条):\n\n"
+                source_header = f"*{source_data['source_name']}* ({len(source_data['titles'])} entrées):\n\n"
 
-            # 构建第一条新增新闻
+            # construit la première nouvelle actualité
             first_news_line = ""
             if source_data["titles"]:
                 first_title_data = source_data["titles"][0]
@@ -715,7 +715,7 @@ def split_content_into_batches(
 
                 first_news_line = f"  1. {formatted_title}\n"
 
-            # 原子性检查：来源标题+第一条新闻
+            # vérification d'atomicité : titre de la source + première actualité
             source_with_first_news = source_header + first_news_line
             test_content = current_batch + source_with_first_news
 
@@ -736,7 +736,7 @@ def split_content_into_batches(
                 current_batch_has_content = True
                 start_index = 1
 
-            # 处理剩余新增新闻
+            # traite les nouvelles actualités restantes
             for j in range(start_index, len(source_data["titles"])):
                 title_data = source_data["titles"][j]
                 title_data_copy = title_data.copy()
@@ -787,17 +787,17 @@ def split_content_into_batches(
 
         return current_batch, current_batch_has_content, batches
 
-    # 定义处理 AI 分析的函数
+    # définit la fonction de traitement de l'Analyse IA
     def process_ai_section(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理 AI 分析内容"""
+        """traite le contenu de l'Analyse IA"""
         nonlocal ai_content
         if not ai_content:
             return current_batch, current_batch_has_content, batches
 
-        # 根据 add_separator 决定是否添加前置分割线
+        # décide d'ajouter ou non un séparateur en tête selon add_separator
         ai_separator = ""
         if add_separator and current_batch_has_content:
-            # 需要添加分割线
+            # un séparateur est nécessaire
             if format_type == "feishu":
                 ai_separator = f"\n{feishu_separator}\n\n"
             elif format_type == "dingtalk":
@@ -806,9 +806,9 @@ def split_content_into_batches(
                 ai_separator = "\n\n\n\n"
             elif format_type in ("telegram", "ntfy", "slack"):
                 ai_separator = "\n\n"
-        # 如果不需要分割线，ai_separator 保持为空字符串
+        # si aucun séparateur n'est nécessaire, ai_separator reste une chaîne vide
 
-        # 尝试将 AI 内容添加到当前批次
+        # tente d'ajouter le contenu IA au lot courant
         test_content = current_batch + ai_separator + ai_content
         if (
             len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
@@ -820,7 +820,7 @@ def split_content_into_batches(
             if current_batch_has_content:
                 _safe_append_batch(batches, current_batch, base_footer, max_bytes, base_header)
 
-            # AI 内容可能很长，按行拆分成多个批次
+            # le contenu IA peut être très long, on le découpe en plusieurs lots ligne par ligne
             footer_size = len(base_footer.encode("utf-8"))
             header_size = len(base_header.encode("utf-8"))
             available = max_bytes - footer_size - header_size
@@ -841,9 +841,9 @@ def split_content_into_batches(
 
         return current_batch, current_batch_has_content, batches
 
-    # 定义处理独立展示区的函数
+    # définit la fonction de traitement de la Zone d'affichage autonome
     def process_standalone_section_wrapper(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理独立展示区"""
+        """traite la Zone d'affichage autonome"""
         if not standalone_data:
             return current_batch, current_batch_has_content, batches
         return _process_standalone_section(
@@ -852,9 +852,9 @@ def split_content_into_batches(
             rank_threshold, add_separator
         )
 
-    # 定义处理 RSS 统计的函数
+    # définit la fonction de traitement des statistiques RSS
     def process_rss_stats_wrapper(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理 RSS 统计"""
+        """traite les statistiques RSS"""
         if not rss_items:
             return current_batch, current_batch_has_content, batches
         return _process_rss_stats_section(
@@ -863,9 +863,9 @@ def split_content_into_batches(
             add_separator
         )
 
-    # 定义处理 RSS 新增的函数
+    # définit la fonction de traitement des nouveautés RSS
     def process_rss_new_wrapper(current_batch, current_batch_has_content, batches, add_separator=True):
-        """处理 RSS 新增"""
+        """traite les nouveautés RSS"""
         if not rss_new_items:
             return current_batch, current_batch_has_content, batches
         return _process_rss_new_titles_section(
@@ -874,36 +874,36 @@ def split_content_into_batches(
             add_separator
         )
 
-    # 按 region_order 顺序处理各区域
-    # 记录是否已有区域内容（用于决定是否添加分割线）
+    # traite chaque zone dans l'ordre de region_order
+    # mémorise si une zone a déjà produit du contenu (sert à décider d'ajouter un séparateur)
     has_region_content = False
 
     for region in region_order:
-        # 记录处理前的状态，用于判断该区域是否产生了内容
+        # mémorise l'état avant traitement, pour déterminer si cette zone produit du contenu
         batch_before = current_batch
         has_content_before = current_batch_has_content
         batches_len_before = len(batches)
 
-        # 决定是否需要添加分割线（第一个有内容的区域不需要）
+        # décide s'il faut ajouter un séparateur (la première zone avec du contenu n'en a pas besoin)
         add_separator = has_region_content
 
         if region == "hotlist":
-            # 处理热榜统计
+            # traite les statistiques des tendances
             current_batch, current_batch_has_content, batches = process_stats_section(
                 current_batch, current_batch_has_content, batches, add_separator
             )
         elif region == "rss":
-            # 处理 RSS 统计
+            # traite les statistiques RSS
             current_batch, current_batch_has_content, batches = process_rss_stats_wrapper(
                 current_batch, current_batch_has_content, batches, add_separator
             )
         elif region == "new_items":
-            # 处理热榜新增
+            # traite les nouveautés des tendances
             current_batch, current_batch_has_content, batches = process_new_titles_section(
                 current_batch, current_batch_has_content, batches, add_separator
             )
-            # 处理 RSS 新增（跟随 new_items，继承 add_separator 逻辑）
-            # 如果热榜新增产生了内容，RSS 新增需要分割线
+            # traite les nouveautés RSS (à la suite de new_items, hérite de la logique add_separator)
+            # si les nouveautés des tendances ont produit du contenu, les nouveautés RSS ont besoin d'un séparateur
             new_batch_changed = (
                 current_batch != batch_before or
                 current_batch_has_content != has_content_before or
@@ -914,17 +914,17 @@ def split_content_into_batches(
                 current_batch, current_batch_has_content, batches, rss_new_separator
             )
         elif region == "standalone":
-            # 处理独立展示区
+            # traite la Zone d'affichage autonome
             current_batch, current_batch_has_content, batches = process_standalone_section_wrapper(
                 current_batch, current_batch_has_content, batches, add_separator
             )
         elif region == "ai_analysis":
-            # 处理 AI 分析
+            # traite l'Analyse IA
             current_batch, current_batch_has_content, batches = process_ai_section(
                 current_batch, current_batch_has_content, batches, add_separator
             )
 
-        # 检查该区域是否产生了内容
+        # vérifie si cette zone a produit du contenu
         region_produced_content = (
             current_batch != batch_before or
             current_batch_has_content != has_content_before or
@@ -936,15 +936,15 @@ def split_content_into_batches(
     if report_data["failed_ids"]:
         failed_header = ""
         if format_type == "wework":
-            failed_header = f"\n\n\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n\n\n\n⚠️ **Plateformes en échec de collecte :**\n\n"
         elif format_type == "telegram":
-            failed_header = f"\n\n⚠️ 数据获取失败的平台：\n\n"
+            failed_header = f"\n\n⚠️ Plateformes en échec de collecte :\n\n"
         elif format_type == "ntfy":
-            failed_header = f"\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n\n⚠️ **Plateformes en échec de collecte :**\n\n"
         elif format_type == "feishu":
-            failed_header = f"\n{feishu_separator}\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n{feishu_separator}\n\n⚠️ **Plateformes en échec de collecte :**\n\n"
         elif format_type == "dingtalk":
-            failed_header = f"\n---\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n---\n\n⚠️ **Plateformes en échec de collecte :**\n\n"
 
         test_content = current_batch + failed_header
         if (
@@ -985,7 +985,7 @@ def split_content_into_batches(
                 current_batch = test_content
                 current_batch_has_content = True
 
-    # 完成最后批次
+    # finalise le dernier lot
     if current_batch_has_content:
         _safe_append_batch(batches, current_batch, base_footer, max_bytes, base_header)
 
@@ -1005,62 +1005,62 @@ def _process_rss_stats_section(
     timezone: str = DEFAULT_TIMEZONE,
     add_separator: bool = True,
 ) -> tuple:
-    """处理 RSS 统计区块（按关键词分组，与热榜统计格式一致）
+    """Traite le bloc des statistiques RSS (regroupées par mot-clé, format cohérent avec les statistiques des tendances)
 
     Args:
-        rss_stats: RSS 关键词统计列表，格式与热榜 stats 一致：
+        rss_stats: liste des statistiques RSS par mot-clé, format cohérent avec les stats des tendances :
             [{"word": "AI", "count": 5, "titles": [...]}]
-        format_type: 格式类型
-        feishu_separator: 飞书分隔符
-        base_header: 基础头部
-        base_footer: 基础尾部
-        max_bytes: 最大字节数
-        current_batch: 当前批次内容
-        current_batch_has_content: 当前批次是否有内容
-        batches: 已完成的批次列表
-        timezone: 时区名称
-        add_separator: 是否在区块前添加分割线（第一个区域时为 False）
+        format_type: type de format
+        feishu_separator: séparateur Feishu
+        base_header: en-tête de base
+        base_footer: pied de page de base
+        max_bytes: nombre d'octets maximal
+        current_batch: contenu du lot courant
+        current_batch_has_content: indique si le lot courant contient du contenu
+        batches: liste des lots déjà finalisés
+        timezone: nom du fuseau horaire
+        add_separator: indique s'il faut ajouter un séparateur avant le bloc (False pour la première zone)
 
     Returns:
-        (current_batch, current_batch_has_content, batches) 元组
+        tuple (current_batch, current_batch_has_content, batches)
     """
     if not rss_stats:
         return current_batch, current_batch_has_content, batches
 
-    # 计算总条目数
+    # calcule le nombre total d'entrées
     total_items = sum(stat["count"] for stat in rss_stats)
     total_keywords = len(rss_stats)
 
-    # RSS 统计区块标题（根据 add_separator 决定是否添加前置分割线）
+    # titre du bloc des statistiques RSS (décide d'ajouter un séparateur en tête selon add_separator)
     rss_header = ""
     if add_separator and current_batch_has_content:
-        # 需要添加分割线
+        # un séparateur est nécessaire
         if format_type == "feishu":
-            rss_header = f"\n{feishu_separator}\n\n📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"\n{feishu_separator}\n\n📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            rss_header = f"\n---\n\n📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"\n---\n\n📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
         elif format_type in ("wework", "bark"):
-            rss_header = f"\n\n\n\n📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"\n\n\n\n📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            rss_header = f"\n\n📰 RSS 订阅统计 (共 {total_items} 条)\n\n"
+            rss_header = f"\n\n📰 Statistiques des abonnements RSS (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            rss_header = f"\n\n📰 *RSS 订阅统计* (共 {total_items} 条)\n\n"
+            rss_header = f"\n\n📰 *Statistiques des abonnements RSS* (total : {total_items} entrées)\n\n"
         else:
-            rss_header = f"\n\n📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"\n\n📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
     else:
-        # 不需要分割线（第一个区域）
+        # pas de séparateur nécessaire (première zone)
         if format_type == "feishu":
-            rss_header = f"📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            rss_header = f"📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            rss_header = f"📰 RSS 订阅统计 (共 {total_items} 条)\n\n"
+            rss_header = f"📰 Statistiques des abonnements RSS (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            rss_header = f"📰 *RSS 订阅统计* (共 {total_items} 条)\n\n"
+            rss_header = f"📰 *Statistiques des abonnements RSS* (total : {total_items} entrées)\n\n"
         else:
-            rss_header = f"📰 **RSS 订阅统计** (共 {total_items} 条)\n\n"
+            rss_header = f"📰 **Statistiques des abonnements RSS** (total : {total_items} entrées)\n\n"
 
-    # 添加 RSS 标题
+    # ajoute le titre RSS
     test_content = current_batch + rss_header
     if len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8")) < max_bytes:
         current_batch = test_content
@@ -1073,58 +1073,58 @@ def _process_rss_stats_section(
         )
         current_batch_has_content = True
 
-    # 逐个处理关键词组（与热榜一致）
+    # traite les groupes de mots-clés un par un (cohérent avec les tendances)
     for i, stat in enumerate(rss_stats):
         word = stat["word"]
         count = stat["count"]
         sequence_display = f"[{i + 1}/{total_keywords}]"
 
-        # 构建关键词标题（与热榜格式一致）
+        # construit le titre du mot-clé (format cohérent avec les tendances)
         word_header = ""
         if format_type in ("wework", "bark"):
             if count >= 10:
-                word_header = f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
             else:
-                word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
         elif format_type == "telegram":
             if count >= 10:
-                word_header = f"🔥 {sequence_display} {word} : {count} 条\n\n"
+                word_header = f"🔥 {sequence_display} {word} : {count} entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 {sequence_display} {word} : {count} 条\n\n"
+                word_header = f"📈 {sequence_display} {word} : {count} entrées\n\n"
             else:
-                word_header = f"📌 {sequence_display} {word} : {count} 条\n\n"
+                word_header = f"📌 {sequence_display} {word} : {count} entrées\n\n"
         elif format_type == "ntfy":
             if count >= 10:
-                word_header = f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
             else:
-                word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
         elif format_type == "feishu":
             if count >= 10:
-                word_header = f"🔥 <font color='grey'>{sequence_display}</font> **{word}** : <font color='red'>{count}</font> 条\n\n"
+                word_header = f"🔥 <font color='grey'>{sequence_display}</font> **{word}** : <font color='red'>{count}</font> entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 <font color='grey'>{sequence_display}</font> **{word}** : <font color='orange'>{count}</font> 条\n\n"
+                word_header = f"📈 <font color='grey'>{sequence_display}</font> **{word}** : <font color='orange'>{count}</font> entrées\n\n"
             else:
-                word_header = f"📌 <font color='grey'>{sequence_display}</font> **{word}** : {count} 条\n\n"
+                word_header = f"📌 <font color='grey'>{sequence_display}</font> **{word}** : {count} entrées\n\n"
         elif format_type == "dingtalk":
             if count >= 10:
-                word_header = f"🔥 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"🔥 {sequence_display} **{word}** : **{count}** entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 {sequence_display} **{word}** : **{count}** 条\n\n"
+                word_header = f"📈 {sequence_display} **{word}** : **{count}** entrées\n\n"
             else:
-                word_header = f"📌 {sequence_display} **{word}** : {count} 条\n\n"
+                word_header = f"📌 {sequence_display} **{word}** : {count} entrées\n\n"
         elif format_type == "slack":
             if count >= 10:
-                word_header = f"🔥 {sequence_display} *{word}* : *{count}* 条\n\n"
+                word_header = f"🔥 {sequence_display} *{word}* : *{count}* entrées\n\n"
             elif count >= 5:
-                word_header = f"📈 {sequence_display} *{word}* : *{count}* 条\n\n"
+                word_header = f"📈 {sequence_display} *{word}* : *{count}* entrées\n\n"
             else:
-                word_header = f"📌 {sequence_display} *{word}* : {count} 条\n\n"
+                word_header = f"📌 {sequence_display} *{word}* : {count} entrées\n\n"
 
-        # 构建第一条新闻（使用 format_title_for_platform）
+        # construit la première actualité (utilise format_title_for_platform)
         first_news_line = ""
         if stat["titles"]:
             first_title_data = stat["titles"][0]
@@ -1147,7 +1147,7 @@ def _process_rss_stats_section(
             if len(stat["titles"]) > 1:
                 first_news_line += "\n"
 
-        # 原子性检查：关键词标题 + 第一条新闻必须一起处理
+        # vérification d'atomicité : le titre du mot-clé et la première actualité doivent être traités ensemble
         word_with_first_news = word_header + first_news_line
         test_content = current_batch + word_with_first_news
 
@@ -1165,7 +1165,7 @@ def _process_rss_stats_section(
             current_batch_has_content = True
             start_index = 1
 
-        # 处理剩余新闻条目
+        # traite les actualités restantes
         for j in range(start_index, len(stat["titles"])):
             title_data = stat["titles"][j]
             if format_type in ("wework", "bark"):
@@ -1200,7 +1200,7 @@ def _process_rss_stats_section(
                 current_batch = test_content
                 current_batch_has_content = True
 
-        # 关键词间分隔符
+        # séparateur entre les mots-clés
         if i < len(rss_stats) - 1:
             separator = ""
             if format_type in ("wework", "bark"):
@@ -1236,33 +1236,33 @@ def _process_rss_new_titles_section(
     timezone: str = DEFAULT_TIMEZONE,
     add_separator: bool = True,
 ) -> tuple:
-    """处理 RSS 新增区块（按来源分组，与热榜新增格式一致）
+    """Traite le bloc des nouveautés RSS (regroupées par source, format cohérent avec les nouveautés des tendances)
 
     Args:
-        rss_new_stats: RSS 新增关键词统计列表，格式与热榜 stats 一致：
+        rss_new_stats: liste des statistiques des nouveautés RSS par mot-clé, format cohérent avec les stats des tendances :
             [{"word": "AI", "count": 5, "titles": [...]}]
-        format_type: 格式类型
-        feishu_separator: 飞书分隔符
-        base_header: 基础头部
-        base_footer: 基础尾部
-        max_bytes: 最大字节数
-        current_batch: 当前批次内容
-        current_batch_has_content: 当前批次是否有内容
-        batches: 已完成的批次列表
-        timezone: 时区名称
-        add_separator: 是否在区块前添加分割线（第一个区域时为 False）
+        format_type: type de format
+        feishu_separator: séparateur Feishu
+        base_header: en-tête de base
+        base_footer: pied de page de base
+        max_bytes: nombre d'octets maximal
+        current_batch: contenu du lot courant
+        current_batch_has_content: indique si le lot courant contient du contenu
+        batches: liste des lots déjà finalisés
+        timezone: nom du fuseau horaire
+        add_separator: indique s'il faut ajouter un séparateur avant le bloc (False pour la première zone)
 
     Returns:
-        (current_batch, current_batch_has_content, batches) 元组
+        tuple (current_batch, current_batch_has_content, batches)
     """
     if not rss_new_stats:
         return current_batch, current_batch_has_content, batches
 
-    # 从关键词分组中提取所有条目，重新按来源分组
+    # extrait toutes les entrées depuis le regroupement par mot-clé, puis les regroupe par source
     source_map = {}
     for stat in rss_new_stats:
         for title_data in stat.get("titles", []):
-            source_name = title_data.get("source_name", "未知来源")
+            source_name = title_data.get("source_name", "Source inconnue")
             if source_name not in source_map:
                 source_map[source_name] = []
             source_map[source_name].append(title_data)
@@ -1270,41 +1270,41 @@ def _process_rss_new_titles_section(
     if not source_map:
         return current_batch, current_batch_has_content, batches
 
-    # 计算总条目数
+    # calcule le nombre total d'entrées
     total_items = sum(len(titles) for titles in source_map.values())
 
-    # RSS 新增区块标题（根据 add_separator 决定是否添加前置分割线）
+    # titre du bloc des nouveautés RSS (décide d'ajouter un séparateur en tête selon add_separator)
     new_header = ""
     if add_separator and current_batch_has_content:
-        # 需要添加分割线
+        # un séparateur est nécessaire
         if format_type in ("wework", "bark"):
-            new_header = f"\n\n\n\n🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"\n\n\n\n🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            new_header = f"\n\n🆕 RSS 本次新增 (共 {total_items} 条)\n\n"
+            new_header = f"\n\n🆕 Nouveautés RSS de cette exécution (total : {total_items} entrées)\n\n"
         elif format_type == "ntfy":
-            new_header = f"\n\n🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"\n\n🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "feishu":
-            new_header = f"\n{feishu_separator}\n\n🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"\n{feishu_separator}\n\n🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            new_header = f"\n---\n\n🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"\n---\n\n🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            new_header = f"\n\n🆕 *RSS 本次新增* (共 {total_items} 条)\n\n"
+            new_header = f"\n\n🆕 *Nouveautés RSS de cette exécution* (total : {total_items} entrées)\n\n"
     else:
-        # 不需要分割线（第一个区域）
+        # pas de séparateur nécessaire (première zone)
         if format_type in ("wework", "bark"):
-            new_header = f"🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            new_header = f"🆕 RSS 本次新增 (共 {total_items} 条)\n\n"
+            new_header = f"🆕 Nouveautés RSS de cette exécution (total : {total_items} entrées)\n\n"
         elif format_type == "ntfy":
-            new_header = f"🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "feishu":
-            new_header = f"🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            new_header = f"🆕 **RSS 本次新增** (共 {total_items} 条)\n\n"
+            new_header = f"🆕 **Nouveautés RSS de cette exécution** (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            new_header = f"🆕 *RSS 本次新增* (共 {total_items} 条)\n\n"
+            new_header = f"🆕 *Nouveautés RSS de cette exécution* (total : {total_items} entrées)\n\n"
 
-    # 添加 RSS 新增标题
+    # ajoute le titre des nouveautés RSS
     test_content = current_batch + new_header
     if len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8")) >= max_bytes:
         if current_batch_has_content:
@@ -1317,27 +1317,27 @@ def _process_rss_new_titles_section(
         current_batch = test_content
         current_batch_has_content = True
 
-    # 按来源分组显示（与热榜新增格式一致）
+    # affichage regroupé par source (format cohérent avec les nouveautés des tendances)
     source_list = list(source_map.items())
     for i, (source_name, titles) in enumerate(source_list):
         count = len(titles)
 
-        # 构建来源标题（与热榜新增格式一致）
+        # construit le titre de la source (format cohérent avec les nouveautés des tendances)
         source_header = ""
         if format_type in ("wework", "bark"):
-            source_header = f"**{source_name}** ({count} 条):\n\n"
+            source_header = f"**{source_name}** ({count} entrées):\n\n"
         elif format_type == "telegram":
-            source_header = f"{source_name} ({count} 条):\n\n"
+            source_header = f"{source_name} ({count} entrées):\n\n"
         elif format_type == "ntfy":
-            source_header = f"**{source_name}** ({count} 条):\n\n"
+            source_header = f"**{source_name}** ({count} entrées):\n\n"
         elif format_type == "feishu":
-            source_header = f"**{source_name}** ({count} 条):\n\n"
+            source_header = f"**{source_name}** ({count} entrées):\n\n"
         elif format_type == "dingtalk":
-            source_header = f"**{source_name}** ({count} 条):\n\n"
+            source_header = f"**{source_name}** ({count} entrées):\n\n"
         elif format_type == "slack":
-            source_header = f"*{source_name}* ({count} 条):\n\n"
+            source_header = f"*{source_name}* ({count} entrées):\n\n"
 
-        # 构建第一条新闻（不显示来源，禁用 new emoji）
+        # construit la première actualité (sans afficher la source, sans l'emoji new)
         first_news_line = ""
         if titles:
             first_title_data = titles[0].copy()
@@ -1359,7 +1359,7 @@ def _process_rss_new_titles_section(
 
             first_news_line = f"  1. {formatted_title}\n"
 
-        # 原子性检查：来源标题 + 第一条新闻必须一起处理
+        # vérification d'atomicité : le titre de la source et la première actualité doivent être traités ensemble
         source_with_first_news = source_header + first_news_line
         test_content = current_batch + source_with_first_news
 
@@ -1377,7 +1377,7 @@ def _process_rss_new_titles_section(
             current_batch_has_content = True
             start_index = 1
 
-        # 处理剩余新闻条目（禁用 new emoji）
+        # traite les actualités restantes (sans l'emoji new)
         for j in range(start_index, len(titles)):
             title_data = titles[j].copy()
             title_data["is_new"] = False
@@ -1411,7 +1411,7 @@ def _process_rss_new_titles_section(
                 current_batch = test_content
                 current_batch_has_content = True
 
-        # 来源间添加空行（与热榜新增格式一致）
+        # ajoute une ligne vide entre les sources (format cohérent avec les nouveautés des tendances)
         current_batch += "\n"
 
     return current_batch, current_batch_has_content, batches
@@ -1423,28 +1423,28 @@ def _format_rss_item_line(
     format_type: str,
     timezone: str = DEFAULT_TIMEZONE,
 ) -> str:
-    """格式化单条 RSS 条目
+    """Formate une seule entrée RSS
 
     Args:
-        item: RSS 条目字典
-        index: 序号
-        format_type: 格式类型
-        timezone: 时区名称
+        item: dictionnaire de l'entrée RSS
+        index: numéro d'ordre
+        format_type: type de format
+        timezone: nom du fuseau horaire
 
     Returns:
-        格式化后的条目行字符串
+        chaîne de la ligne d'entrée formatée
     """
     title = item.get("title", "")
     url = item.get("url", "")
     published_at = item.get("published_at", "")
 
-    # 使用友好时间格式
+    # utilise un format d'heure lisible
     if published_at:
         friendly_time = format_iso_time_friendly(published_at, timezone, include_date=True)
     else:
         friendly_time = ""
 
-    # 构建条目行
+    # construit la ligne d'entrée
     if format_type == "feishu":
         if url:
             item_line = f"  {index}. [{title}]({url})"
@@ -1485,31 +1485,31 @@ def _process_standalone_section(
     rank_threshold: int = 10,
     add_separator: bool = True,
 ) -> tuple:
-    """处理独立展示区区块
+    """Traite le bloc de la Zone d'affichage autonome
 
-    独立展示区显示指定平台的完整热榜或 RSS 源内容，不受关键词过滤影响。
-    热榜按原始排名排序，RSS 按发布时间排序。
+    La Zone d'affichage autonome affiche le contenu complet des tendances d'une plateforme donnée ou d'une source RSS, sans être affectée par le filtrage par mots-clés.
+    Les tendances sont triées par classement d'origine, les entrées RSS par date de publication.
 
     Args:
-        standalone_data: 独立展示数据，格式：
+        standalone_data: données d'affichage autonome, format :
             {
-                "platforms": [{"id": "zhihu", "name": "知乎热榜", "items": [...]}],
+                "platforms": [{"id": "zhihu", "name": "Tendances Zhihu", "items": [...]}],
                 "rss_feeds": [{"id": "hacker-news", "name": "Hacker News", "items": [...]}]
             }
-        format_type: 格式类型
-        feishu_separator: 飞书分隔符
-        base_header: 基础头部
-        base_footer: 基础尾部
-        max_bytes: 最大字节数
-        current_batch: 当前批次内容
-        current_batch_has_content: 当前批次是否有内容
-        batches: 已完成的批次列表
-        timezone: 时区名称
-        rank_threshold: 排名高亮阈值
-        add_separator: 是否在区块前添加分割线（第一个区域时为 False）
+        format_type: type de format
+        feishu_separator: séparateur Feishu
+        base_header: en-tête de base
+        base_footer: pied de page de base
+        max_bytes: nombre d'octets maximal
+        current_batch: contenu du lot courant
+        current_batch_has_content: indique si le lot courant contient du contenu
+        batches: liste des lots déjà finalisés
+        timezone: nom du fuseau horaire
+        rank_threshold: seuil de mise en évidence du classement
+        add_separator: indique s'il faut ajouter un séparateur avant le bloc (False pour la première zone)
 
     Returns:
-        (current_batch, current_batch_has_content, batches) 元组
+        tuple (current_batch, current_batch_has_content, batches)
     """
     if not standalone_data:
         return current_batch, current_batch_has_content, batches
@@ -1520,41 +1520,41 @@ def _process_standalone_section(
     if not platforms and not rss_feeds:
         return current_batch, current_batch_has_content, batches
 
-    # 计算总条目数
+    # calcule le nombre total d'entrées
     total_platform_items = sum(len(p.get("items", [])) for p in platforms)
     total_rss_items = sum(len(f.get("items", [])) for f in rss_feeds)
     total_items = total_platform_items + total_rss_items
 
-    # 独立展示区标题（根据 add_separator 决定是否添加前置分割线）
+    # titre de la Zone d'affichage autonome (décide d'ajouter un séparateur en tête selon add_separator)
     section_header = ""
     if add_separator and current_batch_has_content:
-        # 需要添加分割线
+        # un séparateur est nécessaire
         if format_type == "feishu":
-            section_header = f"\n{feishu_separator}\n\n📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"\n{feishu_separator}\n\n📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            section_header = f"\n---\n\n📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"\n---\n\n📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
         elif format_type in ("wework", "bark"):
-            section_header = f"\n\n\n\n📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"\n\n\n\n📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            section_header = f"\n\n📋 独立展示区 (共 {total_items} 条)\n\n"
+            section_header = f"\n\n📋 Zone d'affichage autonome (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            section_header = f"\n\n📋 *独立展示区* (共 {total_items} 条)\n\n"
+            section_header = f"\n\n📋 *Zone d'affichage autonome* (total : {total_items} entrées)\n\n"
         else:
-            section_header = f"\n\n📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"\n\n📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
     else:
-        # 不需要分割线（第一个区域）
+        # pas de séparateur nécessaire (première zone)
         if format_type == "feishu":
-            section_header = f"📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
         elif format_type == "dingtalk":
-            section_header = f"📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
         elif format_type == "telegram":
-            section_header = f"📋 独立展示区 (共 {total_items} 条)\n\n"
+            section_header = f"📋 Zone d'affichage autonome (total : {total_items} entrées)\n\n"
         elif format_type == "slack":
-            section_header = f"📋 *独立展示区* (共 {total_items} 条)\n\n"
+            section_header = f"📋 *Zone d'affichage autonome* (total : {total_items} entrées)\n\n"
         else:
-            section_header = f"📋 **独立展示区** (共 {total_items} 条)\n\n"
+            section_header = f"📋 **Zone d'affichage autonome** (total : {total_items} entrées)\n\n"
 
-    # 添加区块标题
+    # ajoute le titre du bloc
     test_content = current_batch + section_header
     if len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8")) < max_bytes:
         current_batch = test_content
@@ -1567,34 +1567,34 @@ def _process_standalone_section(
         )
         current_batch_has_content = True
 
-    # 处理热榜平台
+    # traite les plateformes de tendances
     for platform in platforms:
         platform_name = platform.get("name", platform.get("id", ""))
         items = platform.get("items", [])
         if not items:
             continue
 
-        # 平台标题
+        # titre de la plateforme
         platform_header = ""
         if format_type in ("wework", "bark"):
-            platform_header = f"**{platform_name}** ({len(items)} 条):\n\n"
+            platform_header = f"**{platform_name}** ({len(items)} entrées):\n\n"
         elif format_type == "telegram":
-            platform_header = f"{platform_name} ({len(items)} 条):\n\n"
+            platform_header = f"{platform_name} ({len(items)} entrées):\n\n"
         elif format_type == "ntfy":
-            platform_header = f"**{platform_name}** ({len(items)} 条):\n\n"
+            platform_header = f"**{platform_name}** ({len(items)} entrées):\n\n"
         elif format_type == "feishu":
-            platform_header = f"**{platform_name}** ({len(items)} 条):\n\n"
+            platform_header = f"**{platform_name}** ({len(items)} entrées):\n\n"
         elif format_type == "dingtalk":
-            platform_header = f"**{platform_name}** ({len(items)} 条):\n\n"
+            platform_header = f"**{platform_name}** ({len(items)} entrées):\n\n"
         elif format_type == "slack":
-            platform_header = f"*{platform_name}* ({len(items)} 条):\n\n"
+            platform_header = f"*{platform_name}* ({len(items)} entrées):\n\n"
 
-        # 构建第一条新闻
+        # construit la première actualité
         first_item_line = ""
         if items:
             first_item_line = _format_standalone_platform_item(items[0], 1, format_type, rank_threshold)
 
-        # 原子性检查
+        # vérification d'atomicité
         platform_with_first = platform_header + first_item_line
         test_content = current_batch + platform_with_first
 
@@ -1612,7 +1612,7 @@ def _process_standalone_section(
             current_batch_has_content = True
             start_index = 1
 
-        # 处理剩余条目
+        # traite les entrées restantes
         for j in range(start_index, len(items)):
             item_line = _format_standalone_platform_item(items[j], j + 1, format_type, rank_threshold)
 
@@ -1631,34 +1631,34 @@ def _process_standalone_section(
 
         current_batch += "\n"
 
-    # 处理 RSS 源
+    # traite les sources RSS
     for feed in rss_feeds:
         feed_name = feed.get("name", feed.get("id", ""))
         items = feed.get("items", [])
         if not items:
             continue
 
-        # RSS 源标题
+        # titre de la source RSS
         feed_header = ""
         if format_type in ("wework", "bark"):
-            feed_header = f"**{feed_name}** ({len(items)} 条):\n\n"
+            feed_header = f"**{feed_name}** ({len(items)} entrées):\n\n"
         elif format_type == "telegram":
-            feed_header = f"{feed_name} ({len(items)} 条):\n\n"
+            feed_header = f"{feed_name} ({len(items)} entrées):\n\n"
         elif format_type == "ntfy":
-            feed_header = f"**{feed_name}** ({len(items)} 条):\n\n"
+            feed_header = f"**{feed_name}** ({len(items)} entrées):\n\n"
         elif format_type == "feishu":
-            feed_header = f"**{feed_name}** ({len(items)} 条):\n\n"
+            feed_header = f"**{feed_name}** ({len(items)} entrées):\n\n"
         elif format_type == "dingtalk":
-            feed_header = f"**{feed_name}** ({len(items)} 条):\n\n"
+            feed_header = f"**{feed_name}** ({len(items)} entrées):\n\n"
         elif format_type == "slack":
-            feed_header = f"*{feed_name}* ({len(items)} 条):\n\n"
+            feed_header = f"*{feed_name}* ({len(items)} entrées):\n\n"
 
-        # 构建第一条 RSS
+        # construit la première entrée RSS
         first_item_line = ""
         if items:
             first_item_line = _format_standalone_rss_item(items[0], 1, format_type, timezone)
 
-        # 原子性检查
+        # vérification d'atomicité
         feed_with_first = feed_header + first_item_line
         test_content = current_batch + feed_with_first
 
@@ -1676,7 +1676,7 @@ def _process_standalone_section(
             current_batch_has_content = True
             start_index = 1
 
-        # 处理剩余条目
+        # traite les entrées restantes
         for j in range(start_index, len(items)):
             item_line = _format_standalone_rss_item(items[j], j + 1, format_type, timezone)
 
@@ -1699,16 +1699,16 @@ def _process_standalone_section(
 
 
 def _format_standalone_platform_item(item: Dict, index: int, format_type: str, rank_threshold: int = 10) -> str:
-    """格式化独立展示区的热榜条目（复用热点词汇统计区样式）
+    """Formate une entrée de tendances de la Zone d'affichage autonome (réutilise le style de la zone des statistiques des tendances)
 
     Args:
-        item: 热榜条目，包含 title, url, rank, ranks, first_time, last_time, count
-        index: 序号
-        format_type: 格式类型
-        rank_threshold: 排名高亮阈值
+        item: entrée de tendances, contient title, url, rank, ranks, first_time, last_time, count
+        index: numéro d'ordre
+        format_type: type de format
+        rank_threshold: seuil de mise en évidence du classement
 
     Returns:
-        格式化后的条目行字符串
+        chaîne de la ligne d'entrée formatée
     """
     title = item.get("title", "")
     url = item.get("url", "") or item.get("mobileUrl", "")
@@ -1718,15 +1718,15 @@ def _format_standalone_platform_item(item: Dict, index: int, format_type: str, r
     last_time = item.get("last_time", "")
     count = item.get("count", 1)
 
-    # 使用 format_rank_display 格式化排名（复用热点词汇统计区逻辑）
-    # 如果没有 ranks 列表，用单个 rank 构造
+    # utilise format_rank_display pour formater le classement (réutilise la logique de la zone des statistiques des tendances)
+    # s'il n'y a pas de liste ranks, on la construit à partir du rang unique
     if not ranks and rank > 0:
         ranks = [rank]
     rank_timeline = item.get("rank_timeline")
     rank_display = format_rank_display(ranks, rank_threshold, format_type, rank_timeline=rank_timeline) if ranks else ""
 
-    # 构建时间显示（用 ~ 连接范围，与热点词汇统计区一致）
-    # 将 HH-MM 格式转换为 HH:MM 格式
+    # construit l'affichage de l'heure (relie la plage par ~, cohérent avec la zone des statistiques des tendances)
+    # convertit le format HH-MM en format HH:MM
     time_display = ""
     if first_time and last_time and first_time != last_time:
         first_time_display = convert_time_for_display(first_time)
@@ -1735,10 +1735,10 @@ def _format_standalone_platform_item(item: Dict, index: int, format_type: str, r
     elif first_time:
         time_display = convert_time_for_display(first_time)
 
-    # 构建次数显示（格式为 (N次)，与热点词汇统计区一致）
-    count_display = f"({count}次)" if count > 1 else ""
+    # construit l'affichage du nombre d'occurrences (format (N fois), cohérent avec la zone des statistiques des tendances)
+    count_display = f"({count} fois)" if count > 1 else ""
 
-    # 根据格式类型构建条目行（复用热点词汇统计区样式）
+    # construit la ligne d'entrée selon le type de format (réutilise le style de la zone des statistiques des tendances)
     if format_type == "feishu":
         if url:
             item_line = f"  {index}. [{title}]({url})"
@@ -1807,28 +1807,28 @@ def _format_standalone_platform_item(item: Dict, index: int, format_type: str, r
 def _format_standalone_rss_item(
     item: Dict, index: int, format_type: str, timezone: str = "Asia/Shanghai"
 ) -> str:
-    """格式化独立展示区的 RSS 条目
+    """Formate une entrée RSS de la Zone d'affichage autonome
 
     Args:
-        item: RSS 条目，包含 title, url, published_at, author
-        index: 序号
-        format_type: 格式类型
-        timezone: 时区名称
+        item: entrée RSS, contient title, url, published_at, author
+        index: numéro d'ordre
+        format_type: type de format
+        timezone: nom du fuseau horaire
 
     Returns:
-        格式化后的条目行字符串
+        chaîne de la ligne d'entrée formatée
     """
     title = item.get("title", "")
     url = item.get("url", "")
     published_at = item.get("published_at", "")
     author = item.get("author", "")
 
-    # 使用友好时间格式
+    # utilise un format d'heure lisible
     friendly_time = ""
     if published_at:
         friendly_time = format_iso_time_friendly(published_at, timezone, include_date=True)
 
-    # 构建元信息
+    # construit les métadonnées
     meta_parts = []
     if friendly_time:
         meta_parts.append(friendly_time)
@@ -1836,7 +1836,7 @@ def _format_standalone_rss_item(
         meta_parts.append(author)
     meta_str = ", ".join(meta_parts)
 
-    # 根据格式类型构建条目行
+    # construit la ligne d'entrée selon le type de format
     if format_type == "feishu":
         if url:
             item_line = f"  {index}. [{title}]({url})"

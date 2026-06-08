@@ -1,32 +1,32 @@
 """
-自定义错误类
+Classes d'erreurs personnalisées
 
-定义MCP Server使用的所有自定义异常类型。
+Définit tous les types d'exceptions personnalisées utilisés par le serveur MCP.
 """
 
 from typing import Optional, List, Callable
 
 
-# ==================== 延迟加载支持的平台列表 ====================
+# ==================== Chargement différé de la liste des plateformes prises en charge ====================
 
 _get_supported_platforms: Optional[Callable[[], List[str]]] = None
 
 
 def _load_supported_platforms() -> List[str]:
-    """延迟加载支持的平台列表"""
+    """Charge de manière différée la liste des plateformes prises en charge"""
     global _get_supported_platforms
     if _get_supported_platforms is None:
         try:
             from .validators import get_supported_platforms
             _get_supported_platforms = get_supported_platforms
         except ImportError:
-            # 降级：返回空列表
+            # Repli : retourne une liste vide
             return []
     return _get_supported_platforms()
 
 
 class MCPError(Exception):
-    """MCP工具错误基类"""
+    """Classe de base des erreurs des outils MCP"""
 
     def __init__(self, message: str, code: str = "MCP_ERROR", suggestion: Optional[str] = None):
         super().__init__(message)
@@ -35,7 +35,7 @@ class MCPError(Exception):
         self.suggestion = suggestion
 
     def to_dict(self) -> dict:
-        """转换为字典格式"""
+        """Convertit au format dictionnaire"""
         error_dict = {
             "code": self.code,
             "message": self.message
@@ -46,68 +46,68 @@ class MCPError(Exception):
 
 
 class DataNotFoundError(MCPError):
-    """数据不存在错误"""
+    """Erreur de données inexistantes"""
 
     def __init__(self, message: str, suggestion: Optional[str] = None):
         super().__init__(
             message=message,
             code="DATA_NOT_FOUND",
-            suggestion=suggestion or "请检查日期范围或等待爬取任务完成"
+            suggestion=suggestion or "Veuillez vérifier la plage de dates ou attendre la fin de la tâche de collecte"
         )
 
 
 class InvalidParameterError(MCPError):
-    """参数无效错误"""
+    """Erreur de paramètre invalide"""
 
     def __init__(self, message: str, suggestion: Optional[str] = None):
         super().__init__(
             message=message,
             code="INVALID_PARAMETER",
-            suggestion=suggestion or "请检查参数格式是否正确"
+            suggestion=suggestion or "Veuillez vérifier que le format des paramètres est correct"
         )
 
 
 class ConfigurationError(MCPError):
-    """配置错误"""
+    """Erreur de configuration"""
 
     def __init__(self, message: str, suggestion: Optional[str] = None):
         super().__init__(
             message=message,
             code="CONFIGURATION_ERROR",
-            suggestion=suggestion or "请检查配置文件是否正确"
+            suggestion=suggestion or "Veuillez vérifier que le fichier de configuration est correct"
         )
 
 
 class PlatformNotSupportedError(MCPError):
-    """平台不支持错误"""
+    """Erreur de plateforme non prise en charge"""
 
     def __init__(self, platform: str):
         supported = _load_supported_platforms()
-        suggestion = f"支持的平台: {', '.join(supported)}" if supported else "请检查 config/config.yaml 中的平台配置"
+        suggestion = f"Plateformes prises en charge : {', '.join(supported)}" if supported else "Veuillez vérifier la configuration des plateformes dans config/config.yaml"
         super().__init__(
-            message=f"平台 '{platform}' 不受支持",
+            message=f"La plateforme '{platform}' n'est pas prise en charge",
             code="PLATFORM_NOT_SUPPORTED",
             suggestion=suggestion
         )
 
 
 class CrawlTaskError(MCPError):
-    """爬取任务错误"""
+    """Erreur de tâche de collecte"""
 
     def __init__(self, message: str, suggestion: Optional[str] = None):
         super().__init__(
             message=message,
             code="CRAWL_TASK_ERROR",
-            suggestion=suggestion or "请稍后重试或查看日志"
+            suggestion=suggestion or "Veuillez réessayer plus tard ou consulter les journaux"
         )
 
 
 class FileParseError(MCPError):
-    """文件解析错误"""
+    """Erreur d'analyse de fichier"""
 
     def __init__(self, file_path: str, reason: str):
         super().__init__(
-            message=f"解析文件 {file_path} 失败: {reason}",
+            message=f"Échec de l'analyse du fichier {file_path} : {reason}",
             code="FILE_PARSE_ERROR",
-            suggestion="请检查文件格式是否正确"
+            suggestion="Veuillez vérifier que le format du fichier est correct"
         )

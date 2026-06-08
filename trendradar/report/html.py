@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-HTML 报告渲染模块
+Module de rendu du rapport HTML.
 
-提供 HTML 格式的热点新闻报告生成功能
+Fournit la génération de rapports de tendances au format HTML.
 """
 
 from datetime import datetime
@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Callable
 from trendradar.report.helpers import html_escape, calculate_rank_trend
 from trendradar.utils.time import convert_time_for_display
 from trendradar.ai.formatter import render_ai_analysis_html_rich
+from trendradar.i18n import t
 
 
 def render_html_content(
@@ -27,38 +28,65 @@ def render_html_content(
     standalone_data: Optional[Dict] = None,
     ai_analysis: Optional[Any] = None,
     show_new_section: bool = True,
+    language: str = "fr",
 ) -> str:
-    """渲染HTML内容
+    """Rend le contenu HTML.
 
     Args:
-        report_data: 报告数据字典，包含 stats, new_titles, failed_ids, total_new_count
-        total_titles: 新闻总数
-        mode: 报告模式 ("daily", "current", "incremental")
-        update_info: 更新信息（可选）
-        region_order: 区域显示顺序列表
-        get_time_func: 获取当前时间的函数（可选，默认使用 datetime.now）
-        rss_items: RSS 统计条目列表（可选）
-        rss_new_items: RSS 新增条目列表（可选）
-        display_mode: 显示模式 ("keyword"=按关键词分组, "platform"=按平台分组)
-        standalone_data: 独立展示区数据（可选），包含 platforms 和 rss_feeds
-        ai_analysis: AI 分析结果对象（可选），AIAnalysisResult 实例
-        show_new_section: 是否显示新增热点区域
+        report_data: dictionnaire des données du rapport, contenant stats,
+            new_titles, failed_ids, total_new_count
+        total_titles: nombre total d'actualités
+        mode: mode du rapport ("daily", "current", "incremental")
+        update_info: informations de mise à jour (optionnel)
+        region_order: liste de l'ordre d'affichage des zones
+        get_time_func: fonction renvoyant l'heure courante (optionnel, défaut datetime.now)
+        rss_items: liste des entrées de statistiques RSS (optionnel)
+        rss_new_items: liste des nouvelles entrées RSS (optionnel)
+        display_mode: mode d'affichage ("keyword"=par mot-clé, "platform"=par plateforme)
+        standalone_data: données de la zone d'affichage autonome (optionnel), contient platforms et rss_feeds
+        ai_analysis: objet résultat de l'analyse IA (optionnel), instance AIAnalysisResult
+        show_new_section: afficher ou non la zone des nouvelles tendances
+        language: langue du rapport ("fr" ou "en")
 
     Returns:
-        渲染后的 HTML 字符串
+        chaîne HTML rendue
     """
-    # 默认区域顺序
+    # Ordre des zones par défaut
     default_region_order = ["hotlist", "rss", "new_items", "standalone", "ai_analysis"]
     if region_order is None:
         region_order = default_region_order
 
-    html = """
+    # Objet i18n injecté côté JS pour les états de boutons et l'export Markdown
+    import json as _json
+    js_i18n = {
+        "generating": t("js_generating", language),
+        "analyzing": t("js_analyzing", language),
+        "generatingProgress": t("js_generating_progress", language),
+        "saveSuccess": t("js_save_success", language),
+        "saveFailed": t("js_save_failed", language),
+        "savedImages": t("js_saved_images", language),
+        "copyTooltip": t("js_copy_tooltip", language),
+        "screenshotLabel": t("screenshot_filename_label", language),
+        "mdHotNews": t("md_hot_news", language),
+        "mdNewHotspots": t("md_new_hotspots", language),
+        "mdRssUpdate": t("md_rss_update", language),
+        "mdAiAnalysis": t("md_ai_analysis", language),
+        "mdAiHotAnalysis": t("md_ai_hot_analysis", language),
+        "mdStandalone": t("md_standalone", language),
+        "mdCrawlErrors": t("md_crawl_errors", language),
+    }
+    js_i18n_json = _json.dumps(js_i18n, ensure_ascii=False)
+
+    html = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="{language}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>热点新闻分析</title>
+        <title>{t("report_title", language)}</title>
+"""
+
+    html += """
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <style>
             * { box-sizing: border-box; }
@@ -460,16 +488,16 @@ def render_html_content(
                 color: #7c3aed;
             }
 
-            /* 通用区域分割线样式 */
+            /* Style générique de séparateur de zone */
             .section-divider {
                 margin-top: 32px;
                 padding-top: 24px;
                 border-top: 2px solid #e5e7eb;
             }
 
-            /* 热榜统计区样式 */
+            /* Style de la zone de statistiques des tendances */
             .hotlist-section {
-                /* 默认无边框，由 section-divider 动态添加 */
+                /* Pas de bordure par défaut, ajoutée dynamiquement par section-divider */
             }
 
             .new-section {
@@ -639,7 +667,7 @@ def render_html_content(
                 }
             }
 
-            /* RSS 订阅内容样式 */
+            /* Style du contenu des abonnements RSS */
             .rss-section {
                 margin-top: 32px;
                 padding-top: 24px;
@@ -751,7 +779,7 @@ def render_html_content(
                 overflow: hidden;
             }
 
-            /* 独立展示区样式 - 复用热点词汇统计区样式 */
+            /* Style de la zone d'affichage autonome - réutilise le style de la zone de statistiques de mots-clés */
             .standalone-section {
                 margin-top: 32px;
                 padding-top: 24px;
@@ -804,7 +832,7 @@ def render_html_content(
                 font-weight: 500;
             }
 
-            /* AI 分析区块样式 */
+            /* Style des blocs d'analyse IA */
             .ai-section {
                 margin-top: 32px;
                 padding: 24px;
@@ -888,14 +916,14 @@ def render_html_content(
                 font-size: 14px;
             }
 
-            /* ===== 浏览器增强样式（渐进增强，邮件客户端无影响） ===== */
+            /* ===== Styles d'amélioration navigateur (progressifs, sans effet sur les clients e-mail) ===== */
 
-            /* 宽屏模式 - 基础 */
+            /* Mode plein écran - base */
             body.wide-mode .container { max-width: 1200px; }
             body.wide-mode .header-info { grid-template-columns: repeat(4, 1fr); }
             body.wide-mode .content { padding: 32px 40px; }
 
-            /* 宽屏模式 - RSS feed-group 两列 */
+            /* Mode plein écran - feed-group RSS en deux colonnes */
             body.wide-mode .rss-feeds-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -903,7 +931,7 @@ def render_html_content(
             }
             body.wide-mode .feed-group { margin-bottom: 0; }
 
-            /* 宽屏模式 - AI 分析区两列网格 */
+            /* Mode plein écran - grille deux colonnes pour la zone d'analyse IA */
             body.wide-mode .ai-section .ai-blocks-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -911,7 +939,7 @@ def render_html_content(
             }
             body.wide-mode .ai-block { margin-bottom: 0; }
 
-            /* 宽屏模式 - 新增热点多列 */
+            /* Mode plein écran - nouvelles tendances multi-colonnes */
             body.wide-mode .new-section .new-sources-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -919,7 +947,7 @@ def render_html_content(
             }
             body.wide-mode .new-source-group { margin-bottom: 0; }
 
-            /* 宽屏模式 - 独立展示区多列 */
+            /* Mode plein écran - zone d'affichage autonome multi-colonnes */
             body.wide-mode .standalone-section .standalone-groups-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -927,7 +955,7 @@ def render_html_content(
             }
             body.wide-mode .standalone-group { margin-bottom: 0; }
 
-            /* Tab 栏 */
+            /* Barre d'onglets */
             .tab-bar-wrapper {
                 position: sticky;
                 top: 0;
@@ -1025,7 +1053,7 @@ def render_html_content(
             }
             .tab-btn.active .tab-count { background: rgba(255,255,255,0.3); }
 
-            /* 搜索栏 */
+            /* Barre de recherche */
             .search-bar { display: none; padding: 0 0 16px 0; }
             .search-input {
                 width: 100%;
@@ -1040,7 +1068,7 @@ def render_html_content(
             .search-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
             .search-input::placeholder { color: #9ca3af; }
 
-            /* 右下角悬浮工具栏 */
+            /* Barre d'outils flottante en bas à droite */
             .fab-bar {
                 position: fixed;
                 bottom: 24px;
@@ -1079,7 +1107,7 @@ def render_html_content(
             body.dark-mode .fab-btn { background: #533483; }
             body.dark-mode .fab-btn:hover { background: #6d28d9; }
 
-            /* 快捷键 tooltip */
+            /* Infobulle de raccourcis clavier */
             .fab-tooltip {
                 position: absolute;
                 bottom: 0;
@@ -1122,7 +1150,7 @@ def render_html_content(
                 margin-left: 8px;
             }
 
-            /* 折叠/展开 */
+            /* Repli / dépli */
             .collapse-icon {
                 display: none;
                 margin-right: 6px;
@@ -1142,14 +1170,14 @@ def render_html_content(
             .word-group.collapsed .news-item { display: none; }
             .word-group.collapsed .collapse-icon { transform: rotate(-90deg); }
 
-            /* Tab 切换动画 */
+            /* Animation de changement d'onglet */
             body.wide-mode .word-group[data-tab-index] { animation: tabFadeIn 0.2s ease; }
             @keyframes tabFadeIn {
                 from { opacity: 0; transform: translateY(8px); }
                 to { opacity: 1; transform: translateY(0); }
             }
 
-            /* 宽屏切换按钮 */
+            /* Bouton de bascule plein écran */
             .toggle-wide-btn {
                 background: rgba(255, 255, 255, 0.2);
                 border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1169,7 +1197,7 @@ def render_html_content(
                 transform: translateY(-1px);
             }
 
-            /* ===== 暗色模式 ===== */
+            /* ===== Mode sombre ===== */
             body.dark-mode {
                 background: #0f172a;
                 color: #e2e8f0;
@@ -1185,7 +1213,7 @@ def render_html_content(
                 background: #1e293b;
             }
 
-            /* 文字颜色 */
+            /* Couleur du texte */
             body.dark-mode .word-name,
             body.dark-mode .new-section-title,
             body.dark-mode .standalone-name,
@@ -1206,7 +1234,7 @@ def render_html_content(
             body.dark-mode .rss-summary { color: #94a3b8; }
             body.dark-mode .info-value { color: white; }
 
-            /* 链接 */
+            /* Liens */
             body.dark-mode .news-title a,
             body.dark-mode .rss-title a,
             body.dark-mode .new-item a,
@@ -1215,7 +1243,7 @@ def render_html_content(
             body.dark-mode .news-title a:visited { color: #c4b5fd; }
             body.dark-mode .rss-link:hover { color: #6ee7b7; }
 
-            /* 强调色 */
+            /* Couleur d'accentuation */
             body.dark-mode .keyword-tag {
                 background: rgba(99,102,241,0.15);
                 color: #a5b4fc;
@@ -1226,7 +1254,7 @@ def render_html_content(
             body.dark-mode .rss-section-title,
             body.dark-mode .standalone-section-title { color: #6ee7b7; }
 
-            /* 边框与分割线 */
+            /* Bordures et séparateurs */
             body.dark-mode .word-header,
             body.dark-mode .news-item,
             body.dark-mode .new-item,
@@ -1237,17 +1265,17 @@ def render_html_content(
             body.dark-mode .feed-header { border-bottom-color: #166534; }
             body.dark-mode .tab-bar { border-bottom-color: #334155; }
 
-            /* 序号圆圈 */
+            /* Cercle de numérotation */
             body.dark-mode .news-number,
             body.dark-mode .new-item-number {
                 background: #334155;
                 color: #94a3b8;
             }
 
-            /* 折叠 hover */
+            /* Repli au survol */
             body.dark-mode .word-header.collapsible:hover { background: #253347; }
 
-            /* Tab 栏 */
+            /* Barre d'onglets */
             body.dark-mode .tab-bar-wrapper {
                 background: #1e293b;
                 border-bottom-color: #334155;
@@ -1270,7 +1298,7 @@ def render_html_content(
             body.dark-mode .tab-bar::-webkit-scrollbar-track { background: #1e293b; }
             body.dark-mode .tab-bar::-webkit-scrollbar-thumb { background: #475569; }
 
-            /* 搜索框 */
+            /* Champ de recherche */
             body.dark-mode .search-input {
                 background: #1e293b;
                 border-color: #334155;
@@ -1282,13 +1310,13 @@ def render_html_content(
             }
             body.dark-mode .search-input::placeholder { color: #64748b; }
 
-            /* RSS 卡片 */
+            /* Carte RSS */
             body.dark-mode .rss-item {
                 background: #1a2e25;
                 border-left-color: #059669;
             }
 
-            /* AI 分析区 */
+            /* Zone d'analyse IA */
             body.dark-mode .ai-section {
                 background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 100%);
                 border-color: #334155;
@@ -1318,7 +1346,7 @@ def render_html_content(
                 color: #93c5fd;
             }
 
-            /* 错误区 */
+            /* Zone d'erreur */
             body.dark-mode .error-section {
                 background: #1c1917;
                 border-color: #78350f;
@@ -1335,11 +1363,11 @@ def render_html_content(
             body.dark-mode .footer-link { color: #93c5fd; }
             body.dark-mode .footer-link:hover { color: #c4b5fd; }
 
-            /* 悬浮按钮 */
+            /* Bouton flottant */
             body.dark-mode .fab-btn { background: #6d28d9; }
             body.dark-mode .fab-btn:hover { background: #7c3aed; }
 
-            /* 下拉菜单 */
+            /* Menu déroulant */
             body.dark-mode .save-dropdown-menu {
                 background: rgba(30,41,59,0.95);
                 border-color: #475569;
@@ -1353,7 +1381,7 @@ def render_html_content(
                 color: #c4b5fd;
             }
 
-            /* 暗色模式切换按钮 */
+            /* Bouton de bascule mode sombre */
             .toggle-dark-btn {
                 background: rgba(255, 255, 255, 0.2);
                 border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1373,9 +1401,9 @@ def render_html_content(
                 transform: translateY(-1px);
             }
 
-            /* 快捷键面板已集成到 fab-tooltip */
+            /* Le panneau de raccourcis est intégré dans fab-tooltip */
 
-            /* 阅读进度条 */
+            /* Barre de progression de lecture */
             .reading-progress {
                 position: fixed;
                 top: 0; left: 0;
@@ -1389,11 +1417,11 @@ def render_html_content(
                 background: linear-gradient(90deg, #8ab4f8, #c58af9);
             }
 
-            /* 复制按钮样式已集成到 .news-number */
+            /* Le style du bouton de copie est intégré dans .news-number */
 
 
 
-            /* 新上榜标记 */
+            /* Marqueur de nouvelle entrée */
             .badge-new {
                 display: inline-block;
                 background: linear-gradient(135deg, #f43f5e, #ec4899);
@@ -1411,46 +1439,48 @@ def render_html_content(
             }
         </style>
     </head>
-    <body>
+    <body>"""
+
+    html += f"""
         <div class="reading-progress"></div>
         <div class="container">
             <div class="header">
                 <div class="header-watermark">TrendRadar</div>
                 <div class="save-buttons">
-                    <button class="toggle-wide-btn" onclick="toggleWideMode()" title="切换宽屏/窄屏">⛶</button>
-                    <button class="toggle-dark-btn" onclick="toggleDarkMode()" title="切换暗色/亮色">☽</button>
+                    <button class="toggle-wide-btn" onclick="toggleWideMode()" title="{t("toggle_wide", language)}">⛶</button>
+                    <button class="toggle-dark-btn" onclick="toggleDarkMode()" title="{t("toggle_dark", language)}">☽</button>
                     <div class="save-btn-group">
-                        <button class="save-btn" onclick="saveAsImage(event)">导出</button>
+                        <button class="save-btn" onclick="saveAsImage(event)">{t("export", language)}</button>
                         <button class="save-dropdown-trigger">▾</button>
                         <div class="save-dropdown-menu">
-                            <button class="save-dropdown-item" onclick="saveAsImage(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="7.5" r="2.5"/><path d="M12 4h.01"/></svg>整页截图</button>
-                            <button class="save-dropdown-item" onclick="saveAsMultipleImages(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="10" height="10" rx="1.5"/><path d="M5 4V2.5A1.5 1.5 0 016.5 1h7A1.5 1.5 0 0115 2.5v7a1.5 1.5 0 01-1.5 1.5H12"/></svg>分段截图</button>
-                            <button class="save-dropdown-item" onclick="saveAsMarkdown()"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2h11A1.5 1.5 0 0115 3.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9A1.5 1.5 0 012.5 2z"/><path d="M4 11V5l2.5 3L9 5v6"/><path d="M11.5 8v3m0 0l-1.5-2m1.5 2l1.5-2"/></svg>Markdown</button>
+                            <button class="save-dropdown-item" onclick="saveAsImage(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="7.5" r="2.5"/><path d="M12 4h.01"/></svg>{t("export_full_screenshot", language)}</button>
+                            <button class="save-dropdown-item" onclick="saveAsMultipleImages(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="10" height="10" rx="1.5"/><path d="M5 4V2.5A1.5 1.5 0 016.5 1h7A1.5 1.5 0 0115 2.5v7a1.5 1.5 0 01-1.5 1.5H12"/></svg>{t("export_segmented_screenshot", language)}</button>
+                            <button class="save-dropdown-item" onclick="saveAsMarkdown()"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2h11A1.5 1.5 0 0115 3.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9A1.5 1.5 0 012.5 2z"/><path d="M4 11V5l2.5 3L9 5v6"/><path d="M11.5 8v3m0 0l-1.5-2m1.5 2l1.5-2"/></svg>{t("export_markdown", language)}</button>
                         </div>
                     </div>
                 </div>
-                <div class="header-title">热点新闻分析</div>
+                <div class="header-title">{t("report_title", language)}</div>
                 <div class="header-info">"""
 
-    # 使用提供的时间函数或默认 datetime.now
+    # Utilise la fonction de temps fournie ou datetime.now par défaut
     if get_time_func:
         now = get_time_func()
     else:
         now = datetime.now()
 
-    # 处理报告类型显示
+    # Affichage du type de rapport
     if mode == "current":
-        mode_display = "当前榜单"
+        mode_display = t("mode_current", language)
     elif mode == "incremental":
-        mode_display = "增量分析"
+        mode_display = t("mode_incremental", language)
     else:
-        mode_display = "全天汇总"
+        mode_display = t("mode_daily", language)
 
-    # 计算各项数据
+    # Calcul des différentes données
     hot_news_count = sum(len(stat["titles"]) for stat in report_data["stats"])
     new_count = report_data.get("total_new_count", 0)
 
-    # 从元数据获取 RSS 和平台信息
+    # Récupère les informations RSS et plateforme depuis les métadonnées
     hotlist_total = report_data.get("hotlist_total", total_titles)
     platform_total = report_data.get("platform_total", 0)
     failed_count = len(report_data.get("failed_ids", []))
@@ -1461,71 +1491,71 @@ def render_html_content(
     rss_source_failed = report_data.get("rss_source_failed", 0)
     rss_source_success = max(0, rss_source_total - rss_source_failed)
 
-    # 1. 报告类型
+    # 1. Type de rapport
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">报告类型</span>
+                        <span class="info-label">{t("info_report_type", language)}</span>
                         <span class="info-value">{mode_display}</span>
                     </div>"""
 
-    # 2. 生成时间
+    # 2. Heure de génération
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">生成时间</span>
+                        <span class="info-label">{t("info_generated_at", language)}</span>
                         <span class="info-value">{now.strftime("%m-%d %H:%M")}</span>
                     </div>"""
 
-    # 3. 热榜命中
+    # 3. Tendances retenues
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">热榜命中</span>
+                        <span class="info-label">{t("info_hotlist_hits", language)}</span>
                         <span class="info-value">{hot_news_count} / {hotlist_total}</span>
                     </div>"""
 
-    # 4. RSS 命中
+    # 4. RSS retenus
     if rss_source_total > 0:
         rss_value = f"{rss_matched} / {rss_total}"
     else:
-        rss_value = "未启用"
+        rss_value = t("not_enabled", language)
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">RSS 命中</span>
+                        <span class="info-label">{t("info_rss_hits", language)}</span>
                         <span class="info-value">{rss_value}</span>
                     </div>"""
 
-    # 5. 热榜平台
+    # 5. Plateformes de tendances
     if platform_total > 0:
         platform_value = f"{platform_success}/{platform_total}"
     else:
         platform_value = "--"
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">热榜平台</span>
+                        <span class="info-label">{t("info_hotlist_platforms", language)}</span>
                         <span class="info-value">{platform_value}</span>
                     </div>"""
 
-    # 6. RSS 源
+    # 6. Sources RSS
     if rss_source_total > 0:
         rss_source_value = f"{rss_source_success}/{rss_source_total}"
     else:
         rss_source_value = "--"
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">RSS 源</span>
+                        <span class="info-label">{t("info_rss_sources", language)}</span>
                         <span class="info-value">{rss_source_value}</span>
                     </div>"""
 
-    # 7. 新增热点（热榜新增 + RSS 新增）
+    # 7. Nouvelles tendances (nouveautés tendances + nouveautés RSS)
     rss_new_count = sum(len(stat.get("titles", [])) for stat in (rss_new_items or []))
     total_new = new_count + rss_new_count
     new_value = f"{new_count} + {rss_new_count}" if total_new > 0 else "0"
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">新增热点</span>
+                        <span class="info-label">{t("info_new_hotspots", language)}</span>
                         <span class="info-value">{new_value}</span>
                     </div>"""
 
-    # 8. AI 分析
+    # 8. Analyse IA
     if ai_analysis and getattr(ai_analysis, "success", False):
         hotlist_analyzed = getattr(ai_analysis, "hotlist_analyzed", 0)
         rss_analyzed = getattr(ai_analysis, "rss_analyzed", 0)
@@ -1541,31 +1571,31 @@ def render_html_content(
         ai_value = " + ".join(ai_parts) if sum(int(p) for p in ai_parts) > 0 else "0"
     elif ai_analysis:
         if getattr(ai_analysis, "skipped", False):
-            ai_value = "已跳过"
+            ai_value = t("skipped", language)
         else:
-            ai_value = "待配置"
+            ai_value = t("to_configure", language)
     else:
-        ai_value = "未启用"
+        ai_value = t("not_enabled", language)
     html += f"""
                     <div class="info-item">
-                        <span class="info-label">AI 分析</span>
+                        <span class="info-label">{t("info_ai_analysis", language)}</span>
                         <span class="info-value">{ai_value}</span>
                     </div>"""
 
-    html += """
+    html += f"""
                 </div>
             </div>
 
             <div class="content">
                 <div class="search-bar">
-                    <input type="text" class="search-input" placeholder="搜索新闻标题..." oninput="handleSearch(this.value)">
+                    <input type="text" class="search-input" placeholder="{t("search_placeholder", language)}" oninput="handleSearch(this.value)">
                 </div>"""
 
-    # 处理失败ID错误信息
+    # Traite les erreurs des IDs en échec
     if report_data["failed_ids"]:
-        html += """
+        html += f"""
                 <div class="error-section">
-                    <div class="error-title">⚠️ 请求失败的平台</div>
+                    <div class="error-title">{t("failed_platforms", language)}</div>
                     <ul class="error-list">"""
         for id_value in report_data["failed_ids"]:
             html += f'<li class="error-item">{html_escape(id_value)}</li>'
@@ -1573,16 +1603,16 @@ def render_html_content(
                     </ul>
                 </div>"""
 
-    # 生成热点词汇统计部分的HTML
+    # Génère le HTML de la section des statistiques de mots-clés
     stats_html = ""
     tab_bar_html = ""
     if report_data["stats"]:
         total_count = len(report_data["stats"])
 
-        # 生成 Tab 栏 HTML
+        # Génère le HTML de la barre d'onglets
         total_news_count = sum(s["count"] for s in report_data["stats"])
         tab_bar_html = '<div class="tab-bar-wrapper"><div class="tab-bar">'
-        tab_bar_html += f'<button class="tab-btn" data-tab-index="all">全部<span class="tab-count">{total_news_count}</span></button>'
+        tab_bar_html += f'<button class="tab-btn" data-tab-index="all">{t("tab_all", language)}<span class="tab-count">{total_news_count}</span></button>'
         for tab_i, tab_stat in enumerate(report_data["stats"]):
             escaped_tab_word = html_escape(tab_stat["word"])
             tab_count = tab_stat["count"]
@@ -1592,7 +1622,7 @@ def render_html_content(
         for i, stat in enumerate(report_data["stats"], 1):
             count = stat["count"]
 
-            # 确定热度等级
+            # Détermine le niveau de popularité
             if count >= 10:
                 count_class = "hot"
             elif count >= 5:
@@ -1607,12 +1637,12 @@ def render_html_content(
                     <div class="word-header">
                         <div class="word-info">
                             <div class="word-name">{escaped_word}</div>
-                            <div class="word-count {count_class}">{count} 条</div>
+                            <div class="word-count {count_class}">{count} {t("count_unit", language)}</div>
                         </div>
                         <div class="word-index"><span class="collapse-icon">▼</span>{i}/{total_count}</div>
                     </div>"""
 
-            # 处理每个词组下的新闻标题，给每条新闻标上序号
+            # Traite les titres d'actualités de chaque groupe et les numérote
             for j, title_data in enumerate(stat["titles"], 1):
                 is_new = title_data.get("is_new", False)
                 new_class = "new" if is_new else ""
@@ -1623,24 +1653,24 @@ def render_html_content(
                         <div class="news-content">
                             <div class="news-header">"""
 
-                # 根据 display_mode 决定显示来源还是关键词
+                # Selon display_mode, affiche la source ou le mot-clé
                 if display_mode == "keyword":
-                    # keyword 模式：显示来源
+                    # mode keyword : affiche la source
                     stats_html += f'<span class="source-name">{html_escape(title_data["source_name"])}</span>'
                 else:
-                    # platform 模式：显示关键词
+                    # mode platform : affiche le mot-clé
                     matched_keyword = title_data.get("matched_keyword", "")
                     if matched_keyword:
                         stats_html += f'<span class="keyword-tag">[{html_escape(matched_keyword)}]</span>'
 
-                # 处理排名显示
+                # Traite l'affichage du classement
                 ranks = title_data.get("ranks", [])
                 if ranks:
                     min_rank = min(ranks)
                     max_rank = max(ranks)
                     rank_threshold = title_data.get("rank_threshold", 10)
 
-                    # 确定排名等级
+                    # Détermine le niveau de classement
                     if min_rank <= 3:
                         rank_class = "top"
                     elif min_rank <= rank_threshold:
@@ -1653,7 +1683,7 @@ def render_html_content(
                     else:
                         rank_text = f"{min_rank}-{max_rank}"
 
-                    # 计算趋势箭头
+                    # Calcule la flèche de tendance
                     rank_timeline = title_data.get("rank_timeline", [])
                     trend = calculate_rank_trend(rank_timeline, ranks)
                     trend_html = ""
@@ -1664,10 +1694,10 @@ def render_html_content(
 
                     stats_html += f'<span class="rank-num {rank_class}">{rank_text}</span>{trend_html}'
 
-                # 处理时间显示
+                # Traite l'affichage du temps
                 time_display = title_data.get("time_display", "")
                 if time_display:
-                    # 简化时间显示格式，将波浪线替换为~
+                    # Simplifie le format d'affichage du temps, remplace le tilde par ~
                     simplified_time = (
                         time_display.replace(" ~ ", "~")
                         .replace("[", "")
@@ -1677,16 +1707,16 @@ def render_html_content(
                         f'<span class="time-info">{html_escape(simplified_time)}</span>'
                     )
 
-                # 处理出现次数
+                # Traite le nombre d'occurrences
                 count_info = title_data.get("count", 1)
                 if count_info > 1:
-                    stats_html += f'<span class="count-info">{count_info}次</span>'
+                    stats_html += f'<span class="count-info">{count_info}{t("occurrence_unit", language)}</span>'
 
                 stats_html += """
                             </div>
                             <div class="news-title">"""
 
-                # 处理标题和链接
+                # Traite le titre et le lien
                 escaped_title = html_escape(title_data["title"])
                 link_url = title_data.get("mobile_url") or title_data.get("url", "")
 
@@ -1704,18 +1734,18 @@ def render_html_content(
             stats_html += """
                 </div>"""
 
-    # 给热榜统计添加外层包装
+    # Ajoute l'enveloppe externe aux statistiques de tendances
     if stats_html:
         stats_html = f"""
                 <div class="hotlist-section">{tab_bar_html}{stats_html}
                 </div>"""
 
-    # 生成新增新闻区域的HTML
+    # Génère le HTML de la zone des nouvelles actualités
     new_titles_html = ""
     if show_new_section and report_data["new_titles"]:
         new_titles_html += f"""
                 <div class="new-section">
-                    <div class="new-section-title">本次新增热点 (共 {report_data['total_new_count']} 条)</div>
+                    <div class="new-section-title">{t("new_hotspots_title", language).format(count=report_data['total_new_count'])}</div>
                     <div class="new-sources-grid">"""
 
         for source_data in report_data["new_titles"]:
@@ -1724,13 +1754,13 @@ def render_html_content(
 
             new_titles_html += f"""
                     <div class="new-source-group">
-                        <div class="new-source-title">{escaped_source} · {titles_count}条</div>"""
+                        <div class="new-source-title">{escaped_source} · {titles_count} {t("count_unit", language)}</div>"""
 
-            # 为新增新闻也添加序号
+            # Numérote également les nouvelles actualités
             for idx, title_data in enumerate(source_data["titles"], 1):
                 ranks = title_data.get("ranks", [])
 
-                # 处理新增新闻的排名显示
+                # Traite l'affichage du classement des nouvelles actualités
                 rank_class = ""
                 if ranks:
                     min_rank = min(ranks)
@@ -1753,7 +1783,7 @@ def render_html_content(
                             <div class="new-item-content">
                                 <div class="new-item-title">"""
 
-                # 处理新增新闻的链接
+                # Traite le lien des nouvelles actualités
                 escaped_title = html_escape(title_data["title"])
                 link_url = title_data.get("mobile_url") or title_data.get("url", "")
 
@@ -1775,20 +1805,20 @@ def render_html_content(
                     </div>
                 </div>"""
 
-    # 生成 RSS 统计内容
-    def render_rss_stats_html(stats: List[Dict], title: str = "RSS 订阅更新") -> str:
-        """渲染 RSS 统计区块 HTML
+    # Génère le contenu des statistiques RSS
+    def render_rss_stats_html(stats: List[Dict], title: Optional[str] = None) -> str:
+        """Rend le bloc HTML des statistiques RSS.
 
         Args:
-            stats: RSS 分组统计列表，格式与热榜一致：
+            stats: liste des statistiques RSS groupées, même format que les tendances :
                 [
                     {
-                        "word": "关键词",
+                        "word": "mot-clé",
                         "count": 5,
                         "titles": [
                             {
-                                "title": "标题",
-                                "source_name": "Feed 名称",
+                                "title": "titre",
+                                "source_name": "nom du flux",
                                 "time_display": "12-29 08:20",
                                 "url": "...",
                                 "is_new": True/False
@@ -1796,15 +1826,17 @@ def render_html_content(
                         ]
                     }
                 ]
-            title: 区块标题
+            title: titre du bloc
 
         Returns:
-            渲染后的 HTML 字符串
+            chaîne HTML rendue
         """
+        if title is None:
+            title = t("rss_subscription_update", language)
         if not stats:
             return ""
 
-        # 计算总条目数
+        # Calcule le nombre total d'entrées
         total_count = sum(stat.get("count", 0) for stat in stats)
         if total_count == 0:
             return ""
@@ -1813,11 +1845,11 @@ def render_html_content(
                 <div class="rss-section">
                     <div class="rss-section-header">
                         <div class="rss-section-title">{title}</div>
-                        <div class="rss-section-count">{total_count} 条</div>
+                        <div class="rss-section-count">{total_count} {t("count_unit", language)}</div>
                     </div>
                     <div class="rss-feeds-grid">"""
 
-        # 按关键词分组渲染（与热榜格式一致）
+        # Rend par groupe de mots-clés (même format que les tendances)
         for stat in stats:
             keyword = stat.get("word", "")
             titles = stat.get("titles", [])
@@ -1830,7 +1862,7 @@ def render_html_content(
                     <div class="feed-group">
                         <div class="feed-header">
                             <div class="feed-name">{html_escape(keyword)}</div>
-                            <div class="feed-count">{keyword_count} 条</div>
+                            <div class="feed-count">{keyword_count} {t("count_unit", language)}</div>
                         </div>"""
 
             for title_data in titles:
@@ -1876,21 +1908,21 @@ def render_html_content(
                 </div>"""
         return rss_html
 
-    # 生成独立展示区内容
+    # Génère le contenu de la zone d'affichage autonome
     def render_standalone_html(data: Optional[Dict]) -> str:
-        """渲染独立展示区 HTML（复用热点词汇统计区样式）
+        """Rend le HTML de la zone d'affichage autonome (réutilise le style de la zone de statistiques de mots-clés).
 
         Args:
-            data: 独立展示数据，格式：
+            data: données d'affichage autonome, format :
                 {
                     "platforms": [
                         {
                             "id": "zhihu",
-                            "name": "知乎热榜",
+                            "name": "Classement Zhihu",
                             "items": [
                                 {
-                                    "title": "标题",
-                                    "url": "链接",
+                                    "title": "titre",
+                                    "url": "lien",
                                     "rank": 1,
                                     "ranks": [1, 2, 1],
                                     "first_time": "08:00",
@@ -1906,10 +1938,10 @@ def render_html_content(
                             "name": "Hacker News",
                             "items": [
                                 {
-                                    "title": "标题",
-                                    "url": "链接",
+                                    "title": "titre",
+                                    "url": "lien",
                                     "published_at": "2025-01-07T08:00:00",
-                                    "author": "作者",
+                                    "author": "auteur",
                                 }
                             ]
                         }
@@ -1917,7 +1949,7 @@ def render_html_content(
                 }
 
         Returns:
-            渲染后的 HTML 字符串
+            chaîne HTML rendue
         """
         if not data:
             return ""
@@ -1928,7 +1960,7 @@ def render_html_content(
         if not platforms and not rss_feeds:
             return ""
 
-        # 计算总条目数
+        # Calcule le nombre total d'entrées
         total_platform_items = sum(len(p.get("items", [])) for p in platforms)
         total_rss_items = sum(len(f.get("items", [])) for f in rss_feeds)
         total_count = total_platform_items + total_rss_items
@@ -1936,7 +1968,7 @@ def render_html_content(
         if total_count == 0:
             return ""
 
-        # 收集所有分组信息用于生成 tab
+        # Rassemble les informations de tous les groupes pour générer les onglets
         all_groups = []
         for p in platforms:
             items = p.get("items", [])
@@ -1950,11 +1982,11 @@ def render_html_content(
         standalone_html = f"""
                 <div class="standalone-section">
                     <div class="standalone-section-header">
-                        <div class="standalone-section-title">独立展示区</div>
-                        <div class="standalone-section-count">{total_count} 条</div>
+                        <div class="standalone-section-title">{t("standalone_section", language)}</div>
+                        <div class="standalone-section-count">{total_count} {t("count_unit", language)}</div>
                     </div>"""
 
-        # 生成 tab 栏（2+ 分组时）
+        # Génère la barre d'onglets (à partir de 2 groupes)
         if len(all_groups) >= 2:
             standalone_html += """
                     <div class="tab-bar standalone-tab-bar">"""
@@ -1963,14 +1995,14 @@ def render_html_content(
                 standalone_html += f"""
                         <button class="tab-btn{active}" data-standalone-tab="{idx}">{html_escape(g["name"])}<span class="tab-count">{g["count"]}</span></button>"""
             standalone_html += f"""
-                        <button class="tab-btn" data-standalone-tab="all">全部<span class="tab-count">{total_count}</span></button>
+                        <button class="tab-btn" data-standalone-tab="all">{t("tab_all", language)}<span class="tab-count">{total_count}</span></button>
                     </div>"""
 
         standalone_html += """
                     <div class="standalone-groups-grid">"""
 
         group_idx = 0
-        # 渲染热榜平台（复用 word-group 结构）
+        # Rend les plateformes de tendances (réutilise la structure word-group)
         for platform in platforms:
             platform_name = platform.get("name", platform.get("id", ""))
             items = platform.get("items", [])
@@ -1981,10 +2013,10 @@ def render_html_content(
                     <div class="standalone-group" data-standalone-tab="{group_idx}">
                         <div class="standalone-header">
                             <div class="standalone-name">{html_escape(platform_name)}</div>
-                            <div class="standalone-count">{len(items)} 条</div>
+                            <div class="standalone-count">{len(items)} {t("count_unit", language)}</div>
                         </div>"""
 
-            # 渲染每个条目（复用 news-item 结构）
+            # Rend chaque entrée (réutilise la structure news-item)
             for j, item in enumerate(items, 1):
                 title = item.get("title", "")
                 url = item.get("url", "") or item.get("mobileUrl", "")
@@ -2000,12 +2032,12 @@ def render_html_content(
                             <div class="news-content">
                                 <div class="news-header">"""
 
-                # 排名显示（复用 rank-num 样式，无 # 前缀）
+                # Affichage du classement (réutilise le style rank-num, sans préfixe #)
                 if ranks:
                     min_rank = min(ranks)
                     max_rank = max(ranks)
 
-                    # 确定排名等级
+                    # Détermine le niveau de classement
                     if min_rank <= 3:
                         rank_class = "top"
                     elif min_rank <= 10:
@@ -2028,7 +2060,7 @@ def render_html_content(
                         rank_class = ""
                     standalone_html += f'<span class="rank-num {rank_class}">{rank}</span>'
 
-                # 时间显示（复用 time-info 样式，将 HH-MM 转换为 HH:MM）
+                # Affichage du temps (réutilise le style time-info, convertit HH-MM en HH:MM)
                 if first_time and last_time and first_time != last_time:
                     first_time_display = convert_time_for_display(first_time)
                     last_time_display = convert_time_for_display(last_time)
@@ -2037,15 +2069,15 @@ def render_html_content(
                     first_time_display = convert_time_for_display(first_time)
                     standalone_html += f'<span class="time-info">{html_escape(first_time_display)}</span>'
 
-                # 出现次数（复用 count-info 样式）
+                # Nombre d'occurrences (réutilise le style count-info)
                 if count > 1:
-                    standalone_html += f'<span class="count-info">{count}次</span>'
+                    standalone_html += f'<span class="count-info">{count}{t("occurrence_unit", language)}</span>'
 
                 standalone_html += """
                                 </div>
                                 <div class="news-title">"""
 
-                # 标题和链接（复用 news-link 样式）
+                # Titre et lien (réutilise le style news-link)
                 escaped_title = html_escape(title)
                 if url:
                     escaped_url = html_escape(url)
@@ -2062,7 +2094,7 @@ def render_html_content(
                     </div>"""
             group_idx += 1
 
-        # 渲染 RSS 源（复用相同结构）
+        # Rend les sources RSS (réutilise la même structure)
         for feed in rss_feeds:
             feed_name = feed.get("name", feed.get("id", ""))
             items = feed.get("items", [])
@@ -2073,7 +2105,7 @@ def render_html_content(
                     <div class="standalone-group" data-standalone-tab="{group_idx}">
                         <div class="standalone-header">
                             <div class="standalone-name">{html_escape(feed_name)}</div>
-                            <div class="standalone-count">{len(items)} 条</div>
+                            <div class="standalone-count">{len(items)} {t("count_unit", language)}</div>
                         </div>"""
 
             for j, item in enumerate(items, 1):
@@ -2088,7 +2120,7 @@ def render_html_content(
                             <div class="news-content">
                                 <div class="news-header">"""
 
-                # 时间显示（格式化 ISO 时间）
+                # Affichage du temps (formate le temps ISO)
                 if published_at:
                     try:
                         from datetime import datetime as dt
@@ -2102,7 +2134,7 @@ def render_html_content(
 
                     standalone_html += f'<span class="time-info">{html_escape(time_display)}</span>'
 
-                # 作者显示
+                # Affichage de l'auteur
                 if author:
                     standalone_html += f'<span class="source-name">{html_escape(author)}</span>'
 
@@ -2131,27 +2163,27 @@ def render_html_content(
                 </div>"""
         return standalone_html
 
-    # 生成 RSS 统计和新增 HTML
-    rss_stats_html = render_rss_stats_html(rss_items, "RSS 订阅更新") if rss_items else ""
-    rss_new_html = render_rss_stats_html(rss_new_items, "RSS 新增更新") if rss_new_items else ""
+    # Génère le HTML des statistiques et nouveautés RSS
+    rss_stats_html = render_rss_stats_html(rss_items, t("rss_subscription_update", language)) if rss_items else ""
+    rss_new_html = render_rss_stats_html(rss_new_items, t("rss_new_update", language)) if rss_new_items else ""
 
-    # 生成独立展示区 HTML
+    # Génère le HTML de la zone d'affichage autonome
     standalone_html = render_standalone_html(standalone_data)
 
-    # 生成 AI 分析 HTML
-    ai_html = render_ai_analysis_html_rich(ai_analysis) if ai_analysis else ""
+    # Génère le HTML de l'analyse IA
+    ai_html = render_ai_analysis_html_rich(ai_analysis, language) if ai_analysis else ""
 
-    # 准备各区域内容映射
+    # Prépare la correspondance des contenus de chaque zone
     region_contents = {
         "hotlist": stats_html,
         "rss": rss_stats_html,
-        "new_items": (new_titles_html, rss_new_html),  # 元组，分别处理
+        "new_items": (new_titles_html, rss_new_html),  # tuple, traités séparément
         "standalone": standalone_html,
         "ai_analysis": ai_html,
     }
 
     def add_section_divider(content: str) -> str:
-        """为内容的外层 div 添加 section-divider 类"""
+        """Ajoute la classe section-divider au div externe du contenu."""
         if not content or 'class="' not in content:
             return content
         first_class_pos = content.find('class="')
@@ -2160,12 +2192,12 @@ def render_html_content(
             return content[:insert_pos] + "section-divider " + content[insert_pos:]
         return content
 
-    # 按 region_order 顺序组装内容，动态添加分割线
+    # Assemble les contenus dans l'ordre de region_order, ajoute dynamiquement les séparateurs
     has_previous_content = False
     for region in region_order:
         content = region_contents.get(region, "")
         if region == "new_items":
-            # 特殊处理 new_items 区域（包含热榜新增和 RSS 新增两部分）
+            # Traitement spécial de la zone new_items (contient nouveautés tendances et nouveautés RSS)
             new_html, rss_new = content
             if new_html:
                 if has_previous_content:
@@ -2183,45 +2215,52 @@ def render_html_content(
             html += content
             has_previous_content = True
 
-    html += """
+    html += f"""
             </div>
 
             <div class="footer">
                 <div class="footer-content">
-                    由 <span class="project-name">TrendRadar</span> 生成 ·
+                    {t("footer_generated_by", language)} <span class="project-name">TrendRadar</span> ·
                     <a href="https://github.com/sansan0/TrendRadar" target="_blank" class="footer-link">
-                        GitHub 开源项目
+                        {t("footer_github_project", language)}
                     </a>"""
 
     if update_info:
         html += f"""
                     <br>
                     <span style="color: #ea580c; font-weight: 500;">
-                        发现新版本 {update_info['remote_version']}，当前版本 {update_info['current_version']}
+                        {t("footer_new_version", language).format(remote=update_info['remote_version'], current=update_info['current_version'])}
                     </span>"""
 
-    html += """
+    html += f"""
                 </div>
             </div>
         </div>
 
         <div class="fab-bar">
-            <button class="fab-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回顶部">↑</button>
+            <button class="fab-btn" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="{t("fab_back_to_top", language)}">↑</button>
             <button class="fab-btn fab-help">
                 <span>?</span>
                 <div class="fab-tooltip">
-                    <div class="tip-row"><span>切换宽屏</span><span class="tip-key">W</span></div>
-                    <div class="tip-row"><span>暗色模式</span><span class="tip-key">D</span></div>
-                    <div class="tip-row"><span>搜索</span><span class="tip-key">/</span></div>
-                    <div class="tip-row"><span>上一个 Tab</span><span class="tip-key">←</span></div>
-                    <div class="tip-row"><span>下一个 Tab</span><span class="tip-key">→</span></div>
-                    <div class="tip-row"><span>序号可复制</span><span class="tip-key">点击</span></div>
+                    <div class="tip-row"><span>{t("tip_toggle_wide", language)}</span><span class="tip-key">W</span></div>
+                    <div class="tip-row"><span>{t("tip_dark_mode", language)}</span><span class="tip-key">D</span></div>
+                    <div class="tip-row"><span>{t("tip_search", language)}</span><span class="tip-key">/</span></div>
+                    <div class="tip-row"><span>{t("tip_prev_tab", language)}</span><span class="tip-key">←</span></div>
+                    <div class="tip-row"><span>{t("tip_next_tab", language)}</span><span class="tip-key">→</span></div>
+                    <div class="tip-row"><span>{t("tip_copyable_number", language)}</span><span class="tip-key">{t("tip_key_click", language)}</span></div>
                 </div>
             </button>
-        </div>
+        </div>"""
 
+    html += f"""
         <script>
-            // ===== 浏览器增强功能 =====
+            // ===== Objet i18n injecté côté serveur =====
+            var I18N = {js_i18n_json};
+        </script>"""
+
+    html += """
+        <script>
+            // ===== Fonctions d'amélioration navigateur =====
 
             function toggleWideMode() {
                 document.body.classList.toggle('wide-mode');
@@ -2435,7 +2474,7 @@ def render_html_content(
                 }
             }
 
-            // 独立展示区 Tab 切换
+            // Changement d'onglet de la zone d'affichage autonome
             function initStandaloneTabs() {
                 var tabBar = document.querySelector('.standalone-tab-bar');
                 if (!tabBar) return;
@@ -2460,7 +2499,7 @@ def render_html_content(
                     });
                 });
 
-                // 初始状态
+                // État initial
                 initStandaloneTabVisibility();
             }
 
@@ -2542,7 +2581,7 @@ def render_html_content(
                 if (fabBar && window.scrollY > 300) fabBar.classList.add('visible');
             }
 
-            // ===== 截图功能 =====
+            // ===== Fonctions de capture d'écran =====
 
             async function saveAsImage(e) {
                 const button = e.target.closest('.save-dropdown-item') || e.target;
@@ -2550,21 +2589,21 @@ def render_html_content(
                 var screenshotState = null;
 
                 try {
-                    button.textContent = '生成中...';
+                    button.textContent = I18N.generating;
                     button.disabled = true;
                     window.scrollTo(0, 0);
 
-                    // 等待页面稳定
+                    // Attend la stabilisation de la page
                     await new Promise(resolve => setTimeout(resolve, 200));
 
-                    // 截图前准备：切回窄屏布局
+                    // Préparation avant capture : repasse en disposition étroite
                     screenshotState = prepareForScreenshot();
 
-                    // 截图前隐藏按钮
+                    // Masque les boutons avant la capture
                     const buttons = document.querySelector('.save-buttons');
                     buttons.style.visibility = 'hidden';
 
-                    // 再次等待确保按钮完全隐藏
+                    // Attend à nouveau pour garantir que les boutons sont bien masqués
                     await new Promise(resolve => setTimeout(resolve, 100));
 
                     const container = document.querySelector('.container');
@@ -2593,17 +2632,17 @@ def render_html_content(
 
                     const link = document.createElement('a');
                     const now = new Date();
-                    const filename = `TrendRadar_热点新闻分析_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.png`;
+                    const filename = `TrendRadar_${I18N.screenshotLabel}_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.png`;
 
                     link.download = filename;
                     link.href = canvas.toDataURL('image/png', 1.0);
 
-                    // 触发下载
+                    // Déclenche le téléchargement
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
 
-                    button.textContent = '保存成功!';
+                    button.textContent = I18N.saveSuccess;
                     setTimeout(() => {
                         button.innerHTML = originalHTML;
                         button.disabled = false;
@@ -2613,7 +2652,7 @@ def render_html_content(
                     const buttons = document.querySelector('.save-buttons');
                     buttons.style.visibility = 'visible';
                     if (screenshotState) { restoreAfterScreenshot(screenshotState); }
-                    button.textContent = '保存失败';
+                    button.textContent = I18N.saveFailed;
                     setTimeout(() => {
                         button.innerHTML = originalHTML;
                         button.disabled = false;
@@ -2631,10 +2670,10 @@ def render_html_content(
 
                 try {
                     screenshotState2 = prepareForScreenshot();
-                    button.textContent = '分析中...';
+                    button.textContent = I18N.analyzing;
                     button.disabled = true;
 
-                    // 获取所有可能的分割元素
+                    // Récupère tous les éléments de découpe possibles
                     const newsItems = Array.from(container.querySelectorAll('.news-item'));
                     const wordGroups = Array.from(container.querySelectorAll('.word-group'));
                     const newSection = container.querySelector('.new-section');
@@ -2642,11 +2681,11 @@ def render_html_content(
                     const header = container.querySelector('.header');
                     const footer = container.querySelector('.footer');
 
-                    // 计算元素位置和高度
+                    // Calcule la position et la hauteur des éléments
                     const containerRect = container.getBoundingClientRect();
                     const elements = [];
 
-                    // 添加header作为必须包含的元素
+                    // Ajoute le header comme élément obligatoire
                     elements.push({
                         type: 'header',
                         element: header,
@@ -2655,7 +2694,7 @@ def render_html_content(
                         height: header.offsetHeight
                     });
 
-                    // 添加错误信息（如果存在）
+                    // Ajoute les informations d'erreur (si présentes)
                     if (errorSection) {
                         const rect = errorSection.getBoundingClientRect();
                         elements.push({
@@ -2667,12 +2706,12 @@ def render_html_content(
                         });
                     }
 
-                    // 按word-group分组处理news-item
+                    // Traite les news-item groupés par word-group
                     wordGroups.forEach(group => {
                         const groupRect = group.getBoundingClientRect();
                         const groupNewsItems = group.querySelectorAll('.news-item');
 
-                        // 添加word-group的header部分
+                        // Ajoute la partie header du word-group
                         const wordHeader = group.querySelector('.word-header');
                         if (wordHeader) {
                             const headerRect = wordHeader.getBoundingClientRect();
@@ -2686,7 +2725,7 @@ def render_html_content(
                             });
                         }
 
-                        // 添加每个news-item
+                        // Ajoute chaque news-item
                         groupNewsItems.forEach(item => {
                             const rect = item.getBoundingClientRect();
                             elements.push({
@@ -2700,7 +2739,7 @@ def render_html_content(
                         });
                     });
 
-                    // 添加新增新闻部分
+                    // Ajoute la partie des nouvelles actualités
                     if (newSection) {
                         const rect = newSection.getBoundingClientRect();
                         elements.push({
@@ -2712,7 +2751,7 @@ def render_html_content(
                         });
                     }
 
-                    // 添加footer
+                    // Ajoute le footer
                     const footerRect = footer.getBoundingClientRect();
                     elements.push({
                         type: 'footer',
@@ -2722,7 +2761,7 @@ def render_html_content(
                         height: footer.offsetHeight
                     });
 
-                    // 计算分割点
+                    // Calcule les points de découpe
                     const segments = [];
                     let currentSegment = { start: 0, end: 0, height: 0, includeHeader: true };
                     let headerHeight = header.offsetHeight;
@@ -2732,13 +2771,13 @@ def render_html_content(
                         const element = elements[i];
                         const potentialHeight = element.bottom - currentSegment.start;
 
-                        // 检查是否需要创建新分段
+                        // Vérifie s'il faut créer un nouveau segment
                         if (potentialHeight > maxHeight && currentSegment.height > headerHeight) {
-                            // 在前一个元素结束处分割
+                            // Découpe à la fin de l'élément précédent
                             currentSegment.end = elements[i - 1].bottom;
                             segments.push(currentSegment);
 
-                            // 开始新分段
+                            // Commence un nouveau segment
                             currentSegment = {
                                 start: currentSegment.end,
                                 end: 0,
@@ -2751,25 +2790,25 @@ def render_html_content(
                         }
                     }
 
-                    // 添加最后一个分段
+                    // Ajoute le dernier segment
                     if (currentSegment.height > 0) {
                         currentSegment.end = container.offsetHeight;
                         segments.push(currentSegment);
                     }
 
-                    button.textContent = `生成中 (0/${segments.length})...`;
+                    button.textContent = I18N.generatingProgress.replace('{current}', 0).replace('{total}', segments.length);
 
-                    // 隐藏保存按钮
+                    // Masque les boutons d'enregistrement
                     const buttons = document.querySelector('.save-buttons');
                     buttons.style.visibility = 'hidden';
 
-                    // 为每个分段生成图片
+                    // Génère une image pour chaque segment
                     const images = [];
                     for (let i = 0; i < segments.length; i++) {
                         const segment = segments[i];
-                        button.textContent = `生成中 (${i + 1}/${segments.length})...`;
+                        button.textContent = I18N.generatingProgress.replace('{current}', i + 1).replace('{total}', segments.length);
 
-                        // 创建临时容器用于截图
+                        // Crée un conteneur temporaire pour la capture
                         const tempContainer = document.createElement('div');
                         tempContainer.style.cssText = `
                             position: absolute;
@@ -2780,10 +2819,10 @@ def render_html_content(
                         `;
                         tempContainer.className = 'container';
 
-                        // 克隆容器内容
+                        // Clone le contenu du conteneur
                         const clonedContainer = container.cloneNode(true);
 
-                        // 移除克隆内容中的保存按钮
+                        // Retire les boutons d'enregistrement du clone
                         const clonedButtons = clonedContainer.querySelector('.save-buttons');
                         if (clonedButtons) {
                             clonedButtons.style.display = 'none';
@@ -2792,10 +2831,10 @@ def render_html_content(
                         tempContainer.appendChild(clonedContainer);
                         document.body.appendChild(tempContainer);
 
-                        // 等待DOM更新
+                        // Attend la mise à jour du DOM
                         await new Promise(resolve => setTimeout(resolve, 100));
 
-                        // 使用html2canvas截取特定区域
+                        // Utilise html2canvas pour capturer la zone ciblée
                         const canvas = await html2canvas(clonedContainer, {
                             backgroundColor: '#ffffff',
                             scale: scale,
@@ -2813,16 +2852,16 @@ def render_html_content(
 
                         images.push(canvas.toDataURL('image/png', 1.0));
 
-                        // 清理临时容器
+                        // Nettoie le conteneur temporaire
                         document.body.removeChild(tempContainer);
                     }
 
-                    // 恢复按钮显示
+                    // Restaure l'affichage des boutons
                     buttons.style.visibility = 'visible';
 
-                    // 下载所有图片
+                    // Télécharge toutes les images
                     const now = new Date();
-                    const baseFilename = `TrendRadar_热点新闻分析_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+                    const baseFilename = `TrendRadar_${I18N.screenshotLabel}_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
 
                     for (let i = 0; i < images.length; i++) {
                         const link = document.createElement('a');
@@ -2832,11 +2871,11 @@ def render_html_content(
                         link.click();
                         document.body.removeChild(link);
 
-                        // 延迟一下避免浏览器阻止多个下载
+                        // Petit délai pour éviter que le navigateur bloque les téléchargements multiples
                         await new Promise(resolve => setTimeout(resolve, 100));
                     }
 
-                    button.textContent = `已保存 ${segments.length} 张图片!`;
+                    button.textContent = I18N.savedImages.replace('{count}', segments.length);
                     restoreAfterScreenshot(screenshotState2);
                     setTimeout(() => {
                         button.innerHTML = originalHTML;
@@ -2844,11 +2883,11 @@ def render_html_content(
                     }, 2000);
 
                 } catch (error) {
-                    console.error('分段保存失败:', error);
+                    console.error('Echec de la sauvegarde segmentee:', error);
                     const buttons = document.querySelector('.save-buttons');
                     buttons.style.visibility = 'visible';
                     if (screenshotState2) { restoreAfterScreenshot(screenshotState2); }
-                    button.textContent = '保存失败';
+                    button.textContent = I18N.saveFailed;
                     setTimeout(() => {
                         button.innerHTML = originalHTML;
                         button.disabled = false;
@@ -2862,12 +2901,12 @@ def render_html_content(
                 var dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
                 var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
-                // 标题
+                // Titre
                 var headerTitle = document.querySelector('.header-title');
                 lines.push('# ' + (headerTitle ? headerTitle.textContent.trim() : 'TrendRadar'));
                 lines.push('');
 
-                // 报告元信息
+                // Métadonnées du rapport
                 var infoItems = document.querySelectorAll('.header-info .info-item');
                 if (infoItems.length) {
                     infoItems.forEach(function(item) {
@@ -2880,7 +2919,7 @@ def render_html_content(
                     lines.push('');
                 }
 
-                // 提取 news-item 通用函数
+                // Fonction générique d'extraction d'un news-item
                 function extractItem(item, idx) {
                     var titleEl = item.querySelector('.news-title a');
                     var titleText = '';
@@ -2916,10 +2955,10 @@ def render_html_content(
                     return line;
                 }
 
-                // 热点关键词区
+                // Zone des mots-clés tendances
                 var wordGroups = document.querySelectorAll('.hotlist-section > .word-group');
                 if (wordGroups.length) {
-                    lines.push('## 热点新闻');
+                    lines.push('## ' + I18N.mdHotNews);
                     lines.push('');
                     wordGroups.forEach(function(group) {
                         var wordName = group.querySelector('.word-name');
@@ -2937,11 +2976,11 @@ def render_html_content(
                     });
                 }
 
-                // 新增热点区
+                // Zone des nouvelles tendances
                 var newSection = document.querySelector('.new-section');
                 if (newSection) {
                     var newTitle = newSection.querySelector('.new-section-title');
-                    lines.push('## ' + (newTitle ? newTitle.textContent.trim() : '本次新增热点'));
+                    lines.push('## ' + (newTitle ? newTitle.textContent.trim() : I18N.mdNewHotspots));
                     lines.push('');
                     var sourceGroups = newSection.querySelectorAll('.new-source-group');
                     sourceGroups.forEach(function(sg) {
@@ -2959,11 +2998,11 @@ def render_html_content(
                     });
                 }
 
-                // RSS 订阅更新区
+                // Zone de mise à jour des abonnements RSS
                 var rssSection = document.querySelector('.rss-section');
                 if (rssSection) {
                     var rssSectionTitle = rssSection.querySelector('.rss-section-title');
-                    lines.push('## ' + (rssSectionTitle ? rssSectionTitle.textContent.trim() : 'RSS 订阅更新'));
+                    lines.push('## ' + (rssSectionTitle ? rssSectionTitle.textContent.trim() : I18N.mdRssUpdate));
                     lines.push('');
                     var feedGroups = rssSection.querySelectorAll('.feed-group');
                     feedGroups.forEach(function(group) {
@@ -2994,21 +3033,21 @@ def render_html_content(
                     });
                 }
 
-                // AI 热点分析区
+                // Zone d'analyse IA des tendances
                 var aiSection = document.querySelector('.ai-section');
                 if (aiSection) {
                     var aiError = aiSection.querySelector('.ai-error') || aiSection.querySelector('.ai-warning');
                     var aiInfo = aiSection.querySelector('.ai-info');
                     if (aiError) {
-                        lines.push('## AI 分析');
+                        lines.push('## ' + I18N.mdAiAnalysis);
                         lines.push('');
                         lines.push('> ' + aiError.textContent.trim());
                         lines.push('');
                     } else if (aiInfo) {
-                        // 跳过 info 提示（如"跳过"）
+                        // Ignore les messages d'information (ex. « ignoré »)
                     } else {
                         var aiTitle = aiSection.querySelector('.ai-section-title');
-                        lines.push('## ' + (aiTitle ? aiTitle.textContent.trim() : 'AI 热点分析'));
+                        lines.push('## ' + (aiTitle ? aiTitle.textContent.trim() : I18N.mdAiHotAnalysis));
                         lines.push('');
                         var aiBlocks = aiSection.querySelectorAll('.ai-block');
                         aiBlocks.forEach(function(block) {
@@ -3026,11 +3065,11 @@ def render_html_content(
                     }
                 }
 
-                // 独立展示区（热榜平台 + RSS）
+                // Zone d'affichage autonome (plateformes de tendances + RSS)
                 var standaloneSection = document.querySelector('.standalone-section');
                 if (standaloneSection) {
                     var standaloneTitle = standaloneSection.querySelector('.standalone-section-title');
-                    lines.push('## ' + (standaloneTitle ? standaloneTitle.textContent.trim() : '独立展示区'));
+                    lines.push('## ' + (standaloneTitle ? standaloneTitle.textContent.trim() : I18N.mdStandalone));
                     lines.push('');
                     var groups = standaloneSection.querySelectorAll('.standalone-group');
                     groups.forEach(function(group) {
@@ -3049,12 +3088,12 @@ def render_html_content(
                     });
                 }
 
-                // 错误区
+                // Zone d'erreur
                 var errorSection = document.querySelector('.error-section');
                 if (errorSection) {
                     var errorItems = errorSection.querySelectorAll('.error-item');
                     if (errorItems.length) {
-                        lines.push('## 抓取异常');
+                        lines.push('## ' + I18N.mdCrawlErrors);
                         lines.push('');
                         errorItems.forEach(function(item) {
                             lines.push('- ' + item.textContent.trim());
@@ -3063,11 +3102,11 @@ def render_html_content(
                     }
                 }
 
-                // 页脚
+                // Pied de page
                 lines.push('---');
                 lines.push('*Generated by TrendRadar*');
 
-                // 下载
+                // Téléchargement
                 var md = lines.join('\\n');
                 var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
                 var link = document.createElement('a');
@@ -3083,7 +3122,7 @@ def render_html_content(
             document.addEventListener('DOMContentLoaded', function() {
                 window.scrollTo(0, 0);
 
-                // 自动检测宽屏模式
+                // Détection automatique du mode plein écran
                 var savedMode = null;
                 try { savedMode = localStorage.getItem('trendradar-wide-mode'); } catch(e) {}
                 if (savedMode === '1' || (savedMode === null && window.innerWidth > 768)) {
@@ -3092,7 +3131,7 @@ def render_html_content(
                     if (btn) btn.textContent = '⊡';
                 }
 
-                // 暗色模式恢复
+                // Restauration du mode sombre
                 var savedDark = null;
                 try { savedDark = localStorage.getItem('trendradar-dark-mode'); } catch(e) {}
                 if (savedDark === '1') {
@@ -3101,17 +3140,17 @@ def render_html_content(
                     if (darkBtn) darkBtn.textContent = '☀';
                 }
 
-                // 启用搜索栏
+                // Active la barre de recherche
                 var searchBar = document.querySelector('.search-bar');
                 if (searchBar) searchBar.style.display = 'block';
 
-                // 初始化增强功能
+                // Initialise les fonctions d'amélioration
                 initTabs();
                 initBackToTop();
                 initCollapse();
                 initStandaloneTabs();
 
-                // 键盘快捷键
+                // Raccourcis clavier
                 document.addEventListener('keydown', function(e) {
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
                     var helpBtn = document.querySelector('.fab-help');
@@ -3132,7 +3171,7 @@ def render_html_content(
                     }
                 });
 
-                // 阅读进度条
+                // Barre de progression de lecture
                 var progressBar = document.querySelector('.reading-progress');
                 if (progressBar) {
                     var progressTicking = false;
@@ -3148,7 +3187,7 @@ def render_html_content(
                     });
                 }
 
-                // 一键复制：hover 时数字变复制图标
+                // Copie en un clic : au survol, le numéro devient une icône de copie
                 var copySvg = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>';
                 var checkSvg = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2"><path d="M3 8.5l3.5 3.5 7-7"/></svg>';
                 document.querySelectorAll('.news-item .news-number').forEach(function(numEl) {
@@ -3157,7 +3196,7 @@ def render_html_content(
                     if (!titleEl) return;
                     var numText = numEl.textContent.trim();
                     numEl.innerHTML = '<span class="num-text">' + numText + '</span><span class="copy-icon">' + copySvg + '</span>';
-                    numEl.title = '点击复制标题和链接';
+                    numEl.title = I18N.copyTooltip;
                     numEl.addEventListener('click', function(e) {
                         e.stopPropagation();
                         var text = titleEl.textContent.trim() + ' ' + titleEl.href;
@@ -3188,7 +3227,7 @@ def render_html_content(
 
 
 
-                // Header watermark 鼠标跟随揭示
+                // Filigrane du header révélé au suivi de la souris
                 (function() {
                     var header = document.querySelector('.header');
                     var watermark = document.querySelector('.header-watermark');

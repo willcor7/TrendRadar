@@ -1,10 +1,12 @@
 # coding=utf-8
 """
-CDN 回退模块
+Module de repli CDN
 
-为版本检查等远程请求提供多源回退能力。
-默认使用 GitHub 原始链接，失败后自动切换到 CDN 备用源。
-同一会话中记住可用源的索引，后续请求从该源开始尝试。
+Fournit une capacité de repli multi-sources pour les requêtes distantes telles
+que la vérification de version. Par défaut, utilise le lien brut GitHub et bascule
+automatiquement vers une source CDN de secours en cas d'échec.
+Mémorise l'index de la source disponible au sein d'une même session, et les
+requêtes suivantes démarrent leurs tentatives à partir de cette source.
 """
 
 import re
@@ -59,7 +61,7 @@ def fetch_with_fallback(
     url: str,
     proxy_url: Optional[str] = None,
 ) -> Optional[str]:
-    """从上次成功的源开始轮转尝试，非 GitHub 链接直接请求。"""
+    """Effectue les tentatives en rotation à partir de la dernière source ayant réussi ; les liens non GitHub sont requêtés directement."""
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
     path = _extract_path(url)
@@ -67,7 +69,7 @@ def fetch_with_fallback(
         try:
             return _do_request(url, proxies)
         except Exception as e:
-            logger.warning("[版本检查] 获取失败: %s", e)
+            logger.warning("[vérification de version] échec de récupération : %s", e)
             return None
 
     n = len(_ALL_SOURCES)
@@ -80,12 +82,12 @@ def fetch_with_fallback(
             content = _do_request(source + path, proxies)
             if idx != start:
                 label = _SOURCE_LABELS.get(source, source)
-                logger.info("[版本检查] 已切换到: %s", label)
+                logger.info("[vérification de version] basculement vers : %s", label)
             _state["last_ok"] = idx
             return content
         except Exception:
             label = _SOURCE_LABELS.get(source, source)
-            logger.debug("[版本检查] %s 不可用，尝试下一个源", label)
+            logger.debug("[vérification de version] %s indisponible, tentative de la source suivante", label)
 
-    logger.warning("[版本检查] 所有源均不可用")
+    logger.warning("[vérification de version] toutes les sources sont indisponibles")
     return None

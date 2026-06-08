@@ -1,896 +1,895 @@
 <div align="center">
 
-**中文** | **[English](README-MCP-FAQ-EN.md)**
+**Français** | **[English](README-MCP-FAQ-EN.md)**
 
 </div>
 
-# TrendRadar MCP 工具使用问答
+# Questions-réponses sur l'utilisation des outils MCP de TrendRadar
 
-> AI 提问指南 - 如何通过自然对话使用新闻热点分析工具（v3.1.7）
+> Guide des requêtes IA - Comment utiliser les outils d'analyse des tendances d'actualités via une conversation naturelle (v3.1.7)
 
 ---
 
-## 📋 工具一览
+## 📋 Vue d'ensemble des outils
 
-| 分类 | 工具名称 | 功能简介 |
+| Catégorie | Nom de l'outil | Description |
 |:----:|---------|---------|
-| **日期** | `resolve_date_range` | 解析"本周"、"最近7天"等自然语言为标准日期 |
-| **查询** | `get_latest_news` | 获取最新一批爬取的热榜新闻 |
-| | `get_news_by_date` | 按日期范围查询历史新闻 |
-| | `get_trending_topics` | 获取热点话题统计（支持自动提取） |
-| **RSS** | `get_latest_rss` | 获取最新 RSS 订阅内容 |
-| | `search_rss` | 在 RSS 数据中搜索关键词 |
-| | `get_rss_feeds_status` | 查看 RSS 源配置和数据状态 |
-| **搜索** | `search_news` | 统一搜索（关键词/模糊/实体，可含RSS） |
-| | `find_related_news` | 查找与指定标题相似的新闻 |
-| **分析** | `analyze_topic_trend` | 话题趋势分析（热度/生命周期/爆火/预测） |
-| | `analyze_data_insights` | 数据洞察（平台对比/活跃度/关键词共现） |
-| | `analyze_sentiment` | 新闻情感倾向分析 |
-| | `aggregate_news` | 跨平台新闻聚合去重 |
-| | `compare_periods` | 时期对比分析（周环比/月环比） |
-| | `generate_summary_report` | 生成每日/每周摘要报告 |
-| **系统** | `get_current_config` | 获取当前系统配置 |
-| | `get_system_status` | 获取系统运行状态 |
-| | `check_version` | 检查版本更新（TrendRadar + MCP Server） |
-| | `trigger_crawl` | 手动触发一次爬取任务 |
-| **存储** | `sync_from_remote` | 从远程存储拉取数据到本地 |
-| | `get_storage_status` | 获取存储配置和状态 |
-| | `list_available_dates` | 列出本地/远程可用的日期 |
-| **文章** | `read_article` | 读取单篇文章内容（Markdown 格式） |
-| | `read_articles_batch` | 批量读取多篇文章（最多 5 篇） |
-| **通知** | `get_notification_channels` | 获取所有已配置的通知渠道及其状态 |
-| | `send_notification` | 向已配置的通知渠道发送消息（自动格式转换） |
+| **Date** | `resolve_date_range` | Convertit « cette semaine », « les 7 derniers jours » et autres expressions en langage naturel en dates standard |
+| **Requête** | `get_latest_news` | Récupère le dernier lot d'actualités tendances collectées |
+| | `get_news_by_date` | Interroge les actualités historiques par plage de dates |
+| | `get_trending_topics` | Récupère les statistiques des sujets populaires (extraction automatique prise en charge) |
+| **RSS** | `get_latest_rss` | Récupère le contenu RSS le plus récent |
+| | `search_rss` | Recherche des mots-clés dans les données RSS |
+| | `get_rss_feeds_status` | Affiche la configuration des sources RSS et l'état des données |
+| **Recherche** | `search_news` | Recherche unifiée (mot-clé / approximative / entité, RSS optionnel) |
+| | `find_related_news` | Trouve des actualités similaires à un titre donné |
+| **Analyse** | `analyze_topic_trend` | Analyse de tendance d'un sujet (popularité / cycle de vie / pic viral / prévision) |
+| | `analyze_data_insights` | Analyse approfondie des données (comparaison de plateformes / activité / cooccurrence de mots-clés) |
+| | `analyze_sentiment` | Analyse du sentiment des actualités |
+| | `aggregate_news` | Agrégation et déduplication des actualités multiplateformes |
+| | `compare_periods` | Comparaison entre périodes (évolution hebdomadaire / mensuelle) |
+| | `generate_summary_report` | Génère des rapports de synthèse quotidiens / hebdomadaires |
+| **Système** | `get_current_config` | Récupère la configuration actuelle du système |
+| | `get_system_status` | Récupère l'état de fonctionnement du système |
+| | `check_version` | Vérifie les mises à jour de version (TrendRadar + serveur MCP) |
+| | `trigger_crawl` | Déclenche manuellement une tâche de collecte |
+| **Stockage** | `sync_from_remote` | Récupère les données du stockage distant vers le local |
+| | `get_storage_status` | Récupère la configuration et l'état du stockage |
+| | `list_available_dates` | Liste les dates disponibles en local / à distance |
+| **Article** | `read_article` | Lit le contenu d'un article (format Markdown) |
+| | `read_articles_batch` | Lit plusieurs articles en lot (5 maximum) |
+| **Notification** | `get_notification_channels` | Récupère tous les canaux de notification configurés et leur état |
+| | `send_notification` | Envoie des messages aux canaux de notification configurés (conversion de format automatique) |
 
 ---
 
-## ⚙️ 默认设置说明（重要！）
+## ⚙️ Réglages par défaut (important !)
 
-默认采用以下优化策略，主要是为了节约 AI token 消耗：
+Les stratégies d'optimisation suivantes sont appliquées par défaut, principalement pour économiser les tokens consommés par l'IA :
 
-| 默认设置       | 说明                                    | 如何调整                              |
+| Réglage par défaut | Description | Comment l'ajuster |
 | -------------- | --------------------------------------- | ------------------------------------- |
-| **限制条数**   | 默认返回 50 条新闻                      | 对话中说"返回前 10 条"或"给我 100 条" |
-| **时间范围**   | 默认查询今天的数据                      | 说"查询昨天"、"最近一周"或"1月1日到7日" |
-| **URL 链接**   | 默认不返回链接（节省约 160 tokens/条）  | 说"需要链接"或"包含 URL"              |
-| **关键词列表** | 默认不使用 frequency_words.txt 过滤新闻 | 只有调用"趋势话题"工具时才使用        |
+| **Nombre d'éléments** | Renvoie 50 actualités par défaut | Dites « renvoie les 10 premières » ou « donne-m'en 100 » dans la conversation |
+| **Plage temporelle** | Interroge par défaut les données du jour | Dites « interroge hier », « la dernière semaine » ou « du 1er au 7 janvier » |
+| **Liens URL** | N'inclut pas les liens par défaut (économie d'environ 160 tokens par élément) | Dites « avec les liens » ou « inclus les URL » |
+| **Liste de mots-clés** | N'utilise pas `frequency_words.txt` pour filtrer les actualités par défaut | Utilisé uniquement lors de l'appel à l'outil « sujets populaires » |
 
-**⚠️ 重要：** AI 模型的选择直接影响工具调用效果，AI 越智能，调用越准确。当你解除上面的限制，比如从今天的查询，放宽到一周的查询，首先你要在本地有一周的数据，其次，token 消耗量可能会倍增。
+**⚠️ Important :** le choix du modèle d'IA influe directement sur l'efficacité des appels d'outils : plus l'IA est performante, plus les appels sont précis. Lorsque vous levez les restrictions ci-dessus, par exemple en passant d'une requête sur aujourd'hui à une requête sur une semaine, il faut d'abord disposer localement d'une semaine de données ; ensuite, la consommation de tokens peut être multipliée.
 
-**💡 提示：** 本项目提供了专门的日期解析工具，可以准确解析"最近7天"、"本周"等自然语言日期表达式，确保所有 AI 模型获得一致的日期范围。详见下方 Q18。
+**💡 Astuce :** ce projet fournit un outil dédié d'analyse de dates, capable d'interpréter précisément les expressions en langage naturel comme « les 7 derniers jours » ou « cette semaine », garantissant que tous les modèles d'IA obtiennent des plages de dates cohérentes. Voir la Q18 ci-dessous pour plus de détails.
 
 
-## 💰 AI 模型
+## 💰 Modèles d'IA
 
-下面我以 **[硅基流动](https://cloud.siliconflow.cn)** 平台作为例子，里面有很多大模型可选择。在开发和测试本项目的过程中，我使用本平台进行了许多的功能测试和验证。
+Ci-dessous, je prends comme exemple la plateforme **[SiliconFlow](https://cloud.siliconflow.cn)**, qui propose de nombreux grands modèles au choix. Pendant le développement et les tests de ce projet, j'ai utilisé cette plateforme pour de nombreux essais et validations de fonctionnalités.
 
-### 📊 注册方式对比
+### 📊 Comparaison des modes d'inscription
 
-| 注册方式 | 无邀请链接直接注册 | 含有邀请链接注册  |
+| Mode d'inscription | Inscription directe sans lien de parrainage | Inscription avec lien de parrainage |
 |:-------:|:-------:|:-----------------:|
-| 注册链接 | [siliconflow.cn](https://cloud.siliconflow.cn) | [邀请链接](https://cloud.siliconflow.cn/i/fqnyVaIU) |
-| 免费额度 | 0 tokens | **2000万 tokens** (≈14元) |
-| 额外福利 | ❌ | ✅ 邀请者也获得2000万tokens |
+| Lien d'inscription | [siliconflow.cn](https://cloud.siliconflow.cn) | [Lien de parrainage](https://cloud.siliconflow.cn/i/fqnyVaIU) |
+| Crédit gratuit | 0 token | **20 millions de tokens** (≈ 2 $) |
+| Bonus supplémentaire | ❌ | ✅ Le parrain reçoit également 20 millions de tokens |
 
-> 💡 **提示**：上面的赠送额度，应该可以询问 **200次以上**
+> 💡 **Astuce** : le crédit offert ci-dessus devrait permettre **plus de 200 requêtes**.
 
 
-### 🚀 快速开始
+### 🚀 Démarrage rapide
 
-#### 1️⃣ 注册并获取 API 密钥
+#### 1️⃣ S'inscrire et obtenir une clé API
 
-1. 使用上方链接完成注册
-2. 访问 [API 密钥管理页面](https://cloud.siliconflow.cn/me/account/ak)
-3. 点击「新建 API 密钥」
-4. 复制生成的密钥（请妥善保管）
+1. Terminez votre inscription via le lien ci-dessus.
+2. Rendez-vous sur la [page de gestion des clés API](https://cloud.siliconflow.cn/me/account/ak).
+3. Cliquez sur « Créer une nouvelle clé API ».
+4. Copiez la clé générée (conservez-la précieusement).
 
-#### 2️⃣ 在 Cherry Studio 中配置
+#### 2️⃣ Configurer dans Cherry Studio
 
-1. 打开 **Cherry Studio**
-2. 进入「模型服务」设置
-3. 找到「硅基流动」
-4. 将复制的密钥粘贴到 **[API密钥]** 输入框
-5. 确保右上角勾选框打开后显示为 **绿色** ✅
-
----
-
-### ✨ 配置完成！
-
-现在你可以开始使用本项目，享受稳定快速的 AI 服务了！
-
-在你测试一次询问后，请立刻去 [硅基流动账单](https://cloud.siliconflow.cn/me/bills) 查询这一次的消耗量，心底有个估算。
-
+1. Ouvrez **Cherry Studio**.
+2. Allez dans les paramètres « Services de modèles ».
+3. Trouvez « SiliconFlow ».
+4. Collez la clé copiée dans le champ **[Clé API]**.
+5. Assurez-vous que la case en haut à droite, une fois activée, s'affiche en **vert** ✅.
 
 ---
 
-## 基础查询
+### ✨ Configuration terminée !
 
-### Q1: 如何查看最新的新闻？
+Vous pouvez maintenant commencer à utiliser ce projet et profiter d'un service d'IA stable et rapide !
 
-**你可以这样问：**
+Après votre première requête de test, rendez-vous immédiatement sur la [facturation SiliconFlow](https://cloud.siliconflow.cn/me/bills) pour consulter la consommation de cette requête et vous faire une idée des coûts.
 
-- "给我看看最新的新闻"
-- "查询今天的热点新闻"
-- "获取知乎和微博的最新 10 条新闻"
-- "查看最新新闻，需要包含链接"
-
-**工具返回行为：**
-
-- 工具会返回所有平台的最新 50 条新闻
-- 默认不包含 URL 链接（节省 token）
-
-**AI 展示行为（重要）：**
-
-- ⚠️ **AI 通常会自动总结**，只展示部分新闻（如 TOP 10-20 条）
-- ✅ 如果你想看全部 50 条，需要明确要求："展示所有新闻"或"完整列出所有 50 条"
-- 💡 这是 AI 模型的自然行为，不是工具的限制
-
-**可以调整：**
-
-- 指定平台：如"只看知乎的"
-- 调整数量：如"返回前 20 条"
-- 包含链接：如"需要链接"
-- **要求完整展示**：如"展示全部，不要总结"
 
 ---
 
-### Q2: 如何查询特定日期的新闻？
+## Requêtes de base
 
-**你可以这样问：**
+### Q1 : Comment consulter les actualités les plus récentes ?
 
-- "查询昨天的新闻"
-- "看看 3 天前知乎的新闻"
-- "2025-10-10 的新闻有哪些"
-- "上周一的新闻"
-- "给我看看最新新闻"（自动查询今天）
+**Vous pouvez demander, par exemple :**
 
-**支持的日期格式：**
+- « Montre-moi les dernières actualités »
+- « Interroge les actualités tendances du jour »
+- « Récupère les 10 dernières actualités de Zhihu et Weibo »
+- « Affiche les dernières actualités, avec les liens »
 
-- 相对日期：今天、昨天、前天、3 天前
-- 星期：上周一、本周三、last monday
-- 绝对日期：2025-10-10、10 月 10 日
+**Comportement de l'outil :**
 
-**工具返回行为：**
+- L'outil renvoie les 50 actualités les plus récentes de toutes les plateformes.
+- Les liens URL ne sont pas inclus par défaut (économie de tokens).
 
-- 不指定日期时自动查询今天（节省 token）
-- 工具会返回所有平台的 50 条新闻
-- 默认不包含 URL 链接
+**Comportement d'affichage de l'IA (important) :**
 
-**AI 展示行为（重要）：**
+- ⚠️ **L'IA résume généralement de façon automatique** et n'affiche qu'une partie des actualités (par exemple le TOP 10 à 20).
+- ✅ Si vous voulez voir les 50 actualités, demandez-le explicitement : « affiche toutes les actualités » ou « liste les 50 en intégralité ».
+- 💡 C'est un comportement naturel du modèle d'IA, pas une limite de l'outil.
 
-- ⚠️ **AI 通常会自动总结**，只展示部分新闻（如 TOP 10-20 条）
-- ✅ 如果你想看全部，需要明确要求："展示所有新闻，不要总结"
+**Vous pouvez ajuster :**
+
+- La plateforme : par exemple « seulement Zhihu ».
+- Le nombre : par exemple « renvoie les 20 premières ».
+- L'inclusion des liens : par exemple « avec les liens ».
+- **Demander un affichage complet** : par exemple « affiche tout, sans résumer ».
 
 ---
 
-### Q3: 如何查看热点话题统计？
+### Q2 : Comment interroger les actualités d'une date précise ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "我关注的词今天出现了多少次"（使用预设关注词）
-- "自动分析今天新闻里有哪些热门话题"（自动提取）
-- "看看新闻里最热门的词是什么"（自动提取）
+- « Interroge les actualités d'hier »
+- « Montre les actualités de Zhihu d'il y a 3 jours »
+- « Quelles actualités y avait-il le 2025-10-10 »
+- « Les actualités de lundi dernier »
+- « Montre-moi les dernières actualités » (interroge automatiquement aujourd'hui)
 
-**两种提取模式：**
+**Formats de date pris en charge :**
 
-| 模式 | 说明 | 示例问法 |
+- Dates relatives : aujourd'hui, hier, avant-hier, il y a 3 jours.
+- Jours de la semaine : lundi dernier, ce mercredi, last monday.
+- Dates absolues : 2025-10-10, 10 octobre.
+
+**Comportement de l'outil :**
+
+- Interroge automatiquement aujourd'hui si aucune date n'est précisée (économie de tokens).
+- L'outil renvoie 50 actualités de toutes les plateformes.
+- Les liens URL ne sont pas inclus par défaut.
+
+**Comportement d'affichage de l'IA (important) :**
+
+- ⚠️ **L'IA résume généralement de façon automatique** et n'affiche qu'une partie des actualités (par exemple le TOP 10 à 20).
+- ✅ Si vous voulez tout voir, demandez-le explicitement : « affiche toutes les actualités, sans résumer ».
+
+---
+
+### Q3 : Comment consulter les statistiques des sujets populaires ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Combien de fois mes mots-clés sont-ils apparus aujourd'hui ? » (utilise les mots-clés prédéfinis)
+- « Analyse automatiquement les sujets populaires dans les actualités du jour » (extraction automatique)
+- « Quels sont les mots les plus présents dans les actualités ? » (extraction automatique)
+
+**Deux modes d'extraction :**
+
+| Mode | Description | Exemple de formulation |
 |------|------|---------|
-| **预设关注词** | 统计你预先设定的关注词（基于配置文件，默认） | "我的关注词出现了多少次" |
-| **自动提取** | 自动从新闻标题提取高频词（无需预设） | "自动分析热门话题" |
+| **Mots-clés prédéfinis** | Comptabilise les mots-clés que vous avez définis à l'avance (basé sur le fichier de configuration, par défaut) | « Combien de fois mes mots-clés sont-ils apparus ? » |
+| **Extraction automatique** | Extrait automatiquement les mots fréquents des titres d'actualités (sans réglage préalable) | « Analyse automatiquement les sujets populaires » |
 
 ---
 
-## RSS 订阅查询
+## Requêtes sur les flux RSS
 
-### Q4.1: 如何查看最新的 RSS 订阅内容？
+### Q4.1 : Comment consulter le contenu RSS le plus récent ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "查看最新的 RSS 订阅内容"
-- "获取 Hacker News 的最新文章"
-- "查看所有 RSS 源的最新 20 条"
-- "获取 RSS 订阅，需要包含摘要"
-- "看看最近一周的 RSS 内容"（支持多日查询）
-- "获取 Hacker News 最近 7 天的文章"
+- « Affiche le contenu RSS le plus récent »
+- « Récupère les derniers articles de Hacker News »
+- « Affiche les 20 derniers éléments de toutes les sources RSS »
+- « Récupère les flux RSS, avec les résumés »
+- « Montre-moi le contenu RSS de la dernière semaine » (requête multi-jours prise en charge)
+- « Récupère les articles Hacker News des 7 derniers jours »
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- 默认返回今天的 RSS 条目（最多 50 条）
-- 支持 `days` 参数获取多日数据（1-30天）
-- 默认不包含摘要（节省 token）
-- 按发布时间倒序排列
-- 跨日期自动去重（按 URL）
+- Renvoie par défaut les éléments RSS du jour (50 maximum).
+- Prend en charge le paramètre `days` pour récupérer plusieurs jours de données (1 à 30 jours).
+- N'inclut pas les résumés par défaut (économie de tokens).
+- Trié par date de publication décroissante.
+- Déduplication automatique entre les dates (par URL).
 
-**AI 展示行为（重要）：**
+**Comportement d'affichage de l'IA (important) :**
 
-- ⚠️ **AI 通常会自动总结**，只展示部分条目
-- ✅ 如果你想看全部，需要明确要求："展示所有 RSS 内容"
+- ⚠️ **L'IA résume généralement de façon automatique** et n'affiche qu'une partie des éléments.
+- ✅ Si vous voulez tout voir, demandez-le explicitement : « affiche tout le contenu RSS ».
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 指定 RSS 源：如"只看 Hacker News"
-- 指定天数：如"最近 7 天"、"最近一周"
-- 调整数量：如"返回前 20 条"
-- 包含摘要：如"需要摘要"
-
----
-
-### Q4.2: 如何搜索 RSS 订阅中的内容？
-
-**你可以这样问：**
-
-- "在 RSS 中搜索'AI'相关的文章"
-- "搜索最近 7 天 RSS 中关于'机器学习'的内容"
-- "在 Hacker News 中搜索'Python'"
-
-**工具返回行为：**
-
-- 使用关键词搜索 RSS 条目的标题
-- 默认搜索最近 7 天的数据
-- 工具会返回最多 50 条结果
-
-**可以调整：**
-
-- 指定 RSS 源：如"只搜索 Hacker News"
-- 调整天数：如"搜索最近 14 天"
-- 包含摘要：如"需要摘要"
+- La source RSS : par exemple « seulement Hacker News ».
+- Le nombre de jours : par exemple « les 7 derniers jours », « la dernière semaine ».
+- Le nombre : par exemple « renvoie les 20 premiers ».
+- L'inclusion des résumés : par exemple « avec les résumés ».
 
 ---
 
-### Q4.3: 如何查看 RSS 源的状态？
+### Q4.2 : Comment rechercher dans le contenu des flux RSS ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "查看 RSS 源状态"
-- "RSS 抓取了多少数据"
-- "哪些 RSS 源有数据"
+- « Recherche les articles RSS relatifs à « IA » »
+- « Recherche dans le RSS des 7 derniers jours le contenu sur « machine learning » »
+- « Recherche « Python » dans Hacker News »
 
-**返回信息：**
+**Comportement de l'outil :**
 
-| 字段 | 说明 |
+- Recherche les titres des éléments RSS à partir de mots-clés.
+- Recherche par défaut dans les données des 7 derniers jours.
+- L'outil renvoie 50 résultats maximum.
+
+**Vous pouvez ajuster :**
+
+- La source RSS : par exemple « recherche uniquement dans Hacker News ».
+- Le nombre de jours : par exemple « recherche dans les 14 derniers jours ».
+- L'inclusion des résumés : par exemple « avec les résumés ».
+
+---
+
+### Q4.3 : Comment consulter l'état des sources RSS ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Affiche l'état des sources RSS »
+- « Combien de données le RSS a-t-il collectées ? »
+- « Quelles sources RSS contiennent des données ? »
+
+**Informations renvoyées :**
+
+| Champ | Description |
 |------|------|
-| **可用日期** | 有 RSS 数据的日期列表 |
-| **总日期数** | 总共有多少天的数据 |
-| **今日各源统计** | 今日各 RSS 源的数据统计 |
-| **生成时间** | 状态生成时间 |
+| **Dates disponibles** | Liste des dates pour lesquelles des données RSS existent |
+| **Nombre total de dates** | Combien de jours de données au total |
+| **Statistiques du jour par source** | Statistiques des données du jour, source RSS par source RSS |
+| **Heure de génération** | Heure de génération de l'état |
 
 ---
 
-## 搜索检索
+## Recherche et récupération
 
-### Q4: 如何搜索包含特定关键词的新闻？
+### Q4 : Comment rechercher des actualités contenant un mot-clé précis ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "搜索包含'人工智能'的新闻"
-- "查找关于'特斯拉降价'的报道"
-- "搜索马斯克相关的新闻，返回前 20 条"
-- "查找最近7天关于'iPhone 16'的新闻"
-- "查找2025年1月1日到7日'特斯拉'的相关新闻"
-- "查找'iPhone 16 发布'这条新闻的链接"
+- « Recherche les actualités contenant « intelligence artificielle » »
+- « Trouve les articles sur « la baisse de prix de Tesla » »
+- « Recherche les actualités liées à Musk, renvoie les 20 premières »
+- « Trouve les actualités des 7 derniers jours sur « iPhone 16 » »
+- « Trouve les actualités liées à « Tesla » du 1er au 7 janvier 2025 »
+- « Trouve le lien de l'actualité « sortie de l'iPhone 16 » »
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- 使用关键词模式搜索
-- 默认搜索今天的数据
-- AI会自动将"最近7天"、"上周"等相对时间转换为具体日期范围
-- 工具会返回最多 50 条结果
-- 默认不包含 URL 链接
+- Utilise le mode de recherche par mot-clé.
+- Recherche par défaut dans les données du jour.
+- L'IA convertit automatiquement les expressions temporelles relatives comme « les 7 derniers jours » ou « la semaine dernière » en plages de dates précises.
+- L'outil renvoie 50 résultats maximum.
+- Les liens URL ne sont pas inclus par défaut.
 
-**AI 展示行为（重要）：**
+**Comportement d'affichage de l'IA (important) :**
 
-- ⚠️ **AI 通常会自动总结**，只展示部分搜索结果
-- ✅ 如果你想看全部，需要明确要求："展示所有搜索结果"
+- ⚠️ **L'IA résume généralement de façon automatique** et n'affiche qu'une partie des résultats.
+- ✅ Si vous voulez tout voir, demandez-le explicitement : « affiche tous les résultats de recherche ».
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 指定时间范围：
-  - 相对方式："搜索最近一周的"（AI 自动计算日期）
-  - 绝对日期："搜索2025年1月1日到7日的"
-- 指定平台：如"只搜索知乎"
-- 调整排序：如"按权重排序"
-- 包含链接：如"需要链接"
-
----
-
-### Q4.4: 如何同时搜索热榜和 RSS 内容？
-
-**你可以这样问：**
-
-- "搜索'AI'相关内容，包括 RSS"
-- "查找'人工智能'的新闻，同时搜索 RSS 订阅"
-- "搜索'特斯拉'，热榜和 RSS 都要"
-
-**工具返回行为：**
-
-- 热榜结果和 RSS 结果**分开展示**
-- 热榜按排名/相关度排序，RSS 按发布时间排序
-- RSS 结果不影响热榜的排名展示
-- 默认返回热榜 50 条 + RSS 20 条
-
-**可以调整：**
-
-- RSS 数量：如"RSS 返回 10 条"
-- 只搜索热榜：不说"包括 RSS"（默认行为）
-- 只搜索 RSS：说"只在 RSS 中搜索"
+- La plage temporelle :
+  - De façon relative : « recherche sur la dernière semaine » (l'IA calcule les dates automatiquement).
+  - Par dates absolues : « recherche du 1er au 7 janvier 2025 ».
+- La plateforme : par exemple « recherche uniquement dans Zhihu ».
+- Le tri : par exemple « trie par poids ».
+- L'inclusion des liens : par exemple « avec les liens ».
 
 ---
 
-### Q5: 如何查找相关新闻？
+### Q4.4 : Comment rechercher simultanément dans les actualités tendances et le RSS ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "找出和'特斯拉降价'相似的新闻"（今天）
-- "查找昨天与'人工智能突破'相关的新闻"（历史）
-- "搜索上周关于'ChatGPT'的相关报道"（历史）
-- "看看最近7天有没有和这条新闻相似的报道"（历史）
+- « Recherche le contenu sur « IA », RSS inclus »
+- « Trouve les actualités sur « intelligence artificielle » et recherche aussi dans les flux RSS »
+- « Recherche « Tesla », à la fois dans les tendances et le RSS »
 
-**支持的时间范围：**
+**Comportement de l'outil :**
 
-| 方式 | 说明 | 示例 |
+- Les résultats des tendances et les résultats RSS sont **affichés séparément**.
+- Les tendances sont triées par classement / pertinence, le RSS par date de publication.
+- Les résultats RSS n'affectent pas l'affichage du classement des tendances.
+- Renvoie par défaut 50 actualités tendances + 20 éléments RSS.
+
+**Vous pouvez ajuster :**
+
+- Le nombre d'éléments RSS : par exemple « renvoie 10 éléments RSS ».
+- Rechercher uniquement dans les tendances : ne dites pas « RSS inclus » (comportement par défaut).
+- Rechercher uniquement dans le RSS : dites « recherche uniquement dans le RSS ».
+
+---
+
+### Q5 : Comment trouver des actualités similaires ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Trouve les actualités similaires à « la baisse de prix de Tesla » » (aujourd'hui)
+- « Trouve les actualités d'hier liées à « percée de l'IA » » (historique)
+- « Recherche les articles de la semaine dernière sur « ChatGPT » » (historique)
+- « Regarde s'il y a des articles similaires à cette actualité dans les 7 derniers jours » (historique)
+
+**Plages temporelles prises en charge :**
+
+| Méthode | Description | Exemple |
 |------|------|------|
-| 不指定 | 只查询今天的数据（默认） | "找相似新闻" |
-| 预设值 | 昨天、上周、上个月 | "查找昨天的相关新闻" |
-| 日期范围 | 指定开始和结束日期 | "查找1月1日到7日的相关报道" |
+| Non précisée | Interroge uniquement les données du jour (par défaut) | « Trouve des actualités similaires » |
+| Valeurs prédéfinies | hier, la semaine dernière, le mois dernier | « Trouve les actualités liées d'hier » |
+| Plage de dates | Précise une date de début et de fin | « Trouve les articles liés du 1er au 7 janvier » |
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- 相似度阈值 0.5（可调整）
-- 工具会返回最多 50 条结果
-- 按相似度排序
-- 默认不包含 URL 链接
+- Seuil de similarité de 0,5 (ajustable).
+- L'outil renvoie 50 résultats maximum.
+- Trié par similarité.
+- Les liens URL ne sont pas inclus par défaut.
 
-**AI 展示行为（重要）：**
+**Comportement d'affichage de l'IA (important) :**
 
-- ⚠️ **AI 通常会自动总结**，只展示部分相关新闻
-- ✅ 如果你想看全部，需要明确要求："展示所有相关新闻"
+- ⚠️ **L'IA résume généralement de façon automatique** et n'affiche qu'une partie des actualités liées.
+- ✅ Si vous voulez tout voir, demandez-le explicitement : « affiche toutes les actualités liées ».
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 指定时间：如"查找上周的"
-- 调整阈值：如"相似度 0.3 以上的都要"
-- 包含链接：说"需要链接"
+- La période : par exemple « trouve celles de la semaine dernière ».
+- Le seuil : par exemple « toutes celles dont la similarité dépasse 0,3 ».
+- L'inclusion des liens : dites « avec les liens ».
 
 ---
 
-## 趋势分析
+## Analyse des tendances
 
-### Q6: 如何分析话题的热度趋势？
+### Q6 : Comment analyser la tendance de popularité d'un sujet ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "分析'人工智能'最近一周的热度趋势"
-- "看看'特斯拉'话题是昙花一现还是持续热点"
-- "检测今天有哪些突然爆火的话题"
-- "预测接下来可能的热点话题"
-- "分析'比特币'在2024年12月的生命周期"
+- « Analyse la tendance de popularité de « l'intelligence artificielle » sur la dernière semaine »
+- « Le sujet « Tesla » est-il un feu de paille ou une tendance durable ? »
+- « Détecte les sujets devenus soudainement viraux aujourd'hui »
+- « Prédis les sujets susceptibles de devenir populaires prochainement »
+- « Analyse le cycle de vie de « Bitcoin » en décembre 2024 »
 
-**四种分析模式：**
+**Quatre modes d'analyse :**
 
-| 模式 | 说明 | 示例问法 |
+| Mode | Description | Exemple de formulation |
 |------|------|---------|
-| **热度趋势** | 追踪话题热度变化 | "分析'AI'的热度趋势" |
-| **生命周期** | 从出现到消失的完整周期 | "看看'XX'是昙花一现还是持续热点" |
-| **异常检测** | 识别突然爆火的话题 | "今天有哪些突然爆火的话题" |
-| **预测** | 预测未来可能的热点 | "预测接下来可能的热点" |
+| **Tendance de popularité** | Suit l'évolution de la popularité d'un sujet | « Analyse la tendance de popularité de « IA » » |
+| **Cycle de vie** | Cycle complet, de l'apparition à la disparition | « « XX » est-il un feu de paille ou une tendance durable ? » |
+| **Détection d'anomalies** | Identifie les sujets devenus soudainement viraux | « Quels sujets sont devenus soudainement viraux aujourd'hui ? » |
+| **Prévision** | Prédit les futurs sujets populaires | « Prédis les sujets populaires à venir » |
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- AI会自动将"最近一周"等相对时间转换为具体日期范围
-- 默认分析最近7天数据
-- 按天粒度统计
+- L'IA convertit automatiquement les expressions temporelles relatives comme « la dernière semaine » en plages de dates précises.
+- Analyse par défaut les données des 7 derniers jours.
+- Statistiques à la granularité du jour.
 
 ---
 
-## 数据洞察
+## Analyse approfondie des données
 
-### Q7: 如何对比不同平台对话题的关注度？
+### Q7 : Comment comparer l'intérêt des différentes plateformes pour un sujet ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "对比各个平台对'人工智能'话题的关注度"
-- "看看哪个平台更新最频繁"
-- "分析一下哪些关键词经常一起出现"
+- « Compare l'intérêt des différentes plateformes pour le sujet « intelligence artificielle » »
+- « Quelle plateforme se met à jour le plus souvent ? »
+- « Analyse quels mots-clés apparaissent souvent ensemble »
 
-**三种洞察模式：**
+**Trois modes d'analyse :**
 
-| 模式           | 功能             | 示例问法                   |
+| Mode | Fonction | Exemple de formulation |
 | -------------- | ---------------- | -------------------------- |
-| **平台对比**   | 对比各平台关注度 | "对比各平台对'AI'的关注度" |
-| **活跃度统计** | 统计平台发布频率 | "看看哪个平台更新最频繁"   |
-| **关键词共现** | 分析关键词关联   | "哪些关键词经常一起出现"   |
+| **Comparaison de plateformes** | Compare l'intérêt de chaque plateforme | « Compare l'intérêt des plateformes pour « IA » » |
+| **Statistiques d'activité** | Comptabilise la fréquence de publication des plateformes | « Quelle plateforme se met à jour le plus souvent ? » |
+| **Cooccurrence de mots-clés** | Analyse les associations entre mots-clés | « Quels mots-clés apparaissent souvent ensemble ? » |
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- 默认使用平台对比模式
-- 分析今天的数据
-- 关键词共现最小频次 3 次
-
----
-
-## 情感分析
-
-### Q8: 如何分析新闻的情感倾向？
-
-**你可以这样问：**
-
-- "分析一下今天新闻的情感倾向"
-- "看看'特斯拉'相关新闻是正面还是负面的"
-- "分析各平台对'人工智能'的情感态度"
-- "看看'比特币'一周内的情感倾向，选择前 20 条最重要的"
-
-**工具返回行为：**
-
-- 默认分析今天的数据
-- 工具会返回最多 50 条新闻
-- 按权重排序（优先展示重要新闻）
-- 默认不包含 URL 链接
-
-**AI 展示行为（重要）：**
-
-- ⚠️ 本工具返回 **AI 提示词**，不是直接的情感分析结果
-- AI 会根据提示词生成情感分析报告
-- 通常会展示情感分布、关键发现和代表性新闻
-
-**可以调整：**
-
-- 指定话题：如"关于'特斯拉'"
-- 指定时间：如"最近一周"
-- 调整数量：如"返回前 20 条"
+- Utilise par défaut le mode de comparaison de plateformes.
+- Analyse les données du jour.
+- Fréquence minimale de cooccurrence de mots-clés : 3 occurrences.
 
 ---
 
-### Q9: 如何获取去重后的跨平台新闻？
+## Analyse du sentiment
 
-**你可以这样问：**
+### Q8 : Comment analyser le sentiment des actualités ?
 
-- "帮我聚合今天的新闻，去掉重复的"
-- "看看哪些新闻在多个平台都有报道"
-- "给我看去重后的热点新闻"
-- "哪些新闻是跨平台热点"
+**Vous pouvez demander, par exemple :**
 
-**工具功能：**
+- « Analyse le sentiment des actualités du jour »
+- « Les actualités liées à « Tesla » sont-elles positives ou négatives ? »
+- « Analyse l'attitude des différentes plateformes envers « l'intelligence artificielle » »
+- « Analyse le sentiment de « Bitcoin » sur une semaine, en prenant les 20 actualités les plus importantes »
 
-- 自动识别不同平台报道的同一事件
-- 将相似新闻合并为一条聚合新闻
-- 显示每条新闻的平台覆盖情况
-- 计算综合热度权重
+**Comportement de l'outil :**
 
-**返回信息：**
+- Analyse par défaut les données du jour.
+- L'outil renvoie 50 actualités maximum.
+- Trié par poids (les actualités importantes sont affichées en priorité).
+- Les liens URL ne sont pas inclus par défaut.
 
-| 字段 | 说明 |
+**Comportement d'affichage de l'IA (important) :**
+
+- ⚠️ Cet outil renvoie une **invite (prompt) pour l'IA**, et non un résultat d'analyse de sentiment direct.
+- L'IA génère un rapport d'analyse de sentiment à partir de cette invite.
+- Elle affiche généralement la distribution des sentiments, les constats clés et des actualités représentatives.
+
+**Vous pouvez ajuster :**
+
+- Le sujet : par exemple « à propos de « Tesla » ».
+- La période : par exemple « la dernière semaine ».
+- Le nombre : par exemple « renvoie les 20 premières ».
+
+---
+
+### Q9 : Comment obtenir des actualités multiplateformes dédupliquées ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Agrège les actualités du jour en supprimant les doublons »
+- « Quelles actualités sont relayées sur plusieurs plateformes ? »
+- « Montre-moi les actualités tendances après déduplication »
+- « Quelles actualités sont des tendances multiplateformes ? »
+
+**Fonction de l'outil :**
+
+- Identifie automatiquement le même événement rapporté par différentes plateformes.
+- Fusionne les actualités similaires en une seule actualité agrégée.
+- Affiche la couverture par plateforme de chaque actualité.
+- Calcule un poids de popularité global.
+
+**Informations renvoyées :**
+
+| Champ | Description |
 |------|------|
-| **代表性标题** | 这组新闻的代表标题 |
-| **覆盖平台** | 哪些平台报道了这条新闻 |
-| **平台数量** | 覆盖了多少个平台 |
-| **是否跨平台** | 是否为跨平台热点 |
-| **最佳排名** | 在各平台的最佳排名 |
-| **综合权重** | 综合热度评分 |
-| **各平台来源** | 各平台的详细信息 |
+| **Titre représentatif** | Titre représentatif de ce groupe d'actualités |
+| **Plateformes couvertes** | Quelles plateformes ont relayé cette actualité |
+| **Nombre de plateformes** | Combien de plateformes l'ont couverte |
+| **Caractère multiplateforme** | S'agit-il ou non d'une tendance multiplateforme |
+| **Meilleur classement** | Meilleur classement obtenu sur l'ensemble des plateformes |
+| **Poids global** | Score de popularité global |
+| **Sources par plateforme** | Informations détaillées de chaque plateforme |
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 指定时间：如"最近一周的"
-- 调整相似度阈值：如"更严格匹配"或"宽松匹配"
-- 指定平台：如"只看知乎和微博"
-
----
-
-### Q10: 如何生成每日或每周的热点摘要？
-
-**你可以这样问：**
-
-- "生成今天的新闻摘要报告"
-- "给我一份本周的热点总结"
-- "生成过去 7 天的新闻分析报告"
-
-**报告类型：**
-
-- 每日摘要：总结当天的热点新闻
-- 每周摘要：总结一周的热点趋势
+- La période : par exemple « celles de la dernière semaine ».
+- Le seuil de similarité : par exemple « correspondance plus stricte » ou « correspondance plus souple ».
+- La plateforme : par exemple « seulement Zhihu et Weibo ».
 
 ---
 
-### Q11: 如何对比不同时期的热点变化？
+### Q10 : Comment générer une synthèse quotidienne ou hebdomadaire des tendances ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "对比本周和上周的热点变化"
-- "看看这个月和上个月有什么不同"
-- "分析'人工智能'在两个时期的热度差异"
-- "对比各平台活跃度的变化"
+- « Génère le rapport de synthèse des actualités du jour »
+- « Donne-moi un récapitulatif des tendances de la semaine »
+- « Génère un rapport d'analyse des actualités des 7 derniers jours »
 
-**三种对比模式：**
+**Types de rapports :**
 
-| 模式 | 说明 | 适用场景 |
+- Synthèse quotidienne : récapitule les actualités tendances du jour.
+- Synthèse hebdomadaire : récapitule les tendances de la semaine.
+
+---
+
+### Q11 : Comment comparer l'évolution des tendances entre différentes périodes ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Compare l'évolution des tendances entre cette semaine et la semaine dernière »
+- « Qu'est-ce qui change entre ce mois et le mois dernier ? »
+- « Analyse la différence de popularité de « l'intelligence artificielle » entre deux périodes »
+- « Compare l'évolution de l'activité des plateformes »
+
+**Trois modes de comparaison :**
+
+| Mode | Description | Cas d'usage |
 |------|------|---------|
-| **总体概览** | 新闻数量变化、关键词变化、TOP新闻对比 | 快速了解整体变化 |
-| **话题变化** | 上升话题、下降话题、新出现话题 | 分析热点转移 |
-| **平台活跃度** | 各平台新闻数量变化 | 了解平台动态 |
+| **Vue d'ensemble** | Évolution du nombre d'actualités, des mots-clés, comparaison des TOP actualités | Comprendre rapidement l'évolution globale |
+| **Évolution des sujets** | Sujets en hausse, en baisse, nouvellement apparus | Analyser les déplacements de tendances |
+| **Activité des plateformes** | Évolution du nombre d'actualités par plateforme | Comprendre la dynamique des plateformes |
 
-**时间段预设值：**
+**Valeurs de période prédéfinies :**
 
-- 今天 / 昨天
-- 本周 / 上周
-- 本月 / 上月
-- 或使用自定义日期范围
-
----
-
-## 系统管理
-
-### Q12: 如何查看系统配置？
-
-**你可以这样问：**
-
-- "查看当前系统配置"
-- "显示配置文件内容"
-- "有哪些可用的平台？"
-- "当前的权重配置是什么？"
-
-**可以查询：**
-
-- 可用平台列表
-- 爬虫配置（请求间隔、超时设置）
-- 权重配置（排名权重、频次权重）
-- 通知配置（飞书、钉钉、企业微信、Telegram、Email、ntfy、Bark、Slack、通用 Webhook）
+- Aujourd'hui / Hier
+- Cette semaine / La semaine dernière
+- Ce mois / Le mois dernier
+- Ou une plage de dates personnalisée
 
 ---
 
-### Q13: 如何检查系统运行状态？
+## Gestion du système
 
-**你可以这样问：**
+### Q12 : Comment consulter la configuration du système ?
 
-- "检查系统状态"
-- "系统运行正常吗？"
-- "最后一次爬取是什么时候？"
-- "有多少天的历史数据？"
+**Vous pouvez demander, par exemple :**
 
-**返回信息：**
+- « Affiche la configuration actuelle du système »
+- « Montre le contenu du fichier de configuration »
+- « Quelles sont les plateformes disponibles ? »
+- « Quelle est la configuration de poids actuelle ? »
 
-- 系统版本和状态
-- 最后爬取时间
-- 历史数据天数
-- 健康检查结果
+**Vous pouvez interroger :**
+
+- La liste des plateformes disponibles.
+- La configuration du robot d'exploration (intervalle entre requêtes, délais d'expiration).
+- La configuration des poids (poids du classement, poids de la fréquence).
+- La configuration des notifications (Feishu, DingTalk, WeCom, Telegram, Email, ntfy, Bark, Slack, Webhook générique).
 
 ---
 
-### Q13.1: 如何检查版本更新？
+### Q13 : Comment vérifier l'état de fonctionnement du système ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "检查版本更新"
-- "有没有新版本？"
-- "当前版本是最新的吗？"
+- « Vérifie l'état du système »
+- « Le système fonctionne-t-il normalement ? »
+- « Quand a eu lieu la dernière collecte ? »
+- « Combien de jours de données historiques y a-t-il ? »
 
-**返回信息：**
+**Informations renvoyées :**
 
-会同时检查两个组件的版本：
+- Version et état du système.
+- Heure de la dernière collecte.
+- Nombre de jours de données historiques.
+- Résultats du contrôle de santé.
 
-| 组件 | 说明 |
+---
+
+### Q13.1 : Comment vérifier les mises à jour de version ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Vérifie les mises à jour de version »
+- « Y a-t-il une nouvelle version ? »
+- « La version actuelle est-elle à jour ? »
+
+**Informations renvoyées :**
+
+La vérification porte simultanément sur les deux composants :
+
+| Composant | Description |
 |------|------|
-| **TrendRadar** | 核心爬虫和分析引擎 |
-| **MCP Server** | AI 对话工具服务 |
+| **TrendRadar** | Moteur principal de collecte et d'analyse |
+| **Serveur MCP** | Service d'outils conversationnels pour l'IA |
 
-每个组件会告诉你：
-- 当前安装的版本
-- 最新可用的版本
-- 是否需要更新
-- 更新建议
+Pour chaque composant, vous obtenez :
+- La version actuellement installée.
+- La dernière version disponible.
+- Si une mise à jour est nécessaire.
+- Une recommandation de mise à jour.
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 如果访问 GitHub 较慢，可以说"检查版本更新，使用代理 http://127.0.0.1:10801"
+- Si l'accès à GitHub est lent, vous pouvez dire « vérifie les mises à jour de version en utilisant le proxy http://127.0.0.1:10801 ».
 
 ---
 
-### Q14: 如何手动触发爬取任务？
+### Q14 : Comment déclencher manuellement une tâche de collecte ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "请你爬取当前的今日头条的新闻"（临时查询）
-- "帮我抓取一下知乎和微博的最新新闻并保存"（持久化）
-- "触发一次爬取并保存数据"（持久化）
-- "获取 36 氪 的实时数据但不保存"（临时查询）
+- « Collecte les actualités actuelles de Toutiao » (requête temporaire)
+- « Récupère et enregistre les dernières actualités de Zhihu et Weibo » (persistant)
+- « Déclenche une collecte et enregistre les données » (persistant)
+- « Récupère les données en temps réel de 36Kr sans les enregistrer » (requête temporaire)
 
-**两种模式：**
+**Deux modes :**
 
-| 模式           | 用途                 | 示例                 |
+| Mode | Usage | Exemple |
 | -------------- | -------------------- | -------------------- |
-| **临时爬取**   | 只返回数据不保存     | "爬取今日头条的新闻" |
-| **持久化爬取** | 保存到 output 文件夹 | "抓取并保存知乎新闻" |
+| **Collecte temporaire** | Renvoie les données sans les enregistrer | « Collecte les actualités de Toutiao » |
+| **Collecte persistante** | Enregistre dans le dossier `output` | « Récupère et enregistre les actualités de Zhihu » |
 
-**工具返回行为：**
+**Comportement de l'outil :**
 
-- 默认为临时爬取模式（不保存）
-- 默认爬取所有平台
-- 默认不包含 URL 链接
+- Mode collecte temporaire par défaut (sans enregistrement).
+- Collecte toutes les plateformes par défaut.
+- Les liens URL ne sont pas inclus par défaut.
 
-**AI 展示行为（重要）：**
+**Comportement d'affichage de l'IA (important) :**
 
-- ⚠️ **AI 通常会总结爬取结果**，只展示部分新闻
-- ✅ 如果你想看全部，需要明确要求："展示所有爬取的新闻"
+- ⚠️ **L'IA résume généralement les résultats de la collecte** et n'affiche qu'une partie des actualités.
+- ✅ Si vous voulez tout voir, demandez-le explicitement : « affiche toutes les actualités collectées ».
 
-**可以调整：**
+**Vous pouvez ajuster :**
 
-- 指定平台：如"只爬取知乎"
-- 保存数据：说"并保存"或"保存到本地"
-- 包含链接：说"需要链接"
-
----
-
-## 存储同步
-
-### Q15: 如何从远程存储同步数据到本地？
-
-**你可以这样问：**
-
-- "从远程同步最近 7 天的数据"
-- "拉取远程存储的数据到本地"
-- "同步最近 30 天的新闻数据"
-
-**使用场景：**
-
-- 爬虫部署在云端（如 GitHub Actions），数据存储到远程（如 Cloudflare R2）
-- MCP Server 部署在本地，需要从远程拉取数据进行分析
-
-**返回信息：**
-
-- 成功同步的文件数量
-- 成功同步的日期列表
-- 跳过的日期（本地已存在）
-- 失败的日期及错误信息
-
-**前提条件：**
-
-需要在配置文件中配置远程存储或设置环境变量：
-- 服务端点 URL
-- 存储桶名称
-- 访问密钥 ID
-- 访问密钥
+- La plateforme : par exemple « collecte uniquement Zhihu ».
+- L'enregistrement des données : dites « et enregistre » ou « enregistre en local ».
+- L'inclusion des liens : dites « avec les liens ».
 
 ---
 
-### Q16: 如何查看存储状态？
+## Synchronisation du stockage
 
-**你可以这样问：**
+### Q15 : Comment synchroniser les données du stockage distant vers le local ?
 
-- "查看当前存储状态"
-- "存储配置是什么"
-- "本地有多少数据"
-- "远程存储配置了吗"
+**Vous pouvez demander, par exemple :**
 
-**返回信息：**
+- « Synchronise les données des 7 derniers jours depuis le distant »
+- « Récupère les données du stockage distant vers le local »
+- « Synchronise les données d'actualités des 30 derniers jours »
 
-| 类别 | 信息 |
+**Cas d'usage :**
+
+- Le robot d'exploration est déployé dans le cloud (par exemple GitHub Actions) et les données sont stockées à distance (par exemple Cloudflare R2).
+- Le serveur MCP est déployé en local et doit récupérer les données distantes pour l'analyse.
+
+**Informations renvoyées :**
+
+- Nombre de fichiers synchronisés avec succès.
+- Liste des dates synchronisées avec succès.
+- Dates ignorées (déjà présentes en local).
+- Dates en échec et messages d'erreur.
+
+**Prérequis :**
+
+Il faut configurer le stockage distant dans le fichier de configuration ou définir des variables d'environnement :
+- URL du point de terminaison du service.
+- Nom du bucket de stockage.
+- Identifiant de la clé d'accès.
+- Clé d'accès secrète.
+
+---
+
+### Q16 : Comment consulter l'état du stockage ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Affiche l'état actuel du stockage »
+- « Quelle est la configuration du stockage ? »
+- « Combien de données y a-t-il en local ? »
+- « Le stockage distant est-il configuré ? »
+
+**Informations renvoyées :**
+
+| Catégorie | Informations |
 |------|------|
-| **本地存储** | 数据目录、总大小、日期数量、日期范围 |
-| **远程存储** | 是否配置、端点地址、存储桶名称、日期数量 |
-| **拉取配置** | 是否启用自动拉取、拉取天数 |
+| **Stockage local** | Répertoire des données, taille totale, nombre de dates, plage de dates |
+| **Stockage distant** | Configuré ou non, adresse du point de terminaison, nom du bucket, nombre de dates |
+| **Configuration de récupération** | Récupération automatique activée ou non, nombre de jours à récupérer |
 
 ---
 
-### Q17: 如何查看可用的数据日期？
+### Q17 : Comment consulter les dates de données disponibles ?
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "本地有哪些日期的数据"
-- "远程存储有哪些日期"
-- "对比本地和远程的数据日期"
-- "哪些日期只在远程有"
+- « Quelles dates sont disponibles en local ? »
+- « Quelles dates sont présentes dans le stockage distant ? »
+- « Compare les dates de données locales et distantes »
+- « Quelles dates n'existent qu'à distance ? »
 
-**三种查询模式：**
+**Trois modes de requête :**
 
-| 模式 | 说明 | 示例问法 |
+| Mode | Description | Exemple de formulation |
 |------|------|---------|
-| **本地** | 仅查看本地 | "本地有哪些日期" |
-| **远程** | 仅查看远程 | "远程有哪些日期" |
-| **对比** | 对比两者（默认） | "对比本地和远程的数据" |
+| **Local** | Consulte uniquement le local | « Quelles dates sont disponibles en local ? » |
+| **Distant** | Consulte uniquement le distant | « Quelles dates sont présentes à distance ? » |
+| **Comparaison** | Compare les deux (par défaut) | « Compare les données locales et distantes » |
 
-**返回信息（对比模式）：**
+**Informations renvoyées (mode comparaison) :**
 
-- 仅本地存在的日期
-- 仅远程存在的日期（可用于决定同步哪些日期）
-- 两边都存在的日期
+- Dates présentes uniquement en local.
+- Dates présentes uniquement à distance (utile pour décider quelles dates synchroniser).
+- Dates présentes des deux côtés.
 
 ---
 
-### Q18: 如何解析自然语言日期表达式？（推荐优先使用）
+### Q18 : Comment interpréter une expression de date en langage naturel ? (à utiliser en priorité, recommandé)
 
-**你可以这样问：**
+**Vous pouvez demander, par exemple :**
 
-- "解析'本周'是哪几天"
-- "最近7天对应的日期范围是什么"
-- "上月的日期范围"
-- "帮我把'最近30天'转换为具体日期"
+- « Quels jours correspondent à « cette semaine » ? »
+- « À quelle plage de dates correspondent « les 7 derniers jours » ? »
+- « La plage de dates du mois dernier »
+- « Convertis « les 30 derniers jours » en dates précises »
 
-**为什么需要这个工具？**
+**Pourquoi cet outil est-il utile ?**
 
-用户经常使用"本周"、"最近7天"等自然语言表达日期，但不同的 AI 模型自行计算日期时会产生不一致的结果。此工具使用服务器端的精确时间计算，确保所有 AI 模型获得一致的日期范围。
+Les utilisateurs emploient souvent un langage naturel comme « cette semaine » ou « les 7 derniers jours » pour exprimer des dates, mais différents modèles d'IA calculant les dates par eux-mêmes produisent des résultats incohérents. Cet outil utilise un calcul temporel précis côté serveur afin de garantir que tous les modèles d'IA obtiennent des plages de dates cohérentes.
 
-**支持的日期表达式：**
+**Expressions de date prises en charge :**
 
-| 类型 | 中文表达 | 英文表达 |
+| Type | Expression en français | Expression en anglais |
 |------|---------|---------|
-| 单日 | 今天、昨天 | today, yesterday |
-| 周 | 本周、上周 | this week, last week |
-| 月 | 本月、上月 | this month, last month |
-| 最近N天 | 最近7天、最近30天 | last 7 days, last 30 days |
-| 动态 | 最近N天（任意数字） | last N days |
+| Jour unique | aujourd'hui, hier | today, yesterday |
+| Semaine | cette semaine, la semaine dernière | this week, last week |
+| Mois | ce mois, le mois dernier | this month, last month |
+| N derniers jours | 7 derniers jours, 30 derniers jours | last 7 days, last 30 days |
+| Dynamique | N derniers jours (nombre quelconque) | last N days |
 
-**使用优势：**
+**Avantages :**
 
-- ✅ **一致性**：所有 AI 模型获得相同的日期范围
-- ✅ **准确性**：基于服务器端精确时间计算
-- ✅ **标准化**：返回标准日期格式
-- ✅ **灵活性**：支持中英文、动态天数
-
----
-
-## 文章内容读取
-
-### Q19: 如何读取新闻文章的正文内容？
-
-**你可以这样问：**
-
-- "帮我读取这篇新闻的内容：https://example.com/news/123"
-- "获取这个链接的文章正文"
-- "读取这篇报道的详细内容"
-
-**工具功能：**
-
-- 通过 Jina AI Reader 将网页转换为干净的 Markdown 格式
-- 自动去除广告、导航栏、侧边栏等噪音内容
-- 返回 LLM 友好的结构化内容
-
-**典型使用流程：**
-
-1. 先用 `search_news(include_url=True)` 搜索新闻获取链接
-2. 再用 `read_article(url=链接)` 读取正文内容
-3. AI 对 Markdown 正文进行分析、摘要、翻译等
-
-**返回信息：**
-
-| 字段 | 说明 |
-|------|------|
-| **content** | Markdown 格式的文章正文 |
-| **url** | 原始链接 |
-| **content_length** | 内容长度（字符数） |
-
-**可以调整：**
-
-- 超时时间：如"超时设为 60 秒"（默认 30 秒，最大 60 秒）
-
-**注意事项：**
-
-- 每次请求间隔 5 秒（内置速率控制）
-- 使用 Jina AI Reader 免费服务（100 RPM 限制）
-- 部分付费墙/登录墙页面可能无法完整获取
+- ✅ **Cohérence** : tous les modèles d'IA obtiennent la même plage de dates.
+- ✅ **Précision** : basé sur un calcul temporel précis côté serveur.
+- ✅ **Standardisation** : renvoie un format de date standard.
+- ✅ **Souplesse** : prend en charge le français et l'anglais, ainsi qu'un nombre de jours dynamique.
 
 ---
 
-### Q20: 如何批量读取多篇文章？
+## Lecture du contenu des articles
 
-**你可以这样问：**
+### Q19 : Comment lire le contenu intégral d'un article d'actualité ?
 
-- "帮我读取这几篇新闻的内容"
-- "批量获取这些链接的文章正文"
-- "读取搜索结果中前 3 篇的详细内容"
+**Vous pouvez demander, par exemple :**
 
-**典型使用流程：**
+- « Lis pour moi le contenu de cette actualité : https://example.com/news/123 »
+- « Récupère le corps de l'article de ce lien »
+- « Lis le contenu détaillé de cet article »
 
-1. 先用 `search_news(include_url=True)` 搜索新闻获取多个链接
-2. 再用 `read_articles_batch(urls=[...])` 批量读取正文
-3. AI 对多篇文章进行对比分析、综合报告
+**Fonction de l'outil :**
 
-**工具限制：**
+- Convertit la page web en un format Markdown propre via Jina AI Reader.
+- Supprime automatiquement les publicités, barres de navigation, barres latérales et autres parasites.
+- Renvoie un contenu structuré adapté aux LLM.
 
-| 限制 | 值 |
+**Flux d'utilisation typique :**
+
+1. Utilisez d'abord `search_news(include_url=True)` pour rechercher des actualités et obtenir des liens.
+2. Utilisez ensuite `read_article(url=lien)` pour lire le corps de l'article.
+3. L'IA analyse, résume ou traduit le corps Markdown.
+
+**Informations renvoyées :**
+
+| Champ | Description |
 |------|------|
-| 单次最多篇数 | **5 篇** |
-| 请求间隔 | **5 秒** |
-| 预计耗时（5篇） | **25-30 秒** |
+| **content** | Corps de l'article au format Markdown |
+| **url** | Lien d'origine |
+| **content_length** | Longueur du contenu (nombre de caractères) |
 
-**返回信息：**
+**Vous pouvez ajuster :**
 
-| 字段 | 说明 |
-|------|------|
-| **summary** | 批量读取的统计信息 |
-| **articles** | 每篇文章的内容和状态 |
-| **note** | 如有跳过的文章，会说明原因 |
+- Le délai d'expiration : par exemple « fixe le délai à 60 secondes » (30 secondes par défaut, 60 secondes maximum).
 
-**注意事项：**
+**À noter :**
 
-- 超出 5 篇的部分会被自动跳过
-- 单篇失败不影响其他篇的读取
-- 篇数越多耗时越长，请耐心等待
+- Un intervalle de 5 secondes entre chaque requête (contrôle de débit intégré).
+- Utilise le service gratuit Jina AI Reader (limite de 100 requêtes par minute).
+- Certaines pages derrière un péage ou nécessitant une connexion peuvent ne pas être récupérées intégralement.
 
 ---
 
-## 通知推送
+### Q20 : Comment lire plusieurs articles en lot ?
 
-### Q21: 如何通过 MCP 发送通知消息？
+**Vous pouvez demander, par exemple :**
 
-**你可以这样问：**
+- « Lis pour moi le contenu de ces quelques actualités »
+- « Récupère en lot le corps de ces articles »
+- « Lis le contenu détaillé des 3 premiers résultats de recherche »
 
-- "查看当前配置了哪些通知渠道"
-- "发送一条测试消息到所有渠道"
-- "把这段内容推送到飞书"
-- "发送今天的新闻摘要到钉钉和 Telegram"
+**Flux d'utilisation typique :**
 
-**支持的通知渠道（9 个）：**
+1. Utilisez d'abord `search_news(include_url=True)` pour rechercher des actualités et obtenir plusieurs liens.
+2. Utilisez ensuite `read_articles_batch(urls=[...])` pour lire les corps d'articles en lot.
+3. L'IA réalise une analyse comparative et un rapport de synthèse sur plusieurs articles.
 
-| 渠道 | 消息格式 | 配置来源 |
+**Limites de l'outil :**
+
+| Limite | Valeur |
+|------|------|
+| Nombre maximal d'articles par appel | **5** |
+| Intervalle entre requêtes | **5 secondes** |
+| Durée estimée (5 articles) | **25 à 30 secondes** |
+
+**Informations renvoyées :**
+
+| Champ | Description |
+|------|------|
+| **summary** | Statistiques de la lecture en lot |
+| **articles** | Contenu et état de chaque article |
+| **note** | Si des articles ont été ignorés, en explique la raison |
+
+**À noter :**
+
+- Les articles au-delà de 5 sont automatiquement ignorés.
+- L'échec d'un article n'affecte pas la lecture des autres.
+- Plus il y a d'articles, plus l'opération est longue : merci de patienter.
+
+---
+
+## Envoi de notifications
+
+### Q21 : Comment envoyer des messages de notification via MCP ?
+
+**Vous pouvez demander, par exemple :**
+
+- « Affiche les canaux de notification actuellement configurés »
+- « Envoie un message de test à tous les canaux »
+- « Pousse ce contenu vers Feishu »
+- « Envoie la synthèse des actualités du jour vers DingTalk et Telegram »
+
+**Canaux de notification pris en charge (9) :**
+
+| Canal | Format de message | Source de configuration |
 |------|---------|---------|
-| **飞书** (feishu) | 纯文本 | `FEISHU_WEBHOOK_URL` |
-| **钉钉** (dingtalk) | Markdown | `DINGTALK_WEBHOOK_URL` |
-| **企业微信** (wework) | Markdown | `WEWORK_WEBHOOK_URL` |
+| **Feishu** (feishu) | Texte brut | `FEISHU_WEBHOOK_URL` |
+| **DingTalk** (dingtalk) | Markdown | `DINGTALK_WEBHOOK_URL` |
+| **WeCom** (wework) | Markdown | `WEWORK_WEBHOOK_URL` |
 | **Telegram** | HTML | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` |
 | **Email** | HTML | `EMAIL_FROM` + `EMAIL_PASSWORD` + `EMAIL_TO` |
 | **ntfy** | Markdown | `NTFY_SERVER_URL` + `NTFY_TOPIC` |
 | **Bark** | Markdown | `BARK_URL` |
 | **Slack** | mrkdwn | `SLACK_WEBHOOK_URL` |
-| **通用 Webhook** | Markdown | `GENERIC_WEBHOOK_URL` |
+| **Webhook générique** | Markdown | `GENERIC_WEBHOOK_URL` |
 
-**配置方式：**
+**Méthode de configuration :**
 
-- 在 `config.yaml` 的 `notification.channels` 中配置对应渠道
-- 或在 `.env` 文件中设置对应的环境变量（优先级更高）
-- 两种方式会自动合并，`.env` 中的值会覆盖 `config.yaml` 中的值
+- Configurez les canaux correspondants dans `config.yaml`, sous `notification.channels`.
+- Ou définissez les variables d'environnement correspondantes dans le fichier `.env` (priorité plus élevée).
+- Les deux méthodes sont fusionnées automatiquement, les valeurs du fichier `.env` l'emportant sur celles de `config.yaml`.
 
-**两个工具：**
+**Deux outils :**
 
-| 工具 | 功能 | 示例问法 |
+| Outil | Fonction | Exemple de formulation |
 |------|------|---------|
-| `get_notification_channels` | 检测已配置的渠道及状态 | "查看通知渠道配置" |
-| `send_notification` | 发送消息到指定或全部渠道 | "发送消息到飞书" |
+| `get_notification_channels` | Détecte les canaux configurés et leur état | « Affiche la configuration des canaux de notification » |
+| `send_notification` | Envoie un message à un canal précis ou à tous | « Envoie un message vers Feishu » |
 
-**典型使用流程：**
+**Flux d'utilisation typique :**
 
-1. 先查看渠道状态："查看当前配置了哪些通知渠道"
-2. 确认渠道可用后发送："把以下内容推送到钉钉：今日热点摘要..."
-3. 或指定多个渠道："发送到飞书和 Telegram"
-4. 不指定渠道则发送到所有已配置渠道
+1. Consultez d'abord l'état des canaux : « Affiche les canaux de notification actuellement configurés ».
+2. Une fois la disponibilité confirmée, envoyez : « Pousse le contenu suivant vers DingTalk : synthèse des tendances du jour... ».
+3. Ou précisez plusieurs canaux : « Envoie vers Feishu et Telegram ».
+4. Si aucun canal n'est précisé, l'envoi se fait vers tous les canaux configurés.
 
-**消息格式：**
+**Format des messages :**
 
-- 工具接受 **Markdown 格式** 的消息内容
-- 自动按各渠道要求转换格式（飞书转纯文本、Telegram 转 HTML、Slack 转 mrkdwn 等）
-- 无需手动处理格式差异
+- L'outil accepte un contenu de message au **format Markdown**.
+- Il convertit automatiquement le format selon les exigences de chaque canal (texte brut pour Feishu, HTML pour Telegram, mrkdwn pour Slack, etc.).
+- Aucune gestion manuelle des différences de format n'est nécessaire.
 
-**多账号支持：**
+**Prise en charge de plusieurs comptes :**
 
-- 配置值中用 `;` 分隔多个 URL/Token 即可发送到多个账号
-- 例如：`FEISHU_WEBHOOK_URL=url1;url2` 会同时发送到两个飞书群
+- Séparez plusieurs URL / jetons par un `;` dans la valeur de configuration pour envoyer vers plusieurs comptes.
+- Par exemple : `FEISHU_WEBHOOK_URL=url1;url2` envoie simultanément vers deux groupes Feishu.
 
 ---
 
-## 💡 使用技巧
+## 💡 Astuces d'utilisation
 
-### 1. 如何让 AI 展示全部数据而不是自动总结？
+### 1. Comment faire en sorte que l'IA affiche toutes les données au lieu de résumer automatiquement ?
 
-**背景**: 有时 AI 会自动总结数据，只展示部分内容，即使工具返回了完整的 50 条数据。
+**Contexte** : il arrive que l'IA résume automatiquement les données et n'affiche qu'une partie du contenu, même si l'outil a renvoyé l'ensemble des 50 éléments.
 
-**如果 AI 仍然总结，你可以**:
+**Si l'IA résume malgré tout, vous pouvez** :
 
-- **方法 1 - 明确要求**: "请展示全部新闻，不要总结"
-- **方法 2 - 指定数量**: "展示所有 50 条新闻"
-- **方法 3 - 质疑行为**: "为什么只展示了 15 条？我要看全部"
-- **方法 4 - 提前说明**: "查询今天的新闻，完整展示所有结果"
+- **Méthode 1 - Demande explicite** : « Affiche toutes les actualités, sans résumer ».
+- **Méthode 2 - Préciser le nombre** : « Affiche les 50 actualités ».
+- **Méthode 3 - Remettre en question le comportement** : « Pourquoi n'en as-tu affiché que 15 ? Je veux tout voir ».
+- **Méthode 4 - Préciser à l'avance** : « Interroge les actualités du jour, affiche tous les résultats en intégralité ».
 
-**注意**: AI 仍可能根据上下文调整展示方式。
+**À noter** : l'IA peut tout de même adapter sa façon d'afficher en fonction du contexte.
 
 
-### 2. 如何组合使用多个工具？
+### 2. Comment combiner plusieurs outils ?
 
-**示例：深度分析某个话题**
+**Exemple : analyse approfondie d'un sujet**
 
-1. 先搜索："搜索'人工智能'相关新闻"
-2. 再分析趋势："分析'人工智能'的热度趋势"
-3. 最后情感分析："分析'人工智能'新闻的情感倾向"
+1. Recherchez d'abord : « Recherche les actualités sur « l'intelligence artificielle » ».
+2. Analysez ensuite la tendance : « Analyse la tendance de popularité de « l'intelligence artificielle » ».
+3. Terminez par l'analyse du sentiment : « Analyse le sentiment des actualités sur « l'intelligence artificielle » ».
 
-**示例：追踪某个事件**
+**Exemple : suivre un événement**
 
-1. 查看最新："查询今天关于'iPhone'的新闻"
-2. 查找历史："查找上周与'iPhone'相关的历史新闻"
-3. 找相似报道："找出和'iPhone 发布会'相似的新闻"
-
+1. Consultez les dernières actualités : « Interroge les actualités du jour sur « iPhone » ».
+2. Recherchez l'historique : « Trouve les actualités historiques de la semaine dernière liées à « iPhone » ».
+3. Trouvez des articles similaires : « Trouve les actualités similaires à « la conférence de présentation de l'iPhone » ».

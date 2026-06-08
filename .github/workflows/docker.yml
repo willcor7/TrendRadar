@@ -3,12 +3,12 @@ name: Build and Push Docker Images
 on:
   push:
     tags:
-      - "v*" # 主项目版本
-      - "mcp-v*" # MCP 版本
+      - "v*" # version du projet principal
+      - "mcp-v*" # version MCP
   workflow_dispatch:
     inputs:
       image:
-        description: "选择要构建的镜像"
+        description: "Sélectionnez l'image à construire"
         required: true
         default: "all"
         type: choice
@@ -23,7 +23,7 @@ env:
 jobs:
   build-crawler:
     runs-on: ubuntu-latest
-    # 条件：v* 标签（排除 mcp-v*）或手动触发选择 all/crawler
+    # Condition : tag v* (en excluant mcp-v*) ou déclenchement manuel avec choix all/crawler
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !startsWith(github.ref, 'refs/tags/mcp-v')) ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.image == 'all' || github.event.inputs.image == 'crawler'))
@@ -73,7 +73,7 @@ jobs:
 
   build-mcp:
     runs-on: ubuntu-latest
-    # 条件：mcp-v* 标签 或手动触发选择 all/mcp
+    # Condition : tag mcp-v* ou déclenchement manuel avec choix all/mcp
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mcp-v')) ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.image == 'all' || github.event.inputs.image == 'mcp'))

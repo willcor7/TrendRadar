@@ -1,61 +1,62 @@
 # coding=utf-8
 """
-批次处理模块
+Module de traitement par lots
 
-提供消息分批发送的辅助函数
+Fournit des fonctions auxiliaires pour l'envoi des messages par lots
 """
 
 from typing import List
 
 
 def get_batch_header(format_type: str, batch_num: int, total_batches: int) -> str:
-    """根据 format_type 生成对应格式的批次头部
+    """Génère l'en-tête de lot au format correspondant selon format_type
 
     Args:
-        format_type: 推送类型（telegram, slack, wework_text, bark, feishu, dingtalk, ntfy, wework）
-        batch_num: 当前批次编号
-        total_batches: 总批次数
+        format_type: type d'envoi (telegram, slack, wework_text, bark, feishu, dingtalk, ntfy, wework)
+        batch_num: numéro du lot courant
+        total_batches: nombre total de lots
 
     Returns:
-        格式化的批次头部字符串
+        chaîne de l'en-tête de lot formatée
     """
     if format_type == "telegram":
-        return f"<b>[第 {batch_num}/{total_batches} 批次]</b>\n\n"
+        return f"<b>[n° {batch_num}/{total_batches} lot]</b>\n\n"
     elif format_type == "slack":
-        return f"*[第 {batch_num}/{total_batches} 批次]*\n\n"
+        return f"*[n° {batch_num}/{total_batches} lot]*\n\n"
     elif format_type in ("wework_text", "bark"):
-        # 企业微信文本模式和 Bark 使用纯文本格式
-        return f"[第 {batch_num}/{total_batches} 批次]\n\n"
+        # le mode texte de WeCom et Bark utilisent le format texte brut
+        return f"[n° {batch_num}/{total_batches} lot]\n\n"
     else:
-        # 飞书、钉钉、ntfy、企业微信 markdown 模式
-        return f"**[第 {batch_num}/{total_batches} 批次]**\n\n"
+        # Feishu, DingTalk, ntfy, mode markdown de WeCom
+        return f"**[n° {batch_num}/{total_batches} lot]**\n\n"
 
 
 def get_max_batch_header_size(format_type: str) -> int:
-    """估算批次头部的最大字节数（假设最多 99 批次）
+    """Estime le nombre d'octets maximal de l'en-tête de lot (en supposant au plus 99 lots)
 
-    用于在分批时预留空间，避免事后截断破坏内容完整性。
+    Sert à réserver de l'espace lors du découpage en lots, afin d'éviter qu'une troncature
+    ultérieure ne compromette l'intégrité du contenu.
 
     Args:
-        format_type: 推送类型
+        format_type: type d'envoi
 
     Returns:
-        最大头部字节数
+        nombre d'octets maximal de l'en-tête
     """
-    # 生成最坏情况的头部（99/99 批次）
+    # génère l'en-tête du pire cas (lot 99/99)
     max_header = get_batch_header(format_type, 99, 99)
     return len(max_header.encode("utf-8"))
 
 
 def truncate_to_bytes(text: str, max_bytes: int) -> str:
-    """安全截断字符串到指定字节数，避免截断多字节字符
+    """Tronque une chaîne en toute sécurité au nombre d'octets indiqué, sans couper un caractère multioctet
 
     Args:
-        text: 要截断的文本
-        max_bytes: 最大字节数
+        text: texte à tronquer
+        max_bytes: nombre d'octets maximal
 
     Returns:
-        截断后的文本
+        texte tronqué
     """
     text_bytes = text.encode("utf-8")
     if len(text_bytes) <= max_bytes:
@@ -71,16 +72,17 @@ def truncate_to_bytes(text: str, max_bytes: int) -> str:
 
 
 def truncate_at_line_boundary(text: str, max_bytes: int) -> str:
-    """在行边界处截断，确保不在标题或内容中间断开
+    """Tronque à la limite d'une ligne, en garantissant de ne pas couper au milieu d'un titre ou d'un contenu
 
-    先按字节截断，再回退到最近的换行符位置，保证每一行都完整。
+    Tronque d'abord par octets, puis recule jusqu'à la position du saut de ligne le plus proche,
+    afin que chaque ligne reste complète.
 
     Args:
-        text: 要截断的文本
-        max_bytes: 最大字节数
+        text: texte à tronquer
+        max_bytes: nombre d'octets maximal
 
     Returns:
-        在最后一个完整行处结束的截断文本
+        texte tronqué se terminant à la dernière ligne complète
     """
     if len(text.encode("utf-8")) <= max_bytes:
         return text
@@ -93,23 +95,24 @@ def truncate_at_line_boundary(text: str, max_bytes: int) -> str:
 
 
 def truncate_preserving_footer(content: str, max_bytes: int) -> str:
-    """截断内容，优先保留尾部 footer（更新时间等），正文在行边界处截断
+    """Tronque le contenu en préservant en priorité le pied de page (footer : date de mise à jour, etc.), le corps étant tronqué à la limite d'une ligne
 
-    识别内容末尾的 footer 区域（更新时间、版本提示等），
-    对 footer 之前的正文部分在行边界处截断，再拼接完整 footer。
+    Identifie la zone de pied de page (footer) en fin de contenu (date de mise à jour, mention de
+    version, etc.), tronque la partie du corps précédant le footer à la limite d'une ligne,
+    puis réassemble le footer complet.
 
     Args:
-        content: 完整内容（正文 + footer）
-        max_bytes: 最大字节数
+        content: contenu complet (corps + footer)
+        max_bytes: nombre d'octets maximal
 
     Returns:
-        截断后的内容，footer 完整保留，正文在行边界处截断
+        contenu tronqué, footer conservé intégralement, corps tronqué à la limite d'une ligne
     """
     if len(content.encode("utf-8")) <= max_bytes:
         return content
 
-    # 各平台 footer 的常见开头模式
-    footer_markers = ["\n\n\n> ", "\n\n> ", "\n\n<font", "\n\n_", "\n\n更新时间"]
+    # motifs de début courants du footer pour chaque plateforme
+    footer_markers = ["\n\n\n> ", "\n\n> ", "\n\n<font", "\n\n_", "\n\nMis à jour le"]
     footer_start = -1
     for marker in footer_markers:
         pos = content.rfind(marker)
@@ -132,17 +135,17 @@ def truncate_preserving_footer(content: str, max_bytes: int) -> str:
 
 
 def _split_oversized_batch(content: str, max_content_bytes: int) -> List[str]:
-    """将超限批次按行边界拆分成多个子批次（保留 footer）
+    """Découpe un lot dépassant la limite en plusieurs sous-lots aux limites de ligne (conserve le footer)
 
     Args:
-        content: 超限的批次内容（含 footer）
-        max_content_bytes: 每个子批次的最大字节数
+        content: contenu du lot dépassant la limite (footer inclus)
+        max_content_bytes: nombre d'octets maximal de chaque sous-lot
 
     Returns:
-        拆分后的子批次列表
+        liste des sous-lots après découpage
     """
-    # 识别 footer
-    footer_markers = ["\n\n\n> ", "\n\n> ", "\n\n<font", "\n\n_", "\n\n更新时间"]
+    # identifie le footer
+    footer_markers = ["\n\n\n> ", "\n\n> ", "\n\n<font", "\n\n_", "\n\nMis à jour le"]
     footer = ""
     body = content
     for marker in footer_markers:
@@ -157,7 +160,7 @@ def _split_oversized_batch(content: str, max_content_bytes: int) -> List[str]:
     if available <= 0:
         return [truncate_at_line_boundary(content, max_content_bytes)]
 
-    # 按行拆分 body
+    # découpe le corps (body) ligne par ligne
     lines = body.split("\n")
     sub_batches = []
     current = ""
@@ -179,20 +182,20 @@ def _split_oversized_batch(content: str, max_content_bytes: int) -> List[str]:
 def add_batch_headers(
     batches: List[str], format_type: str, max_bytes: int
 ) -> List[str]:
-    """为批次添加头部，超限时拆分成多个子批次（不丢弃内容）
+    """Ajoute un en-tête à chaque lot et découpe en plusieurs sous-lots en cas de dépassement de limite (sans perdre de contenu)
 
     Args:
-        batches: 原始批次列表
-        format_type: 推送类型（bark, telegram, feishu 等）
-        max_bytes: 该推送类型的最大字节限制
+        batches: liste des lots d'origine
+        format_type: type d'envoi (bark, telegram, feishu, etc.)
+        max_bytes: limite d'octets maximale pour ce type d'envoi
 
     Returns:
-        添加头部后的批次列表
+        liste des lots après ajout des en-têtes
     """
     if len(batches) <= 1:
         return batches
 
-    # 第一遍：拆分超限批次
+    # première passe : découpe les lots dépassant la limite
     expanded = []
     max_header_size = get_max_batch_header_size(format_type)
     for content in batches:
@@ -201,7 +204,7 @@ def add_batch_headers(
         else:
             expanded.append(content)
 
-    # 第二遍：添加头部
+    # deuxième passe : ajoute les en-têtes
     if len(expanded) <= 1:
         return expanded
 
@@ -213,7 +216,7 @@ def add_batch_headers(
         max_content_size = max_bytes - header_size
 
         if len(content.encode("utf-8")) > max_content_size:
-            # 仍超限（极端情况：单行过长），行边界截断
+            # toujours en dépassement (cas extrême : une seule ligne trop longue), troncature à la limite d'une ligne
             content = truncate_preserving_footer(content, max_content_size)
 
         result.append(header + content)

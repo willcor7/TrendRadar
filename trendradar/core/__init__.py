@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-核心模块 - 配置管理和核心工具
+Module principal - gestion de la configuration et outils principaux
 """
 
 from trendradar.core.config import (
@@ -33,17 +33,17 @@ __all__ = [
     "load_config",
     "load_frequency_words",
     "matches_word_groups",
-    # 数据处理
+    # traitement des données
     "read_all_today_titles_from_storage",
     "read_all_today_titles",
     "detect_latest_new_titles_from_storage",
     "detect_latest_new_titles",
-    # 统计分析
+    # analyse statistique
     "calculate_news_weight",
     "format_time_display",
     "count_word_frequency",
     "count_rss_frequency",
-    # 调度器
+    # planificateur
     "Scheduler",
     "ResolvedSchedule",
 ]

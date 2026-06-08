@@ -1,10 +1,10 @@
 # coding=utf-8
 """
-TrendRadar - 热点新闻聚合与分析工具
+TrendRadar - outil d'agrégation et d'analyse des actualités tendance
 
-使用方式:
-  python -m trendradar        # 模块执行
-  trendradar                  # 安装后执行
+Utilisation :
+  python -m trendradar        # exécution en tant que module
+  trendradar                  # exécution après installation
 """
 
 from trendradar.context import AppContext

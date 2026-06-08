@@ -1,7 +1,7 @@
 """
-配置管理工具
+Outils de gestion de la configuration
 
-实现配置查询和管理功能。
+Implémente les fonctions de requête et de gestion de la configuration.
 """
 
 from typing import Dict, Optional, Any, TypedDict
@@ -12,14 +12,14 @@ from ..utils.errors import MCPError
 
 
 class ErrorInfo(TypedDict, total=False):
-    """错误信息结构"""
+    """Structure des informations d'erreur"""
     code: str
     message: str
     suggestion: str
 
 
 class ConfigResult(TypedDict):
-    """配置查询结果 - success 字段必需，其他字段可选"""
+    """Résultat de la requête de configuration - le champ success est obligatoire, les autres facultatifs"""
     success: bool
     config: Optional[Dict[str, Any]]
     section: Optional[str]
@@ -27,26 +27,26 @@ class ConfigResult(TypedDict):
 
 
 class ConfigManagementTools:
-    """配置管理工具类"""
+    """Classe des outils de gestion de la configuration"""
 
     def __init__(self, project_root: str = None):
         """
-        初始化配置管理工具
+        Initialise les outils de gestion de la configuration
 
         Args:
-            project_root: 项目根目录
+            project_root: répertoire racine du projet
         """
         self.data_service = DataService(project_root)
 
     def get_current_config(self, section: Optional[str] = None) -> ConfigResult:
         """
-        获取当前系统配置
+        Récupère la configuration actuelle du système
 
         Args:
-            section: 配置节 - all/crawler/push/keywords/weights，默认all
+            section: section de configuration - all/crawler/push/keywords/weights, all par défaut
 
         Returns:
-            配置字典
+            dictionnaire de configuration
 
         Example:
             >>> tools = ConfigManagementTools()
@@ -54,10 +54,10 @@ class ConfigManagementTools:
             >>> print(result['crawler']['platforms'])
         """
         try:
-            # 参数验证
+            # Validation des paramètres
             section = validate_config_section(section)
 
-            # 获取配置
+            # Récupère la configuration
             config = self.data_service.get_current_config(section=section)
 
             return ConfigResult(
@@ -79,5 +79,5 @@ class ConfigManagementTools:
                 success=False,
                 config=None,
                 section=None,
-                error={"code": "INTERNAL_ERROR", "message": str(e), "suggestion": "请查看服务日志获取详细信息"}
+                error={"code": "INTERNAL_ERROR", "message": str(e), "suggestion": "Veuillez consulter les journaux du service pour plus de détails"}
             )

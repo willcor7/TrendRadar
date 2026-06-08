@@ -1,5 +1,5 @@
 """
-工具类模块
+Module d'utilitaires
 
-提供参数验证、错误处理等辅助功能。
+Fournit la validation des paramètres, la gestion des erreurs et d'autres fonctions auxiliaires.
 """

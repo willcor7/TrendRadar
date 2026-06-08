@@ -1,5 +1,5 @@
 """
-MCP 工具模块
+Module des outils MCP
 
-包含所有MCP工具的实现。
+Contient l'implémentation de tous les outils MCP.
 """

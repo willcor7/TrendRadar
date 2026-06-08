@@ -1,9 +1,9 @@
 # coding=utf-8
 """
-AI 翻译器模块
+Module traducteur IA
 
-对推送内容进行多语言翻译
-基于 LiteLLM 统一接口，支持 100+ AI 提供商
+Traduit le contenu diffusé dans plusieurs langues.
+Basé sur l'interface unifiée de LiteLLM, il prend en charge plus de 100 fournisseurs d'IA.
 """
 
 from dataclasses import dataclass, field
@@ -15,71 +15,71 @@ from trendradar.ai.prompt_loader import load_prompt_template
 
 @dataclass
 class TranslationResult:
-    """翻译结果"""
-    translated_text: str = ""       # 翻译后的文本
-    original_text: str = ""         # 原始文本
-    success: bool = False           # 是否成功
-    error: str = ""                 # 错误信息
+    """Résultat de traduction"""
+    translated_text: str = ""       # Texte traduit
+    original_text: str = ""         # Texte original
+    success: bool = False           # Indique si la traduction a réussi
+    error: str = ""                 # Message d'erreur
 
 
 @dataclass
 class BatchTranslationResult:
-    """批量翻译结果"""
+    """Résultat de traduction par lot"""
     results: List[TranslationResult] = field(default_factory=list)
     success_count: int = 0
     fail_count: int = 0
     total_count: int = 0
-    prompt: str = ""                # debug: 发送给 AI 的完整 prompt
-    raw_response: str = ""          # debug: AI 原始响应
-    parsed_count: int = 0           # debug: AI 响应解析出的条目数
+    prompt: str = ""                # debug : prompt complet envoyé à l'IA
+    raw_response: str = ""          # debug : réponse brute de l'IA
+    parsed_count: int = 0           # debug : nombre d'entrées extraites de la réponse de l'IA
 
 
 class AITranslator:
-    """AI 翻译器"""
+    """Traducteur IA"""
 
     def __init__(self, translation_config: Dict[str, Any], ai_config: Dict[str, Any]):
         """
-        初始化 AI 翻译器
+        Initialise le traducteur IA
 
         Args:
-            translation_config: AI 翻译配置 (AI_TRANSLATION)
-            ai_config: AI 模型配置（LiteLLM 格式）
+            translation_config: configuration de traduction IA (AI_TRANSLATION)
+            ai_config: configuration du modèle d'IA (format LiteLLM)
         """
         self.translation_config = translation_config
         self.ai_config = ai_config
 
-        # 翻译配置
+        # Configuration de la traduction
         self.enabled = translation_config.get("ENABLED", False)
         self.target_language = translation_config.get("LANGUAGE", "English")
         self.scope = translation_config.get("SCOPE", {"HOTLIST": True, "RSS": True, "STANDALONE": True})
 
-        # 创建 AI 客户端（基于 LiteLLM）
+        # Création du client IA (basé sur LiteLLM)
         self.client = AIClient(ai_config)
 
-        # 加载提示词模板
+        # Chargement du modèle de prompt
         self.system_prompt, self.user_prompt_template = load_prompt_template(
             translation_config.get("PROMPT_FILE", "ai_translation_prompt.txt"),
-            label="翻译",
+            label="Traduction",
         )
 
     def translate(self, text: str) -> TranslationResult:
         """
-        翻译单条文本
+        Traduit une seule entrée de texte
 
         Args:
-            text: 要翻译的文本
+            text: texte à traduire
 
         Returns:
-            TranslationResult: 翻译结果
+            TranslationResult: résultat de la traduction
         """
         result = TranslationResult(original_text=text)
 
         if not self.enabled:
-            result.error = "翻译功能未启用"
+            result.error = "La fonction de traduction n'est pas activée"
             return result
 
         if not self.client.api_key:
-            result.error = "未配置 AI API Key"
+            result.error = "Aucune clé d'API IA configurée"
             return result
 
         if not text or not text.strip():
@@ -88,12 +88,12 @@ class AITranslator:
             return result
 
         try:
-            # 构建提示词
+            # Construction du prompt
             user_prompt = self.user_prompt_template
             user_prompt = user_prompt.replace("{target_language}", self.target_language)
             user_prompt = user_prompt.replace("{content}", text)
 
-            # 调用 AI API
+            # Appel de l'API IA
             response = self._call_ai(user_prompt)
             result.translated_text = response.strip()
             result.success = True
@@ -103,19 +103,19 @@ class AITranslator:
             error_msg = str(e)
             if len(error_msg) > 100:
                 error_msg = error_msg[:100] + "..."
-            result.error = f"翻译失败 ({error_type}): {error_msg}"
+            result.error = f"Échec de la traduction ({error_type}) : {error_msg}"
 
         return result
 
     def translate_batch(self, texts: List[str]) -> BatchTranslationResult:
         """
-        批量翻译文本（单次 API 调用）
+        Traduit des textes par lot (un seul appel à l'API)
 
         Args:
-            texts: 要翻译的文本列表
+            texts: liste des textes à traduire
 
         Returns:
-            BatchTranslationResult: 批量翻译结果
+            BatchTranslationResult: résultat de la traduction par lot
         """
         batch_result = BatchTranslationResult(total_count=len(texts))
 
@@ -123,7 +123,7 @@ class AITranslator:
             for text in texts:
                 batch_result.results.append(TranslationResult(
                     original_text=text,
-                    error="翻译功能未启用"
+                    error="La fonction de traduction n'est pas activée"
                 ))
             batch_result.fail_count = len(texts)
             return batch_result
@@ -132,7 +132,7 @@ class AITranslator:
             for text in texts:
                 batch_result.results.append(TranslationResult(
                     original_text=text,
-                    error="未配置 AI API Key"
+                    error="Aucune clé d'API IA configurée"
                 ))
             batch_result.fail_count = len(texts)
             return batch_result
@@ -140,7 +140,7 @@ class AITranslator:
         if not texts:
             return batch_result
 
-        # 过滤空文本
+        # Filtrage des textes vides
         non_empty_indices = []
         non_empty_texts = []
         for i, text in enumerate(texts):
@@ -148,11 +148,11 @@ class AITranslator:
                 non_empty_indices.append(i)
                 non_empty_texts.append(text)
 
-        # 初始化结果列表
+        # Initialisation de la liste des résultats
         for text in texts:
             batch_result.results.append(TranslationResult(original_text=text))
 
-        # 空文本直接标记成功
+        # Les textes vides sont directement marqués comme réussis
         for i, text in enumerate(texts):
             if not text or not text.strip():
                 batch_result.results[i].translated_text = text
@@ -163,31 +163,31 @@ class AITranslator:
             return batch_result
 
         try:
-            # 构建批量翻译内容（使用编号格式）
+            # Construction du contenu à traduire par lot (avec un format numéroté)
             batch_content = self._format_batch_content(non_empty_texts)
 
-            # 构建提示词
+            # Construction du prompt
             user_prompt = self.user_prompt_template
             user_prompt = user_prompt.replace("{target_language}", self.target_language)
             user_prompt = user_prompt.replace("{content}", batch_content)
 
-            # 记录 debug 信息（包含完整的 system + user prompt）
+            # Enregistrement des informations de debug (incluant le prompt system + user complet)
             if self.system_prompt:
                 batch_result.prompt = f"[system]\n{self.system_prompt}\n\n[user]\n{user_prompt}"
             else:
                 batch_result.prompt = user_prompt
 
-            # 调用 AI API
+            # Appel de l'API IA
             response = self._call_ai(user_prompt)
 
-            # 记录 AI 原始响应
+            # Enregistrement de la réponse brute de l'IA
             batch_result.raw_response = response
 
-            # 解析批量翻译结果
+            # Analyse du résultat de la traduction par lot
             translated_texts, raw_parsed_count = self._parse_batch_response(response, len(non_empty_texts))
             batch_result.parsed_count = raw_parsed_count
 
-            # 填充结果（跳过空翻译，避免用空字符串覆盖原始标题）
+            # Remplissage des résultats (on ignore les traductions vides afin de ne pas écraser le titre original par une chaîne vide)
             for idx, translated in zip(non_empty_indices, translated_texts):
                 if translated and translated.strip():
                     batch_result.results[idx].translated_text = translated
@@ -199,7 +199,7 @@ class AITranslator:
                     batch_result.success_count += 1
 
         except Exception as e:
-            error_msg = f"批量翻译失败: {type(e).__name__}: {str(e)[:100]}"
+            error_msg = f"Échec de la traduction par lot : {type(e).__name__}: {str(e)[:100]}"
             for idx in non_empty_indices:
                 batch_result.results[idx].error = error_msg
             batch_result.fail_count = len(non_empty_indices)
@@ -207,7 +207,7 @@ class AITranslator:
         return batch_result
 
     def _format_batch_content(self, texts: List[str]) -> str:
-        """格式化批量翻译内容"""
+        """Met en forme le contenu à traduire par lot"""
         lines = []
         for i, text in enumerate(texts, 1):
             lines.append(f"[{i}] {text}")
@@ -215,14 +215,14 @@ class AITranslator:
 
     def _parse_batch_response(self, response: str, expected_count: int) -> tuple:
         """
-        解析批量翻译响应
+        Analyse la réponse de traduction par lot
 
         Args:
-            response: AI 响应文本
-            expected_count: 期望的翻译数量
+            response: texte de la réponse de l'IA
+            expected_count: nombre de traductions attendu
 
         Returns:
-            tuple: (翻译结果列表, AI 原始解析出的条目数)
+            tuple: (liste des résultats de traduction, nombre d'entrées initialement extraites de la réponse de l'IA)
         """
         results = []
         lines = response.strip().split("\n")
@@ -231,13 +231,13 @@ class AITranslator:
         current_text = []
 
         for line in lines:
-            # 尝试匹配 [数字] 格式
+            # Tentative de correspondance avec le format [numéro]
             stripped = line.strip()
             if stripped.startswith("[") and "]" in stripped:
                 bracket_end = stripped.index("]")
                 try:
                     idx = int(stripped[1:bracket_end])
-                    # 保存之前的内容
+                    # Sauvegarde du contenu précédent
                     if current_idx is not None:
                         results.append((current_idx, "\n".join(current_text).strip()))
                     current_idx = idx
@@ -249,18 +249,18 @@ class AITranslator:
                 if current_idx is not None:
                     current_text.append(line)
 
-        # 保存最后一条
+        # Sauvegarde de la dernière entrée
         if current_idx is not None:
             results.append((current_idx, "\n".join(current_text).strip()))
 
-        # 按索引排序并提取文本
+        # Tri par index et extraction du texte
         results.sort(key=lambda x: x[0])
         translated = [text for _, text in results]
         raw_parsed_count = len(translated)
 
-        # 如果解析结果数量不匹配，尝试简单按行分割
+        # Si le nombre de résultats analysés ne correspond pas, on tente un simple découpage ligne par ligne
         if len(translated) != expected_count:
-            # 回退：按行分割（去除编号）
+            # Solution de repli : découpage ligne par ligne (en retirant le numéro)
             translated = []
             for line in lines:
                 stripped = line.strip()
@@ -271,14 +271,14 @@ class AITranslator:
                     translated.append(stripped)
             raw_parsed_count = len(translated)
 
-        # 确保返回正确数量
+        # On garantit le retour du bon nombre d'éléments
         while len(translated) < expected_count:
             translated.append("")
 
         return translated[:expected_count], raw_parsed_count
 
     def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
+        """Appelle l'API IA (via LiteLLM)"""
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})

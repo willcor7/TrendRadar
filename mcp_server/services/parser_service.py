@@ -1,8 +1,8 @@
 """
-数据解析服务
+Service d'analyse des données
 
-v2.0.0: 仅支持 SQLite 数据库，移除 TXT 文件支持
-新存储结构：output/{type}/{date}.db
+v2.0.0 : prend uniquement en charge la base de données SQLite, suppression de la prise en charge des fichiers TXT
+Nouvelle structure de stockage : output/{type}/{date}.db
 """
 
 import re
@@ -18,14 +18,14 @@ from .cache_service import get_cache
 
 
 class ParserService:
-    """数据解析服务类"""
+    """Classe du service d'analyse des données"""
 
     def __init__(self, project_root: str = None):
         """
-        初始化解析服务
+        Initialise le service d'analyse
 
         Args:
-            project_root: 项目根目录，默认为当前目录的父目录
+            project_root: répertoire racine du projet, par défaut le répertoire parent du répertoire courant
         """
         if project_root is None:
             current_file = Path(__file__)
@@ -35,26 +35,26 @@ class ParserService:
 
         self.cache = get_cache()
 
-        # frequency_words.txt mtime 缓存
+        # Cache du mtime de frequency_words.txt
         self._freq_words_cache: Optional[List[Dict]] = None
         self._freq_words_mtime: float = 0.0
 
     @staticmethod
     def clean_title(title: str) -> str:
-        """清理标题文本"""
+        """Nettoie le texte du titre"""
         title = re.sub(r'\s+', ' ', title)
         title = title.strip()
         return title
 
     def get_date_folder_name(self, date: datetime = None) -> str:
         """
-        获取日期字符串（ISO 格式）
+        Récupère la chaîne de date (format ISO)
 
         Args:
-            date: 日期对象，默认为今天
+            date: objet date, par défaut aujourd'hui
 
         Returns:
-            日期字符串（YYYY-MM-DD）
+            chaîne de date (YYYY-MM-DD)
         """
         if date is None:
             date = datetime.now()
@@ -62,16 +62,16 @@ class ParserService:
 
     def _get_db_path(self, date: datetime = None, db_type: str = "news") -> Optional[Path]:
         """
-        获取数据库文件路径
+        Récupère le chemin du fichier de base de données
 
-        新结构：output/{type}/{date}.db
+        Nouvelle structure : output/{type}/{date}.db
 
         Args:
-            date: 日期对象，默认为今天
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: objet date, par défaut aujourd'hui
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            数据库文件路径，如果不存在则返回 None
+            chemin du fichier de base de données, ou None s'il n'existe pas
         """
         date_str = self.get_date_folder_name(date)
         db_path = self.project_root / "output" / db_type / f"{date_str}.db"
@@ -86,15 +86,15 @@ class ParserService:
         db_type: str = "news"
     ) -> Optional[Tuple[Dict, Dict, Dict]]:
         """
-        从 SQLite 数据库读取数据
+        Lit les données depuis la base de données SQLite
 
         Args:
-            date: 日期对象，默认为今天
-            platform_ids: 平台ID列表，None表示所有平台
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: objet date, par défaut aujourd'hui
+            platform_ids: liste des ID de plateformes, None signifie toutes les plateformes
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            (all_titles, id_to_name, all_timestamps) 元组，如果数据库不存在返回 None
+            tuple (all_titles, id_to_name, all_timestamps), ou None si la base de données n'existe pas
         """
         db_path = self._get_db_path(date, db_type)
         if db_path is None:
@@ -115,7 +115,7 @@ class ParserService:
                 return self._read_rss_from_sqlite(cursor, platform_ids, all_titles, id_to_name, all_timestamps)
 
         except Exception as e:
-            print(f"Warning: 从 SQLite 读取数据失败: {e}")
+            print(f"Warning: échec de la lecture des données depuis SQLite : {e}")
             return None
         finally:
             if 'conn' in locals():
@@ -129,8 +129,8 @@ class ParserService:
         id_to_name: Dict,
         all_timestamps: Dict
     ) -> Optional[Tuple[Dict, Dict, Dict]]:
-        """从热榜数据库读取数据"""
-        # 检查表是否存在
+        """Lit les données depuis la base de données des palmarès"""
+        # Vérifie si la table existe
         cursor.execute("""
             SELECT name FROM sqlite_master
             WHERE type='table' AND name='news_items'
@@ -138,7 +138,7 @@ class ParserService:
         if not cursor.fetchone():
             return None
 
-        # 构建查询
+        # Construit la requête
         if platform_ids:
             placeholders = ','.join(['?' for _ in platform_ids])
             query = f"""
@@ -161,7 +161,7 @@ class ParserService:
 
         rows = cursor.fetchall()
 
-        # 收集所有 news_item_id 用于查询历史排名
+        # Collecte tous les news_item_id pour interroger l'historique des classements
         news_ids = [row['id'] for row in rows]
         rank_history_map = {}
 
@@ -203,7 +203,7 @@ class ParserService:
                 "count": row['crawl_count'] or 1,
             }
 
-        # 获取抓取时间作为 timestamps
+        # Récupère les heures de collecte comme timestamps
         cursor.execute("""
             SELECT crawl_time, created_at FROM crawl_records
             ORDER BY crawl_time
@@ -230,8 +230,8 @@ class ParserService:
         id_to_name: Dict,
         all_timestamps: Dict
     ) -> Optional[Tuple[Dict, Dict, Dict]]:
-        """从 RSS 数据库读取数据"""
-        # 检查表是否存在
+        """Lit les données depuis la base de données RSS"""
+        # Vérifie si la table existe
         cursor.execute("""
             SELECT name FROM sqlite_master
             WHERE type='table' AND name='rss_items'
@@ -239,7 +239,7 @@ class ParserService:
         if not cursor.fetchone():
             return None
 
-        # 构建查询
+        # Construit la requête
         if feed_ids:
             placeholders = ','.join(['?' for _ in feed_ids])
             query = f"""
@@ -285,7 +285,7 @@ class ParserService:
                 "count": row['crawl_count'] or 1,
             }
 
-        # 获取抓取时间
+        # Récupère les heures de collecte
         cursor.execute("""
             SELECT crawl_time, created_at FROM rss_crawl_records
             ORDER BY crawl_time
@@ -311,18 +311,18 @@ class ParserService:
         db_type: str = "news"
     ) -> Tuple[Dict, Dict, Dict]:
         """
-        读取指定日期的所有数据（带缓存）
+        Lit toutes les données d'une date donnée (avec cache)
 
         Args:
-            date: 日期对象，默认为今天
-            platform_ids: 平台/Feed ID列表，None表示所有
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: objet date, par défaut aujourd'hui
+            platform_ids: liste des ID de plateformes/flux, None signifie tous
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            (all_titles, id_to_name, all_timestamps) 元组
+            tuple (all_titles, id_to_name, all_timestamps)
 
         Raises:
-            DataNotFoundError: 数据不存在
+            DataNotFoundError: données inexistantes
         """
         date_str = self.get_date_folder_name(date)
         platform_key = ','.join(sorted(platform_ids)) if platform_ids else 'all'
@@ -341,22 +341,22 @@ class ParserService:
             return result
 
         raise DataNotFoundError(
-            f"未找到 {date_str} 的 {db_type} 数据",
-            suggestion="请先运行爬虫或检查日期是否正确"
+            f"Aucune donnée {db_type} trouvée pour {date_str}",
+            suggestion="Veuillez d'abord lancer le collecteur ou vérifier que la date est correcte"
         )
 
     def parse_yaml_config(self, config_path: str = None) -> dict:
         """
-        解析YAML配置文件
+        Analyse le fichier de configuration YAML
 
         Args:
-            config_path: 配置文件路径，默认为 config/config.yaml
+            config_path: chemin du fichier de configuration, par défaut config/config.yaml
 
         Returns:
-            配置字典
+            dictionnaire de configuration
 
         Raises:
-            FileParseError: 配置文件解析错误
+            FileParseError: erreur d'analyse du fichier de configuration
         """
         if config_path is None:
             config_path = self.project_root / "config" / "config.yaml"
@@ -364,7 +364,7 @@ class ParserService:
             config_path = Path(config_path)
 
         if not config_path.exists():
-            raise FileParseError(str(config_path), "配置文件不存在")
+            raise FileParseError(str(config_path), "le fichier de configuration n'existe pas")
 
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -375,29 +375,29 @@ class ParserService:
 
     def parse_frequency_words(self, words_file: str = None) -> List[Dict]:
         """
-        解析关键词配置文件（带 mtime 缓存）
+        Analyse le fichier de configuration des mots-clés (avec cache mtime)
 
-        仅当 frequency_words.txt 被修改时才重新解析，避免循环内重复 IO。
+        Ne ré-analyse que lorsque frequency_words.txt a été modifié, pour éviter les E/S répétées dans les boucles.
 
-        复用 trendradar.core.frequency 的解析逻辑，支持：
-        - # 开头的注释行
-        - 空行分隔词组
-        - [组别名] 作为词组第一行，给整组指定别名
-        - +前缀必须词、!前缀过滤词、@数量限制
-        - /pattern/ 正则表达式语法
-        - => 别名 显示名称语法
-        - [GLOBAL_FILTER] 全局过滤区域
+        Réutilise la logique d'analyse de trendradar.core.frequency, prend en charge :
+        - lignes de commentaire commençant par #
+        - lignes vides séparant les groupes de mots
+        - [alias de groupe] comme première ligne d'un groupe de mots, donne un alias à tout le groupe
+        - mots obligatoires préfixés par +, mots de filtrage préfixés par !, limite de quantité avec @
+        - syntaxe d'expression régulière /pattern/
+        - syntaxe de nom d'affichage avec => alias
+        - zone de filtrage global [GLOBAL_FILTER]
 
-        显示名称优先级：组别名 > 行别名拼接 > 关键词拼接
+        Priorité du nom d'affichage : alias de groupe > concaténation des alias de ligne > concaténation des mots-clés
 
         Args:
-            words_file: 关键词文件路径，默认为 config/frequency_words.txt
+            words_file: chemin du fichier de mots-clés, par défaut config/frequency_words.txt
 
         Returns:
-            词组列表
+            liste des groupes de mots
 
         Raises:
-            FileParseError: 文件解析错误
+            FileParseError: erreur d'analyse du fichier
         """
         import os
         from trendradar.core.frequency import load_frequency_words
@@ -424,13 +424,13 @@ class ParserService:
 
     def get_available_dates(self, db_type: str = "news") -> List[str]:
         """
-        获取可用的日期列表
+        Récupère la liste des dates disponibles
 
         Args:
-            db_type: 数据库类型 ("news" 或 "rss")
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            日期字符串列表（YYYY-MM-DD 格式，降序排列）
+            liste de chaînes de dates (format YYYY-MM-DD, ordre décroissant)
         """
         db_dir = self.project_root / "output" / db_type
         if not db_dir.exists():
@@ -446,13 +446,13 @@ class ParserService:
 
     def get_available_date_range(self, db_type: str = "news") -> Tuple[Optional[datetime], Optional[datetime]]:
         """
-        获取可用的日期范围
+        Récupère la plage de dates disponible
 
         Args:
-            db_type: 数据库类型 ("news" 或 "rss")
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            (最早日期, 最新日期) 元组，如果没有数据则返回 (None, None)
+            tuple (date la plus ancienne, date la plus récente), ou (None, None) s'il n'y a pas de données
         """
         dates = self.get_available_dates(db_type)
         if not dates:

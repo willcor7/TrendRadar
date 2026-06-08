@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-RSS 解析器
+Analyseur RSS
 
-支持 RSS 2.0、Atom 和 JSON Feed 1.1 格式的解析
+Prend en charge l'analyse des formats RSS 2.0, Atom et JSON Feed 1.1
 """
 
 import re
@@ -23,7 +23,7 @@ except ImportError:
 
 @dataclass
 class ParsedRSSItem:
-    """解析后的 RSS 条目"""
+    """Entrée RSS après analyse"""
     title: str
     url: str
     published_at: Optional[str] = None
@@ -33,40 +33,40 @@ class ParsedRSSItem:
 
 
 class RSSParser:
-    """RSS 解析器"""
+    """Analyseur RSS"""
 
     def __init__(self, max_summary_length: int = 500):
         """
-        初始化解析器
+        Initialise l'analyseur
 
         Args:
-            max_summary_length: 摘要最大长度
+            max_summary_length: longueur maximale du résumé
         """
         if not HAS_FEEDPARSER:
-            raise ImportError("RSS 解析需要安装 feedparser: pip install feedparser")
+            raise ImportError("L'analyse RSS nécessite l'installation de feedparser : pip install feedparser")
 
         self.max_summary_length = max_summary_length
 
     def parse(self, content: str, feed_url: str = "") -> List[ParsedRSSItem]:
         """
-        解析 RSS/Atom/JSON Feed 内容
+        Analyse un contenu RSS/Atom/JSON Feed
 
         Args:
-            content: Feed 内容（XML 或 JSON）
-            feed_url: Feed URL（用于错误提示）
+            content: contenu du flux (XML ou JSON)
+            feed_url: URL du flux (utilisée pour les messages d'erreur)
 
         Returns:
-            解析后的条目列表
+            liste des entrées après analyse
         """
-        # 先尝试检测 JSON Feed
+        # Tente d'abord de détecter un JSON Feed
         if self._is_json_feed(content):
             return self._parse_json_feed(content, feed_url)
 
-        # 使用 feedparser 解析 RSS/Atom
+        # Utilise feedparser pour analyser le RSS/Atom
         feed = feedparser.parse(content)
 
         if feed.bozo and not feed.entries:
-            raise ValueError(f"RSS 解析失败 ({feed_url}): {feed.bozo_exception}")
+            raise ValueError(f"Échec de l'analyse RSS ({feed_url}) : {feed.bozo_exception}")
 
         items = []
         for entry in feed.entries:
@@ -78,9 +78,9 @@ class RSSParser:
 
     def _is_json_feed(self, content: str) -> bool:
         """
-        检测内容是否为 JSON Feed 格式
+        Détecte si le contenu est au format JSON Feed
 
-        JSON Feed 必须包含 version 字段，值为 https://jsonfeed.org/version/1 或 1.1
+        Un JSON Feed doit contenir un champ version, dont la valeur est https://jsonfeed.org/version/1 ou 1.1
         """
         content = content.strip()
         if not content.startswith("{"):
@@ -95,21 +95,21 @@ class RSSParser:
 
     def _parse_json_feed(self, content: str, feed_url: str = "") -> List[ParsedRSSItem]:
         """
-        解析 JSON Feed 1.1 格式
+        Analyse le format JSON Feed 1.1
 
-        JSON Feed 规范: https://www.jsonfeed.org/version/1.1/
+        Spécification JSON Feed : https://www.jsonfeed.org/version/1.1/
 
         Args:
-            content: JSON Feed 内容
-            feed_url: Feed URL（用于错误提示）
+            content: contenu du JSON Feed
+            feed_url: URL du flux (utilisée pour les messages d'erreur)
 
         Returns:
-            解析后的条目列表
+            liste des entrées après analyse
         """
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
-            raise ValueError(f"JSON Feed 解析失败 ({feed_url}): {e}")
+            raise ValueError(f"Échec de l'analyse du JSON Feed ({feed_url}) : {e}")
 
         items_data = data.get("items", [])
         if not items_data:
@@ -124,7 +124,7 @@ class RSSParser:
         return items
 
     def _parse_json_feed_item(self, item_data: Dict[str, Any]) -> Optional[ParsedRSSItem]:
-        """解析单个 JSON Feed 条目"""
+        """Analyse une seule entrée de JSON Feed"""
         url = item_data.get("url", "") or item_data.get("external_url", "")
 
         title = item_data.get("title", "")
@@ -139,13 +139,13 @@ class RSSParser:
         if not title:
             return None
 
-        # 发布时间（ISO 8601 格式）
+        # Date de publication (format ISO 8601)
         published_at = None
         date_str = item_data.get("date_published") or item_data.get("date_modified")
         if date_str:
             published_at = self._parse_iso_date(date_str)
 
-        # 摘要：优先 summary，否则使用 content_text
+        # Résumé : on privilégie summary, sinon on utilise content_text
         summary = item_data.get("summary", "")
         if not summary:
             content_text = item_data.get("content_text", "")
@@ -157,7 +157,7 @@ class RSSParser:
             if len(summary) > self.max_summary_length:
                 summary = summary[:self.max_summary_length] + "..."
 
-        # 作者
+        # Auteur
         author = None
         authors = item_data.get("authors", [])
         if authors:
@@ -178,13 +178,13 @@ class RSSParser:
         )
 
     def _parse_iso_date(self, date_str: str) -> Optional[str]:
-        """解析 ISO 8601 日期格式"""
+        """Analyse une date au format ISO 8601"""
         if not date_str:
             return None
 
         try:
-            # 处理常见的 ISO 8601 格式
-            # 替换 Z 为 +00:00
+            # Traite les formats ISO 8601 courants
+            # Remplace Z par +00:00
             date_str = date_str.replace("Z", "+00:00")
             dt = datetime.fromisoformat(date_str)
             return dt.isoformat()
@@ -195,14 +195,14 @@ class RSSParser:
 
     def parse_url(self, url: str, timeout: int = 10) -> List[ParsedRSSItem]:
         """
-        从 URL 解析 RSS
+        Analyse un flux RSS à partir de son URL
 
         Args:
-            url: RSS URL
-            timeout: 超时时间（秒）
+            url: URL du flux RSS
+            timeout: délai d'expiration (secondes)
 
         Returns:
-            解析后的条目列表
+            liste des entrées après analyse
         """
         import requests
 
@@ -214,7 +214,7 @@ class RSSParser:
         return self.parse(response.text, url)
 
     def _parse_entry(self, entry: Any) -> Optional[ParsedRSSItem]:
-        """解析单个条目"""
+        """Analyse une seule entrée"""
         title = self._clean_text(entry.get("title", ""))
 
         url = entry.get("link", "")
@@ -258,24 +258,24 @@ class RSSParser:
         )
 
     def _clean_text(self, text: str) -> str:
-        """清理文本"""
+        """Nettoie le texte"""
         if not text:
             return ""
 
-        # 解码 HTML 实体
+        # Décode les entités HTML
         text = html.unescape(text)
 
-        # 移除 HTML 标签
+        # Supprime les balises HTML
         text = re.sub(r'<[^>]+>', '', text)
 
-        # 移除多余空白
+        # Supprime les espaces superflus
         text = re.sub(r'\s+', ' ', text)
 
         return text.strip()
 
     def _parse_date(self, entry: Any) -> Optional[str]:
-        """解析发布日期"""
-        # feedparser 会自动解析日期到 published_parsed
+        """Analyse la date de publication"""
+        # feedparser analyse automatiquement la date dans published_parsed
         date_struct = entry.get("published_parsed") or entry.get("updated_parsed")
 
         if date_struct:
@@ -285,7 +285,7 @@ class RSSParser:
             except (ValueError, TypeError):
                 pass
 
-        # 尝试手动解析
+        # Tente une analyse manuelle
         date_str = entry.get("published") or entry.get("updated")
         if date_str:
             try:
@@ -294,7 +294,7 @@ class RSSParser:
             except (ValueError, TypeError):
                 pass
 
-            # 尝试 ISO 格式
+            # Tente le format ISO
             try:
                 dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 return dt.isoformat()
@@ -304,11 +304,11 @@ class RSSParser:
         return None
 
     def _parse_summary(self, entry: Any) -> Optional[str]:
-        """解析摘要"""
+        """Analyse le résumé"""
         summary = entry.get("summary") or entry.get("description", "")
 
         if not summary:
-            # 尝试从 content 获取
+            # Tente de le récupérer depuis content
             content = entry.get("content", [])
             if content and isinstance(content, list):
                 summary = content[0].get("value", "")
@@ -318,24 +318,24 @@ class RSSParser:
 
         summary = self._clean_text(summary)
 
-        # 截断过长的摘要
+        # Tronque les résumés trop longs
         if len(summary) > self.max_summary_length:
             summary = summary[:self.max_summary_length] + "..."
 
         return summary
 
     def _parse_author(self, entry: Any) -> Optional[str]:
-        """解析作者"""
+        """Analyse l'auteur"""
         author = entry.get("author")
         if author:
             return self._clean_text(author)
 
-        # 尝试从 dc:creator 获取
+        # Tente de le récupérer depuis dc:creator
         author = entry.get("dc_creator")
         if author:
             return self._clean_text(author)
 
-        # 尝试从 authors 列表获取
+        # Tente de le récupérer depuis la liste authors
         authors = entry.get("authors", [])
         if authors:
             names = [a.get("name", "") for a in authors if a.get("name")]

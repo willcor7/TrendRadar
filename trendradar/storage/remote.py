@@ -1,10 +1,10 @@
 # coding=utf-8
 """
-远程存储后端（S3 兼容协议）
+Backend de stockage distant (protocole compatible S3)
 
-支持 Cloudflare R2、阿里云 OSS、腾讯云 COS、AWS S3、MinIO 等
-使用 S3 兼容 API (boto3) 访问对象存储
-数据流程：下载当天 SQLite → 合并新数据 → 上传回远程
+Prend en charge Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, AWS S3, MinIO, etc.
+Utilise une API compatible S3 (boto3) pour accéder au stockage objet
+Flux de données : téléchargement du SQLite du jour → fusion des nouvelles données → renvoi vers le stockage distant
 """
 
 import pytz
@@ -40,15 +40,15 @@ from trendradar.utils.time import (
 
 class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
     """
-    远程云存储后端（S3 兼容协议）
+    Backend de stockage cloud distant (protocole compatible S3)
 
-    特点：
-    - 使用 S3 兼容 API 访问远程存储
-    - 支持 Cloudflare R2、阿里云 OSS、腾讯云 COS、AWS S3、MinIO 等
-    - 下载 SQLite 到临时目录进行操作
-    - 支持数据合并和上传
-    - 支持从远程拉取历史数据到本地
-    - 运行结束后自动清理临时文件
+    Caractéristiques :
+    - accède au stockage distant via une API compatible S3
+    - prend en charge Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, AWS S3, MinIO, etc.
+    - télécharge le SQLite dans un répertoire temporaire pour y opérer
+    - prend en charge la fusion et l'envoi des données
+    - prend en charge le téléchargement des données historiques distantes vers le stockage local
+    - nettoie automatiquement les fichiers temporaires en fin d'exécution
     """
 
     def __init__(
@@ -58,27 +58,27 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         secret_access_key: str,
         endpoint_url: str,
         region: str = "",
-        enable_txt: bool = False,  # 远程模式默认不生成 TXT
+        enable_txt: bool = False,  # En mode distant, pas de génération TXT par défaut
         enable_html: bool = True,
         temp_dir: Optional[str] = None,
         timezone: str = DEFAULT_TIMEZONE,
     ):
         """
-        初始化远程存储后端
+        Initialise le backend de stockage distant
 
         Args:
-            bucket_name: 存储桶名称
-            access_key_id: 访问密钥 ID
-            secret_access_key: 访问密钥
-            endpoint_url: 服务端点 URL
-            region: 区域（可选，部分服务商需要）
-            enable_txt: 是否启用 TXT 快照（默认关闭）
-            enable_html: 是否启用 HTML 报告
-            temp_dir: 临时目录路径（默认使用系统临时目录）
-            timezone: 时区配置
+            bucket_name: nom du bucket de stockage
+            access_key_id: ID de la clé d'accès
+            secret_access_key: clé d'accès secrète
+            endpoint_url: URL du point de terminaison du service
+            region: région (optionnel, requis par certains fournisseurs)
+            enable_txt: activer ou non les instantanés TXT (désactivé par défaut)
+            enable_html: activer ou non les rapports HTML
+            temp_dir: chemin du répertoire temporaire (par défaut, le répertoire temporaire du système)
+            timezone: configuration du fuseau horaire
         """
         if not HAS_BOTO3:
-            raise ImportError("远程存储后端需要安装 boto3: pip install boto3")
+            raise ImportError("le backend de stockage distant nécessite l'installation de boto3 : pip install boto3")
 
         self.bucket_name = bucket_name
         self.endpoint_url = endpoint_url
@@ -87,15 +87,15 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         self.enable_html = enable_html
         self.timezone = timezone
 
-        # 创建临时目录
+        # Crée le répertoire temporaire
         self.temp_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="trendradar_"))
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-        # 初始化 S3 客户端
-        # 使用 virtual-hosted style addressing（主流）
-        # 根据服务商选择签名版本：
-        # - 腾讯云 COS 和 阿里云 OSS 使用 SigV2 以避免 chunked encoding 问题
-        # - 其他服务商（AWS S3、Cloudflare R2、MinIO 等）默认使用 SigV4
+        # Initialise le client S3
+        # Utilise l'adressage de type virtual-hosted (le plus courant)
+        # Choisit la version de signature selon le fournisseur :
+        # - Tencent Cloud COS et Alibaba Cloud OSS utilisent SigV2 pour éviter les problèmes de chunked encoding
+        # - les autres fournisseurs (AWS S3, Cloudflare R2, MinIO, etc.) utilisent SigV4 par défaut
         use_sigv2 = "myqcloud.com" in endpoint_url.lower() or "aliyuncs.com" in endpoint_url.lower()
         signature_version = 's3' if use_sigv2 else 's3v4'
 
@@ -115,15 +115,15 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
 
         self.s3_client = boto3.client("s3", **client_kwargs)
 
-        # 跟踪下载的文件（用于清理）
+        # Suit les fichiers téléchargés (pour le nettoyage)
         self._downloaded_files: List[Path] = []
         self._db_connections: Dict[str, sqlite3.Connection] = {}
 
-        # 批量模式：延迟上传，避免频繁上传同一文件
+        # Mode par lots : envoi différé, pour éviter d'envoyer fréquemment le même fichier
         self._batch_mode = False
-        self._batch_dirty: set = set()  # 待上传的 (date, db_type) 集合
+        self._batch_dirty: set = set()  # Ensemble des (date, db_type) en attente d'envoi
 
-        print(f"[远程存储] 初始化完成，存储桶: {bucket_name}，签名版本: {signature_version}")
+        print(f"[stockage distant] initialisation terminée, bucket de stockage : {bucket_name}, version de signature : {signature_version}")
 
     @property
     def backend_name(self) -> str:
@@ -134,45 +134,45 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self.enable_txt
 
     # ========================================
-    # SQLiteStorageMixin 抽象方法实现
+    # Implémentation des méthodes abstraites de SQLiteStorageMixin
     # ========================================
 
     def _get_configured_time(self) -> datetime:
-        """获取配置时区的当前时间"""
+        """Récupère l'heure actuelle dans le fuseau horaire configuré"""
         return get_configured_time(self.timezone)
 
     def _format_date_folder(self, date: Optional[str] = None) -> str:
-        """格式化日期文件夹名 (ISO 格式: YYYY-MM-DD)"""
+        """Formate le nom du dossier de date (format ISO : YYYY-MM-DD)"""
         return format_date_folder(date, self.timezone)
 
     def _format_time_filename(self) -> str:
-        """格式化时间文件名 (格式: HH-MM)"""
+        """Formate le nom de fichier basé sur l'heure (format : HH-MM)"""
         return format_time_filename(self.timezone)
 
     def _get_remote_db_key(self, date: Optional[str] = None, db_type: str = "news") -> str:
         """
-        获取远程存储中 SQLite 文件的对象键
+        Récupère la clé d'objet du fichier SQLite dans le stockage distant
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            远程对象键，如 "news/2025-12-28.db" 或 "rss/2025-12-28.db"
+            la clé d'objet distante, par ex. "news/2025-12-28.db" ou "rss/2025-12-28.db"
         """
         date_folder = self._format_date_folder(date)
         return f"{db_type}/{date_folder}.db"
 
     def _get_local_db_path(self, date: Optional[str] = None, db_type: str = "news") -> Path:
         """
-        获取本地临时 SQLite 文件路径
+        Récupère le chemin du fichier SQLite temporaire local
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            本地临时文件路径
+            le chemin du fichier temporaire local
         """
         date_folder = self._format_date_folder(date)
         db_dir = self.temp_dir / db_type
@@ -181,84 +181,84 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def _check_object_exists(self, r2_key: str) -> bool:
         """
-        检查远程存储中对象是否存在
+        Vérifie si un objet existe dans le stockage distant
 
         Args:
-            r2_key: 远程对象键
+            r2_key: clé d'objet distante
 
         Returns:
-            是否存在
+            True si l'objet existe
         """
         try:
             self.s3_client.head_object(Bucket=self.bucket_name, Key=r2_key)
             return True
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
-            # S3 兼容存储可能返回 404, NoSuchKey, 或其他变体
+            # Un stockage compatible S3 peut renvoyer 404, NoSuchKey ou d'autres variantes
             if error_code in ("404", "NoSuchKey", "Not Found"):
                 return False
-            # 其他错误（如权限问题）也视为不存在，但打印警告
-            print(f"[远程存储] 检查对象存在性失败 ({r2_key}): {e}")
+            # Les autres erreurs (par ex. problème de permissions) sont aussi considérées comme « inexistant », mais avec un avertissement
+            print(f"[stockage distant] échec de la vérification de l'existence de l'objet ({r2_key}) : {e}")
             return False
         except Exception as e:
-            print(f"[远程存储] 检查对象存在性异常 ({r2_key}): {e}")
+            print(f"[stockage distant] exception lors de la vérification de l'existence de l'objet ({r2_key}) : {e}")
             return False
 
     def _download_sqlite(self, date: Optional[str] = None, db_type: str = "news") -> Optional[Path]:
         """
-        从远程存储下载当天的 SQLite 文件到本地临时目录
+        Télécharge le fichier SQLite du jour depuis le stockage distant vers le répertoire temporaire local
 
-        使用 get_object + iter_chunks 替代 download_file，
-        以正确处理腾讯云 COS 的 chunked transfer encoding。
+        Utilise get_object + iter_chunks à la place de download_file,
+        afin de traiter correctement le chunked transfer encoding de Tencent Cloud COS.
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            本地文件路径，如果不存在返回 None
+            le chemin du fichier local, ou None si le fichier n'existe pas
         """
         r2_key = self._get_remote_db_key(date, db_type)
         local_path = self._get_local_db_path(date, db_type)
 
-        # 确保目录存在
+        # Garantit l'existence du répertoire
         local_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 先检查文件是否存在
+        # Vérifie d'abord si le fichier existe
         if not self._check_object_exists(r2_key):
-            print(f"[远程存储] 文件不存在，将创建新数据库: {r2_key}")
+            print(f"[stockage distant] fichier inexistant, une nouvelle base de données va être créée : {r2_key}")
             return None
 
         try:
-            # 使用 get_object + iter_chunks 替代 download_file
-            # iter_chunks 会自动处理 chunked transfer encoding
+            # Utilise get_object + iter_chunks à la place de download_file
+            # iter_chunks traite automatiquement le chunked transfer encoding
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=r2_key)
             with open(local_path, 'wb') as f:
                 for chunk in response['Body'].iter_chunks(chunk_size=1024*1024):
                     f.write(chunk)
             self._downloaded_files.append(local_path)
-            print(f"[远程存储] 已下载: {r2_key} -> {local_path}")
+            print(f"[stockage distant] téléchargé : {r2_key} -> {local_path}")
             return local_path
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
-            # S3 兼容存储可能返回不同的错误码
+            # Un stockage compatible S3 peut renvoyer différents codes d'erreur
             if error_code in ("404", "NoSuchKey", "Not Found"):
-                print(f"[远程存储] 文件不存在，将创建新数据库: {r2_key}")
+                print(f"[stockage distant] fichier inexistant, une nouvelle base de données va être créée : {r2_key}")
                 return None
             else:
-                print(f"[远程存储] 下载失败 (错误码: {error_code}): {e}")
+                print(f"[stockage distant] échec du téléchargement (code d'erreur : {error_code}) : {e}")
                 raise
         except Exception as e:
-            print(f"[远程存储] 下载异常: {e}")
+            print(f"[stockage distant] exception lors du téléchargement : {e}")
             raise
 
     def begin_batch(self):
-        """开启批量模式：延迟上传，避免频繁上传同一文件"""
+        """Active le mode par lots : envoi différé, pour éviter d'envoyer fréquemment le même fichier"""
         self._batch_mode = True
         self._batch_dirty.clear()
 
     def end_batch(self):
-        """结束批量模式：统一上传所有脏数据库"""
+        """Termine le mode par lots : envoi groupé de toutes les bases de données modifiées"""
         self._batch_mode = False
         for date, db_type in self._batch_dirty:
             self._upload_sqlite(date, db_type)
@@ -266,16 +266,16 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def _upload_sqlite(self, date: Optional[str] = None, db_type: str = "news") -> bool:
         """
-        上传本地 SQLite 文件到远程存储
+        Envoie le fichier SQLite local vers le stockage distant
 
-        批量模式下延迟上传，由 end_batch() 统一触发。
+        En mode par lots, l'envoi est différé et déclenché de façon groupée par end_batch().
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            是否上传成功
+            True si l'envoi a réussi
         """
         if self._batch_mode:
             self._batch_dirty.add((date, db_type))
@@ -284,21 +284,21 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         r2_key = self._get_remote_db_key(date, db_type)
 
         if not local_path.exists():
-            print(f"[远程存储] 本地文件不存在，无法上传: {local_path}")
+            print(f"[stockage distant] fichier local inexistant, envoi impossible : {local_path}")
             return False
 
         try:
-            # 获取本地文件大小
+            # Récupère la taille du fichier local
             local_size = local_path.stat().st_size
-            print(f"[远程存储] 准备上传: {local_path} ({local_size} bytes) -> {r2_key}")
+            print(f"[stockage distant] préparation de l'envoi : {local_path} ({local_size} octets) -> {r2_key}")
 
-            # 读取文件内容为 bytes 后上传
-            # 避免传入文件对象时 requests 库使用 chunked transfer encoding
-            # 腾讯云 COS 等 S3 兼容服务可能无法正确处理 chunked encoding
+            # Lit le contenu du fichier sous forme de bytes avant l'envoi
+            # Évite que la bibliothèque requests utilise le chunked transfer encoding lorsqu'on lui passe un objet fichier
+            # Des services compatibles S3 comme Tencent Cloud COS peuvent ne pas traiter correctement le chunked encoding
             with open(local_path, 'rb') as f:
                 file_content = f.read()
 
-            # 使用 put_object 并明确设置 ContentLength，确保不使用 chunked encoding
+            # Utilise put_object en définissant explicitement ContentLength, pour garantir l'absence de chunked encoding
             self.s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=r2_key,
@@ -306,39 +306,39 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
                 ContentLength=local_size,
                 ContentType='application/x-sqlite3',
             )
-            print(f"[远程存储] 已上传: {local_path} -> {r2_key}")
+            print(f"[stockage distant] envoyé : {local_path} -> {r2_key}")
 
-            # 验证上传成功
+            # Valide la réussite de l'envoi
             if self._check_object_exists(r2_key):
-                print(f"[远程存储] 上传验证成功: {r2_key}")
+                print(f"[stockage distant] validation de l'envoi réussie : {r2_key}")
                 return True
             else:
-                print(f"[远程存储] 上传验证失败: 文件未在远程存储中找到")
+                print(f"[stockage distant] échec de la validation de l'envoi : fichier introuvable dans le stockage distant")
                 return False
 
         except Exception as e:
-            print(f"[远程存储] 上传失败: {e}")
+            print(f"[stockage distant] échec de l'envoi : {e}")
             return False
 
     def _get_connection(self, date: Optional[str] = None, db_type: str = "news") -> sqlite3.Connection:
         """
-        获取数据库连接
+        Récupère une connexion à la base de données
 
         Args:
-            date: 日期字符串
-            db_type: 数据库类型 ("news" 或 "rss")
+            date: chaîne de date
+            db_type: type de base de données ("news" ou "rss")
 
         Returns:
-            数据库连接
+            une connexion à la base de données
         """
         local_path = self._get_local_db_path(date, db_type)
         db_path = str(local_path)
 
         if db_path not in self._db_connections:
-            # 确保目录存在
+            # Garantit l'existence du répertoire
             local_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # 如果本地不存在，尝试从远程存储下载
+            # Si le fichier local n'existe pas, tente de le télécharger depuis le stockage distant
             if not local_path.exists():
                 self._download_sqlite(date, db_type)
 
@@ -350,140 +350,140 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self._db_connections[db_path]
 
     # ========================================
-    # StorageBackend 接口实现（委托给 mixin + 上传）
+    # Implémentation de l'interface StorageBackend (déléguée au mixin + envoi)
     # ========================================
 
     def save_news_data(self, data: NewsData) -> bool:
         """
-        保存新闻数据到远程存储
+        Enregistre les données d'actualités vers le stockage distant
 
-        流程：下载现有数据库 → 插入/更新数据 → 上传回远程存储
+        Flux : télécharge la base de données existante → insère/met à jour les données → renvoie vers le stockage distant
         """
-        # 查询已有记录数
+        # Interroge le nombre d'enregistrements existants
         conn = self._get_connection(data.date)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) as count FROM news_items")
         row = cursor.fetchone()
         existing_count = row[0] if row else 0
         if existing_count > 0:
-            print(f"[远程存储] 已有 {existing_count} 条历史记录，将合并新数据")
+            print(f"[stockage distant] {existing_count} enregistrements historiques déjà présents, les nouvelles données vont être fusionnées")
 
-        # 使用 mixin 的实现保存数据
+        # Utilise l'implémentation du mixin pour enregistrer les données
         success, new_count, updated_count, title_changed_count, off_list_count = \
-            self._save_news_data_impl(data, "[远程存储]")
+            self._save_news_data_impl(data, "[stockage distant]")
 
         if not success:
             return False
 
-        # 查询合并后的总记录数
+        # Interroge le nombre total d'enregistrements après fusion
         cursor.execute("SELECT COUNT(*) as count FROM news_items")
         row = cursor.fetchone()
         final_count = row[0] if row else 0
 
-        # 输出详细的存储统计日志
-        log_parts = [f"[远程存储] 处理完成：新增 {new_count} 条"]
+        # Affiche un journal détaillé des statistiques de stockage
+        log_parts = [f"[stockage distant] traitement terminé : {new_count} nouvelles entrées"]
         if updated_count > 0:
-            log_parts.append(f"更新 {updated_count} 条")
+            log_parts.append(f"{updated_count} entrées mises à jour")
         if title_changed_count > 0:
-            log_parts.append(f"标题变更 {title_changed_count} 条")
+            log_parts.append(f"{title_changed_count} titres modifiés")
         if off_list_count > 0:
-            log_parts.append(f"脱榜 {off_list_count} 条")
-        log_parts.append(f"(去重后总计: {final_count} 条)")
-        print("，".join(log_parts))
+            log_parts.append(f"{off_list_count} entrées sorties du classement")
+        log_parts.append(f"(total après déduplication : {final_count} entrées)")
+        print(", ".join(log_parts))
 
-        # 上传到远程存储
+        # Envoie vers le stockage distant
         if self._upload_sqlite(data.date):
-            print(f"[远程存储] 数据已同步到远程存储")
+            print(f"[stockage distant] données synchronisées vers le stockage distant")
             return True
         else:
-            print(f"[远程存储] 上传远程存储失败")
+            print(f"[stockage distant] échec de l'envoi vers le stockage distant")
             return False
 
     def get_today_all_data(self, date: Optional[str] = None) -> Optional[NewsData]:
-        """获取指定日期的所有新闻数据（合并后）"""
+        """Récupère toutes les données d'actualités d'une date donnée (après fusion)"""
         return self._get_today_all_data_impl(date)
 
     def get_latest_crawl_data(self, date: Optional[str] = None) -> Optional[NewsData]:
-        """获取最新一次抓取的数据"""
+        """Récupère les données de la collecte la plus récente"""
         return self._get_latest_crawl_data_impl(date)
 
     def detect_new_titles(self, current_data: NewsData) -> Dict[str, Dict]:
-        """检测新增的标题"""
+        """Détecte les nouveaux titres"""
         return self._detect_new_titles_impl(current_data)
 
     def is_first_crawl_today(self, date: Optional[str] = None) -> bool:
-        """检查是否是当天第一次抓取"""
+        """Vérifie s'il s'agit de la première collecte du jour"""
         return self._is_first_crawl_today_impl(date)
 
     # ========================================
-    # 时间段执行记录（调度系统）
+    # Enregistrement des exécutions par tranche horaire (système de planification)
     # ========================================
 
     def has_period_executed(self, date_str: str, period_key: str, action: str) -> bool:
-        """检查指定时间段的某个 action 是否已执行"""
+        """Vérifie si une action donnée a déjà été exécutée pour une tranche horaire donnée"""
         return self._has_period_executed_impl(date_str, period_key, action)
 
     def record_period_execution(self, date_str: str, period_key: str, action: str) -> bool:
-        """记录时间段的 action 执行"""
+        """Enregistre l'exécution d'une action pour une tranche horaire"""
         success = self._record_period_execution_impl(date_str, period_key, action)
 
         if success:
             now_str = self._get_configured_time().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[远程存储] 时间段执行记录已保存: {period_key}/{action} at {now_str}")
+            print(f"[stockage distant] enregistrement d'exécution de tranche horaire sauvegardé : {period_key}/{action} à {now_str}")
 
-            # 上传到远程存储确保记录持久化
+            # Envoie vers le stockage distant pour garantir la persistance de l'enregistrement
             if self._upload_sqlite(date_str):
-                print(f"[远程存储] 时间段执行记录已同步到远程存储")
+                print(f"[stockage distant] enregistrement d'exécution de tranche horaire synchronisé vers le stockage distant")
                 return True
             else:
-                print(f"[远程存储] 时间段执行记录同步到远程存储失败")
+                print(f"[stockage distant] échec de la synchronisation de l'enregistrement d'exécution de tranche horaire vers le stockage distant")
                 return False
 
         return False
 
     # ========================================
-    # RSS 数据存储方法
+    # Méthodes de stockage des données RSS
     # ========================================
 
     def save_rss_data(self, data: RSSData) -> bool:
         """
-        保存 RSS 数据到远程存储
+        Enregistre les données RSS vers le stockage distant
 
-        流程：下载现有数据库 → 插入/更新数据 → 上传回远程存储
+        Flux : télécharge la base de données existante → insère/met à jour les données → renvoie vers le stockage distant
         """
-        success, new_count, updated_count = self._save_rss_data_impl(data, "[远程存储]")
+        success, new_count, updated_count = self._save_rss_data_impl(data, "[stockage distant]")
 
         if not success:
             return False
 
-        # 输出统计日志
-        log_parts = [f"[远程存储] RSS 处理完成：新增 {new_count} 条"]
+        # Affiche le journal des statistiques
+        log_parts = [f"[stockage distant] traitement RSS terminé : {new_count} nouvelles entrées"]
         if updated_count > 0:
-            log_parts.append(f"更新 {updated_count} 条")
-        print("，".join(log_parts))
+            log_parts.append(f"{updated_count} entrées mises à jour")
+        print(", ".join(log_parts))
 
-        # 上传到远程存储
+        # Envoie vers le stockage distant
         if self._upload_sqlite(data.date, db_type="rss"):
-            print(f"[远程存储] RSS 数据已同步到远程存储")
+            print(f"[stockage distant] données RSS synchronisées vers le stockage distant")
             return True
         else:
-            print(f"[远程存储] RSS 上传远程存储失败")
+            print(f"[stockage distant] échec de l'envoi RSS vers le stockage distant")
             return False
 
     def get_rss_data(self, date: Optional[str] = None) -> Optional[RSSData]:
-        """获取指定日期的所有 RSS 数据"""
+        """Récupère toutes les données RSS d'une date donnée"""
         return self._get_rss_data_impl(date)
 
     def detect_new_rss_items(self, current_data: RSSData) -> Dict[str, List[RSSItem]]:
-        """检测新增的 RSS 条目"""
+        """Détecte les nouvelles entrées RSS"""
         return self._detect_new_rss_items_impl(current_data)
 
     def get_latest_rss_data(self, date: Optional[str] = None) -> Optional[RSSData]:
-        """获取最新一次抓取的 RSS 数据"""
+        """Récupère les données RSS de la collecte la plus récente"""
         return self._get_latest_rss_data_impl(date)
 
     # ========================================
-    # AI 智能筛选存储方法
+    # Méthodes de stockage du filtrage intelligent par IA
     # ========================================
 
     def get_active_ai_filter_tags(self, date=None, interests_file="ai_interests.txt"):
@@ -568,15 +568,15 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         return self._get_all_rss_ids_impl(date)
 
     # ========================================
-    # 远程特有功能：TXT/HTML 快照（临时目录）
+    # Fonctionnalités propres au stockage distant : instantanés TXT/HTML (répertoire temporaire)
     # ========================================
 
     def save_txt_snapshot(self, data: NewsData) -> Optional[str]:
-        """保存 TXT 快照（远程存储模式下默认不支持）"""
+        """Enregistre un instantané TXT (non pris en charge par défaut en mode stockage distant)"""
         if not self.enable_txt:
             return None
 
-        # 如果启用，保存到本地临时目录
+        # S'il est activé, enregistre dans le répertoire temporaire local
         try:
             date_folder = self._format_date_folder(data.date)
             txt_dir = self.temp_dir / date_folder / "txt"
@@ -606,19 +606,19 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
                     f.write("\n")
 
                 if data.failed_ids:
-                    f.write("==== 以下ID请求失败 ====\n")
+                    f.write("==== Échec de la requête pour les ID suivants ====\n")
                     for failed_id in data.failed_ids:
                         f.write(f"{failed_id}\n")
 
-            print(f"[远程存储] TXT 快照已保存: {file_path}")
+            print(f"[stockage distant] instantané TXT enregistré : {file_path}")
             return str(file_path)
 
         except Exception as e:
-            print(f"[远程存储] 保存 TXT 快照失败: {e}")
+            print(f"[stockage distant] échec de l'enregistrement de l'instantané TXT : {e}")
             return None
 
     def save_html_report(self, html_content: str, filename: str) -> Optional[str]:
-        """保存 HTML 报告到临时目录"""
+        """Enregistre un rapport HTML dans le répertoire temporaire"""
         if not self.enable_html:
             return None
 
@@ -632,46 +632,46 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
-            print(f"[远程存储] HTML 报告已保存: {file_path}")
+            print(f"[stockage distant] rapport HTML enregistré : {file_path}")
             return str(file_path)
 
         except Exception as e:
-            print(f"[远程存储] 保存 HTML 报告失败: {e}")
+            print(f"[stockage distant] échec de l'enregistrement du rapport HTML : {e}")
             return None
 
     # ========================================
-    # 远程特有功能：资源清理
+    # Fonctionnalités propres au stockage distant : libération des ressources
     # ========================================
 
     def cleanup(self) -> None:
-        """清理资源（关闭连接和删除临时文件）"""
-        # 检查 Python 是否正在关闭
+        """Libère les ressources (ferme les connexions et supprime les fichiers temporaires)"""
+        # Vérifie si Python est en cours d'arrêt
         if sys.meta_path is None:
             return
 
-        # 关闭数据库连接
+        # Ferme les connexions à la base de données
         db_connections = getattr(self, "_db_connections", {})
         for db_path, conn in list(db_connections.items()):
             try:
                 conn.close()
-                print(f"[远程存储] 关闭数据库连接: {db_path}")
+                print(f"[stockage distant] fermeture de la connexion à la base de données : {db_path}")
             except Exception as e:
-                print(f"[远程存储] 关闭连接失败 {db_path}: {e}")
+                print(f"[stockage distant] échec de la fermeture de la connexion {db_path} : {e}")
 
         if db_connections:
             db_connections.clear()
 
-        # 删除临时目录
+        # Supprime le répertoire temporaire
         temp_dir = getattr(self, "temp_dir", None)
         if temp_dir:
             try:
                 if temp_dir.exists():
                     shutil.rmtree(temp_dir)
-                    print(f"[远程存储] 临时目录已清理: {temp_dir}")
+                    print(f"[stockage distant] répertoire temporaire nettoyé : {temp_dir}")
             except Exception as e:
-                # 忽略 Python 关闭时的错误
+                # Ignore les erreurs survenant pendant l'arrêt de Python
                 if sys.meta_path is not None:
-                    print(f"[远程存储] 清理临时目录失败: {e}")
+                    print(f"[stockage distant] échec du nettoyage du répertoire temporaire : {e}")
 
         downloaded_files = getattr(self, "_downloaded_files", None)
         if downloaded_files:
@@ -679,13 +679,13 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def cleanup_old_data(self, retention_days: int) -> int:
         """
-        清理远程存储上的过期数据
+        Nettoie les données expirées dans le stockage distant
 
         Args:
-            retention_days: 保留天数（0 表示不清理）
+            retention_days: nombre de jours de conservation (0 signifie pas de nettoyage)
 
         Returns:
-            删除的数据库文件数量
+            le nombre de fichiers de base de données supprimés
         """
         if retention_days <= 0:
             return 0
@@ -694,11 +694,11 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
 
         try:
-            # 列出远程存储中 news/ 前缀下的所有对象
+            # Liste tous les objets sous le préfixe news/ dans le stockage distant
             paginator = self.s3_client.get_paginator('list_objects_v2')
             pages = paginator.paginate(Bucket=self.bucket_name, Prefix="news/")
 
-            # 收集需要删除的对象键
+            # Rassemble les clés d'objets à supprimer
             objects_to_delete = []
             deleted_dates = set()
 
@@ -709,7 +709,7 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
                 for obj in page['Contents']:
                     key = obj['Key']
 
-                    # 解析日期（格式: news/YYYY-MM-DD.db）
+                    # Analyse la date (format : news/YYYY-MM-DD.db)
                     folder_date = None
                     date_str = None
                     try:
@@ -729,7 +729,7 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
                         objects_to_delete.append({'Key': key})
                         deleted_dates.add(date_str)
 
-            # 批量删除对象（每次最多 1000 个）
+            # Supprime les objets par lots (au plus 1000 à la fois)
             if objects_to_delete:
                 batch_size = 1000
                 for i in range(0, len(objects_to_delete), batch_size):
@@ -739,47 +739,47 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
                             Bucket=self.bucket_name,
                             Delete={'Objects': batch}
                         )
-                        print(f"[远程存储] 删除 {len(batch)} 个对象")
+                        print(f"[stockage distant] {len(batch)} objets supprimés")
                     except Exception as e:
-                        print(f"[远程存储] 批量删除失败: {e}")
+                        print(f"[stockage distant] échec de la suppression par lots : {e}")
 
                 deleted_count = len(deleted_dates)
                 for date_str in sorted(deleted_dates):
-                    print(f"[远程存储] 清理过期数据: news/{date_str}.db")
+                    print(f"[stockage distant] nettoyage des données expirées : news/{date_str}.db")
 
-                print(f"[远程存储] 共清理 {deleted_count} 个过期日期数据库文件")
+                print(f"[stockage distant] {deleted_count} fichiers de base de données de dates expirées nettoyés au total")
 
             return deleted_count
 
         except Exception as e:
-            print(f"[远程存储] 清理过期数据失败: {e}")
+            print(f"[stockage distant] échec du nettoyage des données expirées : {e}")
             return deleted_count
 
     def __del__(self):
-        """析构函数"""
-        # 检查 Python 是否正在关闭
+        """Destructeur"""
+        # Vérifie si Python est en cours d'arrêt
         if sys.meta_path is None:
             return
         try:
             self.cleanup()
         except Exception:
-            # Python 关闭时可能会出错，忽略即可
+            # Une erreur peut survenir pendant l'arrêt de Python, on l'ignore
             pass
 
     # ========================================
-    # 远程特有功能：数据拉取和列表
+    # Fonctionnalités propres au stockage distant : téléchargement et listage des données
     # ========================================
 
     def pull_recent_days(self, days: int, local_data_dir: str = "output") -> int:
         """
-        从远程拉取最近 N 天的数据到本地
+        Télécharge les données des N derniers jours depuis le stockage distant vers le stockage local
 
         Args:
-            days: 拉取天数
-            local_data_dir: 本地数据目录
+            days: nombre de jours à télécharger
+            local_data_dir: répertoire de données local
 
         Returns:
-            成功拉取的数据库文件数量
+            le nombre de fichiers de base de données téléchargés avec succès
         """
         if days <= 0:
             return 0
@@ -790,50 +790,50 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
         pulled_count = 0
         now = self._get_configured_time()
 
-        print(f"[远程存储] 开始拉取最近 {days} 天的数据...")
+        print(f"[stockage distant] début du téléchargement des données des {days} derniers jours...")
 
         for i in range(days):
             date = now - timedelta(days=i)
             date_str = date.strftime("%Y-%m-%d")
 
-            # 本地目标路径
+            # Chemin cible local
             local_date_dir = local_dir / date_str
             local_db_path = local_date_dir / "news.db"
 
-            # 如果本地已存在，跳过
+            # Si le fichier local existe déjà, on l'ignore
             if local_db_path.exists():
-                print(f"[远程存储] 跳过（本地已存在）: {date_str}")
+                print(f"[stockage distant] ignoré (déjà présent en local) : {date_str}")
                 continue
 
-            # 远程对象键
+            # Clé d'objet distante
             remote_key = f"news/{date_str}.db"
 
-            # 检查远程是否存在
+            # Vérifie si l'objet existe à distance
             if not self._check_object_exists(remote_key):
-                print(f"[远程存储] 跳过（远程不存在）: {date_str}")
+                print(f"[stockage distant] ignoré (inexistant à distance) : {date_str}")
                 continue
 
-            # 下载（使用 get_object + iter_chunks 处理 chunked encoding）
+            # Télécharge (utilise get_object + iter_chunks pour traiter le chunked encoding)
             try:
                 local_date_dir.mkdir(parents=True, exist_ok=True)
                 response = self.s3_client.get_object(Bucket=self.bucket_name, Key=remote_key)
                 with open(local_db_path, 'wb') as f:
                     for chunk in response['Body'].iter_chunks(chunk_size=1024*1024):
                         f.write(chunk)
-                print(f"[远程存储] 已拉取: {remote_key} -> {local_db_path}")
+                print(f"[stockage distant] téléchargé : {remote_key} -> {local_db_path}")
                 pulled_count += 1
             except Exception as e:
-                print(f"[远程存储] 拉取失败 ({date_str}): {e}")
+                print(f"[stockage distant] échec du téléchargement ({date_str}) : {e}")
 
-        print(f"[远程存储] 拉取完成，共下载 {pulled_count} 个数据库文件")
+        print(f"[stockage distant] téléchargement terminé, {pulled_count} fichiers de base de données téléchargés au total")
         return pulled_count
 
     def list_remote_dates(self) -> List[str]:
         """
-        列出远程存储中所有可用的日期
+        Liste toutes les dates disponibles dans le stockage distant
 
         Returns:
-            日期字符串列表（YYYY-MM-DD 格式）
+            une liste de chaînes de dates (format YYYY-MM-DD)
         """
         dates = []
 
@@ -847,7 +847,7 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
 
                 for obj in page['Contents']:
                     key = obj['Key']
-                    # 解析日期
+                    # Analyse la date
                     date_match = re.match(r'news/(\d{4}-\d{2}-\d{2})\.db$', key)
                     if date_match:
                         dates.append(date_match.group(1))
@@ -855,5 +855,5 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
             return sorted(dates, reverse=True)
 
         except Exception as e:
-            print(f"[远程存储] 列出远程日期失败: {e}")
+            print(f"[stockage distant] échec du listage des dates distantes : {e}")
             return []

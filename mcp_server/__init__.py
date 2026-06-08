@@ -1,7 +1,7 @@
 """
 TrendRadar MCP Server
 
-提供基于MCP协议的新闻聚合数据查询和系统管理接口。
+Fournit des interfaces de requête de données d'agrégation d'actualités et de gestion système basées sur le protocole MCP.
 
 """
 

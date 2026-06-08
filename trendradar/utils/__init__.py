@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-工具模块 - 公共工具函数
+Module d'utilitaires - fonctions utilitaires communes
 """
 
 from trendradar.utils.time import (
