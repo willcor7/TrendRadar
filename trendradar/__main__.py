@@ -1,9 +1,9 @@
 # coding=utf-8
 """
-TrendRadar 主程序
+TrendRadar - programme principal
 
-热点新闻聚合与分析工具
-支持: python -m trendradar
+Outil d'agrégation et d'analyse des actualités tendance.
+Prend en charge : python -m trendradar
 """
 
 import argparse
@@ -32,7 +32,7 @@ from trendradar.core.cdn import fetch_with_fallback
 
 
 def _parse_version(version_str: str) -> Tuple[int, int, int]:
-    """解析版本号字符串为元组"""
+    """Analyse une chaîne de numéro de version en un tuple."""
     try:
         parts = version_str.strip().split(".")
         if len(parts) >= 3:
@@ -43,25 +43,25 @@ def _parse_version(version_str: str) -> Tuple[int, int, int]:
 
 
 def _compare_version(local: str, remote: str) -> str:
-    """比较版本号，返回状态文字"""
+    """Compare deux numéros de version et renvoie un texte d'état."""
     local_tuple = _parse_version(local)
     remote_tuple = _parse_version(remote)
 
     if local_tuple < remote_tuple:
-        return "⚠️ 需要更新"
+        return "⚠️ mise à jour nécessaire"
     elif local_tuple > remote_tuple:
-        return "🔮 超前版本"
+        return "🔮 version en avance"
     else:
-        return "✅ 已是最新"
+        return "✅ déjà à jour"
 
 
 def _fetch_remote_version(version_url: str, proxy_url: Optional[str] = None) -> Optional[str]:
-    """获取远程版本号（支持 CDN 多源回退）"""
+    """Récupère le numéro de version distant (avec repli sur plusieurs sources CDN)."""
     return fetch_with_fallback(version_url, proxy_url)
 
 
 def _parse_config_versions(content: str) -> Dict[str, str]:
-    """解析配置文件版本内容为字典"""
+    """Analyse le contenu des versions du fichier de configuration en un dictionnaire."""
     versions = {}
     try:
         if not content:
@@ -73,7 +73,7 @@ def _parse_config_versions(content: str) -> Dict[str, str]:
             name, version = line.split("=", 1)
             versions[name.strip()] = version.strip()
     except Exception as e:
-        print(f"[版本检查] 解析配置版本失败: {e}")
+        print(f"[Vérification de version] Échec de l'analyse de la version de configuration : {e}")
     return versions
 
 
@@ -83,20 +83,20 @@ def check_all_versions(
     proxy_url: Optional[str] = None
 ) -> Tuple[bool, Optional[str]]:
     """
-    统一版本检查：程序版本 + 配置文件版本
+    Vérification unifiée des versions : version du programme + version des fichiers de configuration
 
     Args:
-        version_url: 远程程序版本检查 URL
-        configs_version_url: 远程配置文件版本检查 URL (返回格式: filename=version)
-        proxy_url: 代理 URL
+        version_url: URL de vérification de la version distante du programme
+        configs_version_url: URL de vérification de la version distante des fichiers de configuration (format renvoyé : filename=version)
+        proxy_url: URL du proxy
 
     Returns:
-        (need_update, remote_version): 程序是否需要更新及远程版本号
+        (need_update, remote_version) : indique si le programme doit être mis à jour, et le numéro de version distant
     """
-    # 获取远程版本
+    # Récupération de la version distante
     remote_version = _fetch_remote_version(version_url, proxy_url)
 
-    # 获取远程配置版本（如果有提供 URL）
+    # Récupération de la version de configuration distante (si une URL est fournie)
     remote_config_versions = {}
     if configs_version_url:
         content = _fetch_remote_version(configs_version_url, proxy_url)
@@ -104,24 +104,24 @@ def check_all_versions(
             remote_config_versions = _parse_config_versions(content)
 
     print("=" * 60)
-    print("版本检查")
+    print("Vérification de version")
     print("=" * 60)
 
     if remote_version:
-        print(f"远程程序版本: {remote_version}")
+        print(f"Version distante du programme : {remote_version}")
     else:
-        print("远程程序版本: 获取失败")
+        print("Version distante du programme : échec de la récupération")
 
     if configs_version_url:
         if remote_config_versions:
-            print(f"远程配置清单: 获取成功 ({len(remote_config_versions)} 个文件)")
+            print(f"Liste des configurations distantes : récupérée avec succès ({len(remote_config_versions)} fichier(s))")
         else:
-            print("远程配置清单: 获取失败或为空")
+            print("Liste des configurations distantes : échec de la récupération ou liste vide")
 
     print("-" * 60)
 
-    program_status = _compare_version(__version__, remote_version) if remote_version else "(无法比较)"
-    print(f"  主程序版本: {__version__} {program_status}")
+    program_status = _compare_version(__version__, remote_version) if remote_version else "(comparaison impossible)"
+    print(f"  Version du programme principal : {__version__} {program_status}")
 
     config_files = [
         Path("config/config.yaml"),
@@ -136,7 +136,7 @@ def check_all_versions(
 
     for config_file in config_files:
         if not config_file.exists():
-            print(f"  {config_file.name}: 文件不存在")
+            print(f"  {config_file.name} : fichier introuvable")
             continue
 
         try:
@@ -150,72 +150,72 @@ def check_all_versions(
                         local_version = match.group(1)
                         break
 
-                # 获取该文件的远程版本
+                # Récupération de la version distante de ce fichier
                 target_remote_version = remote_config_versions.get(config_file.name)
 
                 if local_version:
                     if target_remote_version:
                         status = _compare_version(local_version, target_remote_version)
-                        print(f"  {config_file.name}: {local_version} {status}")
+                        print(f"  {config_file.name} : {local_version} {status}")
                     else:
-                        print(f"  {config_file.name}: {local_version} (未找到远程版本)")
+                        print(f"  {config_file.name} : {local_version} (version distante introuvable)")
                 else:
-                    print(f"  {config_file.name}: 未找到本地版本号")
+                    print(f"  {config_file.name} : numéro de version local introuvable")
         except Exception as e:
-            print(f"  {config_file.name}: 读取失败 - {e}")
+            print(f"  {config_file.name} : échec de lecture - {e}")
 
     print("=" * 60)
 
-    # 返回程序版本的更新状态
+    # Renvoie l'état de mise à jour de la version du programme
     if remote_version:
         need_update = _parse_version(__version__) < _parse_version(remote_version)
         return need_update, remote_version if need_update else None
     return False, None
 
 
-# === 主分析器 ===
+# === Analyseur principal ===
 class NewsAnalyzer:
-    """新闻分析器"""
+    """Analyseur d'actualités"""
 
-    # 模式策略定义
+    # Définition des stratégies de mode
     MODE_STRATEGIES = {
         "incremental": {
-            "mode_name": "增量模式",
-            "description": "增量模式（只关注新增新闻，无新增时不推送）",
-            "report_type": "增量分析",
+            "mode_name": "mode incrémental",
+            "description": "mode incrémental (suit uniquement les nouvelles actualités, aucun envoi en l'absence de nouveauté)",
+            "report_type": "Analyse incrémentale",
             "should_send_notification": True,
         },
         "current": {
-            "mode_name": "当前榜单模式",
-            "description": "当前榜单模式（当前榜单匹配新闻 + 新增新闻区域 + 按时推送）",
-            "report_type": "当前榜单",
+            "mode_name": "mode classement actuel",
+            "description": "mode classement actuel (actualités correspondant au classement actuel + zone des nouvelles actualités + envoi programmé)",
+            "report_type": "Classement actuel",
             "should_send_notification": True,
         },
         "daily": {
-            "mode_name": "全天汇总模式",
-            "description": "全天汇总模式（所有匹配新闻 + 新增新闻区域 + 按时推送）",
-            "report_type": "全天汇总",
+            "mode_name": "mode synthèse de la journée",
+            "description": "mode synthèse de la journée (toutes les actualités correspondantes + zone des nouvelles actualités + envoi programmé)",
+            "report_type": "Synthèse de la journée",
             "should_send_notification": True,
         },
     }
 
     def __init__(self, config: Optional[Dict] = None):
-        # 使用传入的配置或加载新配置
+        # Utilise la configuration passée en argument ou en charge une nouvelle
         if config is None:
-            print("正在加载配置...")
+            print("Chargement de la configuration en cours...")
             config = load_config()
-        print(f"TrendRadar v{__version__} 配置加载完成")
-        print(f"监控平台数量: {len(config['PLATFORMS'])}")
-        print(f"时区: {config.get('TIMEZONE', DEFAULT_TIMEZONE)}")
+        print(f"TrendRadar v{__version__} : configuration chargée")
+        print(f"Nombre de plateformes surveillées : {len(config['PLATFORMS'])}")
+        print(f"Fuseau horaire : {config.get('TIMEZONE', DEFAULT_TIMEZONE)}")
 
-        # 创建应用上下文
+        # Création du contexte d'application
         self.ctx = AppContext(config)
 
         self.request_interval = self.ctx.config["REQUEST_INTERVAL"]
         self.report_mode = self.ctx.config["REPORT_MODE"]
         self.frequency_file = None
-        self.filter_method = None  # None=使用全局配置 ctx.filter_method
-        self.interests_file = None  # None=使用全局配置 ai_filter.interests_file
+        self.filter_method = None  # None = utilise la configuration globale ctx.filter_method
+        self.interests_file = None  # None = utilise la configuration globale ai_filter.interests_file
         self.rank_threshold = self.ctx.rank_threshold
         self.is_github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
         self.is_docker_container = self._detect_docker_environment()
@@ -227,34 +227,34 @@ class NewsAnalyzer:
             api_url=self.ctx.config.get("PLATFORMS_API_URL") or None,
         )
 
-        # RSS/平台元数据（用于报告头部展示）
+        # Métadonnées RSS / plateformes (servent à l'affichage de l'en-tête du rapport)
         self._rss_source_total = 0
         self._rss_source_failed = 0
         self._rss_total_count = 0
         self._rss_matched_count = 0
         self._hotlist_total_count = 0
 
-        # 初始化存储管理器（使用 AppContext）
+        # Initialisation du gestionnaire de stockage (via AppContext)
         self._init_storage_manager()
-        # 注意：update_info 由 main() 函数设置，避免重复请求远程版本
+        # Remarque : update_info est défini par la fonction main(), pour éviter une requête redondante de la version distante
 
     def _init_storage_manager(self) -> None:
-        """初始化存储管理器（使用 AppContext）"""
-        # 获取数据保留天数（支持环境变量覆盖）
+        """Initialise le gestionnaire de stockage (via AppContext)."""
+        # Récupère le nombre de jours de conservation des données (peut être remplacé par une variable d'environnement)
         env_retention = os.environ.get("STORAGE_RETENTION_DAYS", "").strip()
         if env_retention:
-            # 环境变量覆盖配置
+            # La variable d'environnement remplace la configuration
             self.ctx.config["STORAGE"]["RETENTION_DAYS"] = int(env_retention)
 
         self.storage_manager = self.ctx.get_storage_manager()
-        print(f"存储后端: {self.storage_manager.backend_name}")
+        print(f"Backend de stockage : {self.storage_manager.backend_name}")
 
         retention_days = self.ctx.config.get("STORAGE", {}).get("RETENTION_DAYS", 0)
         if retention_days > 0:
-            print(f"数据保留天数: {retention_days} 天")
+            print(f"Nombre de jours de conservation des données : {retention_days} jour(s)")
 
     def _detect_docker_environment(self) -> bool:
-        """检测是否运行在 Docker 容器中"""
+        """Détecte si le programme s'exécute dans un conteneur Docker."""
         try:
             if os.environ.get("DOCKER_CONTAINER") == "true":
                 return True
@@ -267,21 +267,21 @@ class NewsAnalyzer:
             return False
 
     def _should_open_browser(self) -> bool:
-        """判断是否应该打开浏览器"""
+        """Détermine si le navigateur doit être ouvert."""
         return not self.is_github_actions and not self.is_docker_container
 
     def _setup_proxy(self) -> None:
-        """设置代理配置"""
+        """Définit la configuration du proxy."""
         if not self.is_github_actions and self.ctx.config["USE_PROXY"]:
             self.proxy_url = self.ctx.config["DEFAULT_PROXY"]
-            print("本地环境，使用代理")
+            print("Environnement local, utilisation du proxy")
         elif not self.is_github_actions and not self.ctx.config["USE_PROXY"]:
-            print("本地环境，未启用代理")
+            print("Environnement local, proxy non activé")
         else:
-            print("GitHub Actions环境，不使用代理")
+            print("Environnement GitHub Actions, proxy non utilisé")
 
     def _set_update_info_from_config(self) -> None:
-        """从已缓存的远程版本设置更新信息（不再重复请求）"""
+        """Définit les informations de mise à jour à partir de la version distante déjà en cache (sans nouvelle requête)."""
         try:
             version_url = self.ctx.config.get("VERSION_CHECK_URL", "")
             if not version_url:
@@ -296,14 +296,14 @@ class NewsAnalyzer:
                         "remote_version": remote_version,
                     }
         except Exception as e:
-            print(f"版本检查出错: {e}")
+            print(f"Erreur lors de la vérification de version : {e}")
 
     def _get_mode_strategy(self) -> Dict:
-        """获取当前模式的策略配置"""
+        """Récupère la configuration de stratégie du mode actuel."""
         return self.MODE_STRATEGIES.get(self.report_mode, self.MODE_STRATEGIES["daily"])
 
     def _has_notification_configured(self) -> bool:
-        """检查是否配置了任何通知渠道"""
+        """Vérifie si un canal de notification est configuré."""
         cfg = self.ctx.config
         return any(
             [
@@ -326,17 +326,17 @@ class NewsAnalyzer:
     def _has_valid_content(
         self, stats: List[Dict], new_titles: Optional[Dict] = None
     ) -> bool:
-        """检查是否有有效的新闻内容"""
+        """Vérifie s'il existe un contenu d'actualité valide."""
         if self.report_mode == "incremental":
-            # 增量模式：只要有匹配的新闻就推送
-            # count_word_frequency 已经确保只处理新增的新闻（包括当天第一次爬取的情况）
+            # Mode incrémental : il suffit qu'une actualité corresponde pour envoyer
+            # count_word_frequency garantit déjà qu'on ne traite que les nouvelles actualités (y compris la première collecte de la journée)
             has_matched_news = any(stat["count"] > 0 for stat in stats)
             return has_matched_news
         elif self.report_mode == "current":
-            # current模式：只要stats有内容就说明有匹配的新闻
+            # Mode current : si stats contient des éléments, c'est qu'il y a des actualités correspondantes
             return any(stat["count"] > 0 for stat in stats)
         else:
-            # 当日汇总模式下，检查是否有匹配的频率词新闻或新增新闻
+            # En mode synthèse de la journée, on vérifie s'il y a des actualités correspondant aux mots-clés ou des nouvelles actualités
             has_matched_news = any(stat["count"] > 0 for stat in stats)
             has_new_news = bool(
                 new_titles and any(len(titles) > 0 for titles in new_titles.values())
@@ -350,33 +350,33 @@ class NewsAnalyzer:
         current_id_to_name: Optional[Dict] = None,
     ) -> Tuple[List[Dict], Optional[Dict]]:
         """
-        为 AI 分析准备指定模式的数据
+        Prépare les données du mode indiqué pour l'analyse IA
 
         Args:
-            ai_mode: AI 分析模式 (daily/current/incremental)
-            current_results: 当前抓取的结果（用于 incremental 模式）
-            current_id_to_name: 当前的平台映射（用于 incremental 模式）
+            ai_mode: mode d'analyse IA (daily/current/incremental)
+            current_results: résultats de la collecte actuelle (utilisés pour le mode incremental)
+            current_id_to_name: correspondance des plateformes actuelles (utilisée pour le mode incremental)
 
         Returns:
-            Tuple[stats, id_to_name]: 统计数据和平台映射
+            Tuple[stats, id_to_name] : données statistiques et correspondance des plateformes
         """
         try:
             word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
 
             if ai_mode == "incremental":
-                # incremental 模式：使用当前抓取的数据
+                # Mode incremental : utilise les données de la collecte actuelle
                 if not current_results or not current_id_to_name:
-                    print("[AI] incremental 模式需要当前抓取数据，但未提供")
+                    print("[AI] Le mode incremental requiert les données de la collecte actuelle, mais elles n'ont pas été fournies")
                     return [], None
 
-                # 准备当前时间信息
+                # Préparation des informations d'horodatage actuelles
                 time_info = self.ctx.format_time()
                 title_info = self._prepare_current_title_info(current_results, time_info)
 
-                # 检测新增标题
+                # Détection des nouveaux titres
                 new_titles = self.ctx.detect_new_titles(list(current_results.keys()))
 
-                # 统计计算
+                # Calcul des statistiques
                 stats, _ = self.ctx.count_frequency(
                     current_results,
                     word_groups,
@@ -389,7 +389,7 @@ class NewsAnalyzer:
                     quiet=True,
                 )
 
-                # 如果是 platform 模式，转换数据结构
+                # En mode platform, on convertit la structure des données
                 if self.ctx.display_mode == "platform" and stats:
                     stats = convert_keyword_stats_to_platform_stats(
                         stats,
@@ -400,10 +400,10 @@ class NewsAnalyzer:
                 return stats, current_id_to_name
 
             elif ai_mode in ["daily", "current"]:
-                # 加载历史数据
+                # Chargement des données historiques
                 analysis_data = self._load_analysis_data(quiet=True)
                 if not analysis_data:
-                    print(f"[AI] 无法加载历史数据用于 {ai_mode} 模式分析")
+                    print(f"[AI] Impossible de charger les données historiques pour l'analyse en mode {ai_mode}")
                     return [], None
 
                 (
@@ -416,7 +416,7 @@ class NewsAnalyzer:
                     _,
                 ) = analysis_data
 
-                # 统计计算
+                # Calcul des statistiques
                 stats, _ = self.ctx.count_frequency(
                     all_results,
                     word_groups,
@@ -429,7 +429,7 @@ class NewsAnalyzer:
                     quiet=True,
                 )
 
-                # 如果是 platform 模式，转换数据结构
+                # En mode platform, on convertit la structure des données
                 if self.ctx.display_mode == "platform" and stats:
                     stats = convert_keyword_stats_to_platform_stats(
                         stats,
@@ -439,11 +439,11 @@ class NewsAnalyzer:
 
                 return stats, id_to_name
             else:
-                print(f"[AI] 未知的 AI 模式: {ai_mode}")
+                print(f"[AI] Mode IA inconnu : {ai_mode}")
                 return [], None
 
         except Exception as e:
-            print(f"[AI] 准备 {ai_mode} 模式数据时出错: {e}")
+            print(f"[AI] Erreur lors de la préparation des données du mode {ai_mode} : {e}")
             if self.ctx.config.get("DEBUG", False):
                 import traceback
                 traceback.print_exc()
@@ -460,51 +460,51 @@ class NewsAnalyzer:
         schedule: ResolvedSchedule = None,
         standalone_data: Optional[Dict] = None,
     ) -> Optional[AIAnalysisResult]:
-        """执行 AI 分析"""
+        """Exécute l'analyse IA."""
         analysis_config = self.ctx.config.get("AI_ANALYSIS", {})
         if not analysis_config.get("ENABLED", False):
             return None
 
-        # 调度系统决策
+        # Décision du système de planification
         if not schedule.analyze:
-            print("[AI] 调度器: 当前时间段不执行 AI 分析")
+            print("[AI] Planification : la plage horaire actuelle n'exécute pas l'analyse IA")
             return None
 
         if schedule.once_analyze and schedule.period_key:
             scheduler = self.ctx.create_scheduler()
             date_str = self.ctx.format_date()
             if scheduler.already_executed(schedule.period_key, "analyze", date_str):
-                print(f"[AI] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天已分析过，跳过")
+                print(f"[AI] Planification : la plage horaire {schedule.period_name or schedule.period_key} a déjà été analysée aujourd'hui, on l'ignore")
                 return None
             else:
-                print(f"[AI] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天首次分析")
+                print(f"[AI] Planification : première analyse de la journée pour la plage horaire {schedule.period_name or schedule.period_key}")
 
-        print("[AI] 正在进行 AI 分析...")
+        print("[AI] Analyse IA en cours...")
         try:
             ai_config = self.ctx.config.get("AI", {})
             debug_mode = self.ctx.config.get("DEBUG", False)
             analyzer = AIAnalyzer(ai_config, analysis_config, self.ctx.get_time, debug=debug_mode)
 
-            # 确定 AI 分析使用的模式
+            # Détermine le mode utilisé pour l'analyse IA
             ai_mode_config = analysis_config.get("MODE", "follow_report")
             if ai_mode_config == "follow_report":
-                # 跟随推送报告模式
+                # Suit le mode du rapport envoyé
                 ai_mode = mode
                 ai_stats = stats
                 ai_id_to_name = id_to_name
             elif ai_mode_config in ["daily", "current", "incremental"]:
-                # 使用独立配置的模式，需要重新准备数据
+                # Utilise un mode configuré de façon indépendante, ce qui nécessite de préparer à nouveau les données
                 ai_mode = ai_mode_config
                 if ai_mode != mode:
-                    print(f"[AI] 使用独立分析模式: {ai_mode} (推送模式: {mode})")
-                    print(f"[AI] 正在准备 {ai_mode} 模式的数据...")
+                    print(f"[AI] Utilisation d'un mode d'analyse indépendant : {ai_mode} (mode d'envoi : {mode})")
+                    print(f"[AI] Préparation des données du mode {ai_mode} en cours...")
 
-                    # 根据 AI 模式重新准备数据
+                    # Prépare à nouveau les données selon le mode IA
                     ai_stats, ai_id_to_name = self._prepare_ai_analysis_data(
                         ai_mode, current_results, id_to_name
                     )
                     if not ai_stats:
-                        print(f"[AI] 警告: 无法准备 {ai_mode} 模式的数据，回退到推送模式数据")
+                        print(f"[AI] Avertissement : impossible de préparer les données du mode {ai_mode}, repli sur les données du mode d'envoi")
                         ai_stats = stats
                         ai_id_to_name = id_to_name
                         ai_mode = mode
@@ -512,25 +512,25 @@ class NewsAnalyzer:
                     ai_stats = stats
                     ai_id_to_name = id_to_name
             else:
-                # 配置错误，回退到跟随模式
-                print(f"[AI] 警告: 无效的 ai_analysis.mode 配置 '{ai_mode_config}'，使用推送模式 '{mode}'")
+                # Configuration erronée, repli sur le mode « suivi »
+                print(f"[AI] Avertissement : valeur ai_analysis.mode invalide « {ai_mode_config} », utilisation du mode d'envoi « {mode} »")
                 ai_mode = mode
                 ai_stats = stats
                 ai_id_to_name = id_to_name
 
-            # 提取平台列表
+            # Extraction de la liste des plateformes
             platforms = list(ai_id_to_name.values()) if ai_id_to_name else []
 
-            # 提取关键词列表
+            # Extraction de la liste des mots-clés
             keywords = [s.get("word", "") for s in ai_stats if s.get("word")] if ai_stats else []
 
-            # 确定报告类型
+            # Détermination du type de rapport
             if ai_mode != mode:
-                # 根据 AI 模式确定报告类型
+                # Détermine le type de rapport selon le mode IA
                 ai_report_type = {
-                    "daily": "当日汇总",
-                    "current": "当前榜单",
-                    "incremental": "增量更新"
+                    "daily": "Synthèse de la journée",
+                    "current": "Classement actuel",
+                    "incremental": "Mise à jour incrémentale"
                 }.get(ai_mode, report_type)
             else:
                 ai_report_type = report_type
@@ -545,16 +545,16 @@ class NewsAnalyzer:
                 standalone_data=standalone_data,
             )
 
-            # 设置 AI 分析使用的模式
+            # Enregistre le mode utilisé pour l'analyse IA
             if result.success:
                 result.ai_mode = ai_mode
                 if result.error:
-                    # 成功但有警告（如 JSON 解析问题但使用了原始文本）
-                    print(f"[AI] 分析完成（有警告: {result.error}）")
+                    # Succès, mais avec un avertissement (ex. : problème d'analyse JSON, mais le texte brut a été utilisé)
+                    print(f"[AI] Analyse terminée (avec avertissement : {result.error})")
                 else:
-                    print("[AI] 分析完成")
+                    print("[AI] Analyse terminée")
 
-                # 记录 AI 分析
+                # Enregistrement de l'analyse IA
                 if schedule.once_analyze and schedule.period_key:
                     scheduler = self.ctx.create_scheduler()
                     date_str = self.ctx.format_date()
@@ -562,20 +562,20 @@ class NewsAnalyzer:
             elif result.skipped:
                 print(f"[AI] {result.error}")
             else:
-                print(f"[AI] 分析失败: {result.error}")
+                print(f"[AI] Échec de l'analyse : {result.error}")
 
             return result
         except Exception as e:
             import traceback
             error_type = type(e).__name__
             error_msg = str(e)
-            # 截断过长的错误消息
+            # Tronque les messages d'erreur trop longs
             if len(error_msg) > 200:
                 error_msg = error_msg[:200] + "..."
-            print(f"[AI] 分析出错 ({error_type}): {error_msg}")
-            # 详细错误日志到 stderr
+            print(f"[AI] Erreur lors de l'analyse ({error_type}) : {error_msg}")
+            # Journal d'erreur détaillé envoyé vers stderr
             import sys
-            print(f"[AI] 详细错误堆栈:", file=sys.stderr)
+            print(f"[AI] Pile d'appels détaillée de l'erreur :", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             return AIAnalysisResult(success=False, error=f"{error_type}: {error_msg}")
 
@@ -583,24 +583,24 @@ class NewsAnalyzer:
         self,
         quiet: bool = False,
     ) -> Optional[Tuple[Dict, Dict, Dict, Dict, List, List]]:
-        """统一的数据加载和预处理，使用当前监控平台列表过滤历史数据"""
+        """Chargement et prétraitement unifiés des données : filtre les données historiques selon la liste actuelle des plateformes surveillées."""
         try:
-            # 获取当前配置的监控平台ID列表
+            # Récupère la liste des ID de plateformes surveillées dans la configuration actuelle
             current_platform_ids = self.ctx.platform_ids
             if not quiet:
-                print(f"当前监控平台: {current_platform_ids}")
+                print(f"Plateformes actuellement surveillées : {current_platform_ids}")
 
             all_results, id_to_name, title_info = self.ctx.read_today_titles(
                 current_platform_ids, quiet=quiet
             )
 
             if not all_results:
-                print("没有找到当天的数据")
+                print("Aucune donnée trouvée pour aujourd'hui")
                 return None
 
             total_titles = sum(len(titles) for titles in all_results.values())
             if not quiet:
-                print(f"读取到 {total_titles} 个标题（已按当前监控平台过滤）")
+                print(f"{total_titles} titre(s) lu(s) (déjà filtrés selon les plateformes actuellement surveillées)")
 
             new_titles = self.ctx.detect_new_titles(current_platform_ids, quiet=quiet)
             word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
@@ -615,11 +615,11 @@ class NewsAnalyzer:
                 global_filters,
             )
         except Exception as e:
-            print(f"数据加载失败: {e}")
+            print(f"Échec du chargement des données : {e}")
             return None
 
     def _prepare_current_title_info(self, results: Dict, time_info: str) -> Dict:
-        """从当前抓取结果构建标题信息"""
+        """Construit les informations de titre à partir des résultats de la collecte actuelle."""
         title_info = {}
         for source_id, titles_data in results.items():
             title_info[source_id] = {}
@@ -646,22 +646,22 @@ class NewsAnalyzer:
         rss_items: Optional[List[Dict]] = None,
     ) -> Optional[Dict]:
         """
-        从原始数据中提取独立展示区数据
+        Extrait les données de la zone d'affichage autonome à partir des données brutes.
 
-        纯数据准备方法，不检查 display.regions.standalone 开关。
-        各消费者自行决定是否使用：
-        - AI 分析：由 ai.include_standalone 控制（在 _run_ai_analysis 层门控）
-        - HTML 报告 / 邮件：由 display.regions.standalone 控制（在 HTML 生成前过滤）
-        - Webhook 推送：由 display.regions.standalone 控制（在 dispatcher 层门控）
+        Méthode de préparation de données pure : elle ne vérifie pas l'interrupteur display.regions.standalone.
+        Chaque consommateur décide lui-même de l'utiliser ou non :
+        - Analyse IA : contrôlée par ai.include_standalone (filtrage dans _run_ai_analysis)
+        - Rapport HTML / e-mail : contrôlé par display.regions.standalone (filtrage avant la génération du HTML)
+        - Envoi Webhook : contrôlé par display.regions.standalone (filtrage dans le dispatcher)
 
         Args:
-            results: 原始爬取结果 {platform_id: {title: title_data}}
-            id_to_name: 平台 ID 到名称的映射
-            title_info: 标题元信息（含排名历史、时间等）
-            rss_items: RSS 条目列表
+            results: résultats bruts de la collecte {platform_id: {title: title_data}}
+            id_to_name: correspondance ID de plateforme -> nom
+            title_info: métadonnées des titres (historique des classements, horodatages, etc.)
+            rss_items: liste des entrées RSS
 
         Returns:
-            独立展示数据字典，如果未配置数据源返回 None
+            Dictionnaire des données d'affichage autonome ; renvoie None si aucune source de données n'est configurée.
         """
         display_config = self.ctx.config.get("DISPLAY", {})
         standalone_config = display_config.get("STANDALONE", {})
@@ -678,7 +678,7 @@ class NewsAnalyzer:
             "rss_feeds": [],
         }
 
-        # 找出最新批次时间（类似 current 模式的过滤逻辑）
+        # Détermine l'horodatage du lot le plus récent (logique de filtrage similaire au mode current)
         latest_time = None
         if title_info:
             for source_titles in title_info.values():
@@ -688,7 +688,7 @@ class NewsAnalyzer:
                         if latest_time is None or last_time > latest_time:
                             latest_time = last_time
 
-        # 提取热榜平台数据
+        # Extraction des données des plateformes de tendances
         for platform_id in platform_ids:
             if platform_id not in results:
                 continue
@@ -698,24 +698,24 @@ class NewsAnalyzer:
 
             items = []
             for title, title_data in platform_titles.items():
-                # 获取元信息（如果有 title_info）
+                # Récupère les métadonnées (si title_info est disponible)
                 meta = {}
                 if title_info and platform_id in title_info and title in title_info[platform_id]:
                     meta = title_info[platform_id][title]
 
-                # 只保留当前在榜的话题（last_time 等于最新时间）
+                # Ne conserve que les sujets actuellement au classement (last_time égal à l'horodatage le plus récent)
                 if latest_time and meta:
                     if meta.get("last_time") != latest_time:
                         continue
 
-                # 使用当前热榜的排名数据（title_data）进行排序
-                # title_data 包含的是爬虫返回的当前排名，用于保证独立展示区的顺序与热榜一致
+                # Trie en utilisant les données de classement actuelles des tendances (title_data)
+                # title_data contient le classement actuel renvoyé par le collecteur ; il sert à garder l'ordre de la zone d'affichage autonome cohérent avec celui des tendances
                 current_ranks = title_data.get("ranks", [])
                 current_rank = current_ranks[-1] if current_ranks else 0
 
-                # 用于显示的排名范围：合并历史排名和当前排名
+                # Plage de classements à afficher : fusion du classement historique et du classement actuel
                 historical_ranks = meta.get("ranks", []) if meta else []
-                # 合并去重，保持顺序
+                # Fusion avec déduplication, en conservant l'ordre
                 all_ranks = historical_ranks.copy()
                 for rank in current_ranks:
                     if rank not in all_ranks:
@@ -726,8 +726,8 @@ class NewsAnalyzer:
                     "title": title,
                     "url": title_data.get("url", ""),
                     "mobileUrl": title_data.get("mobileUrl", ""),
-                    "rank": current_rank,  # 用于排序的当前排名
-                    "ranks": display_ranks,  # 用于显示的排名范围（历史+当前）
+                    "rank": current_rank,  # classement actuel utilisé pour le tri
+                    "ranks": display_ranks,  # plage de classements affichée (historique + actuel)
                     "first_time": meta.get("first_time", ""),
                     "last_time": meta.get("last_time", ""),
                     "count": meta.get("count", 1),
@@ -735,10 +735,10 @@ class NewsAnalyzer:
                 }
                 items.append(item)
 
-            # 按当前排名排序
+            # Tri selon le classement actuel
             items.sort(key=lambda x: x["rank"] if x["rank"] > 0 else 9999)
 
-            # 限制条数
+            # Limitation du nombre d'entrées
             if max_items > 0:
                 items = items[:max_items]
 
@@ -749,9 +749,9 @@ class NewsAnalyzer:
                     "items": items,
                 })
 
-        # 提取 RSS 数据
+        # Extraction des données RSS
         if rss_items and rss_feed_ids:
-            # 按 feed_id 分组
+            # Regroupement par feed_id
             feed_items_map = {}
             for item in rss_items:
                 feed_id = item.get("feed_id", "")
@@ -768,7 +768,7 @@ class NewsAnalyzer:
                         "author": item.get("author", ""),
                     })
 
-            # 限制条数并添加到结果
+            # Limitation du nombre d'entrées et ajout au résultat
             for feed_id in rss_feed_ids:
                 if feed_id in feed_items_map:
                     feed_data = feed_items_map[feed_id]
@@ -782,7 +782,7 @@ class NewsAnalyzer:
                             "items": items,
                         })
 
-        # 如果没有任何数据，返回 None
+        # Renvoie None s'il n'y a aucune donnée
         if not standalone_data["platforms"] and not standalone_data["rss_feeds"]:
             return None
 
@@ -806,37 +806,37 @@ class NewsAnalyzer:
         schedule: ResolvedSchedule = None,
         rss_new_urls: Optional[set] = None,
     ) -> Tuple[List[Dict], Optional[str], Optional[AIAnalysisResult], Optional[List[Dict]]]:
-        """统一的分析流水线：数据处理 → 统计计算（关键词/AI筛选）→ AI分析 → HTML生成"""
+        """Pipeline d'analyse unifié : traitement des données → calcul des statistiques (filtrage par mots-clés/IA) → analyse IA → génération du HTML."""
 
-        # 根据筛选策略选择数据处理方式
+        # Choisit le mode de traitement des données selon la stratégie de filtrage
         if self.filter_method == "ai":
-            # === AI 筛选策略 ===
-            print("[筛选] 使用 AI 智能筛选策略")
+            # === Stratégie de filtrage IA ===
+            print("[Filtrage] Utilisation de la stratégie de filtrage intelligent par IA")
             ai_filter_result = self.ctx.run_ai_filter(interests_file=self.interests_file)
 
             if ai_filter_result and ai_filter_result.success:
-                print(f"[筛选] AI 筛选完成: {ai_filter_result.total_matched} 条匹配, {len(ai_filter_result.tags)} 个标签")
-                # 转换为与关键词匹配相同的数据结构
+                print(f"[Filtrage] Filtrage IA terminé : {ai_filter_result.total_matched} entrée(s) correspondante(s), {len(ai_filter_result.tags)} étiquette(s)")
+                # Convertit vers la même structure de données que la correspondance par mots-clés
                 stats, ai_rss_stats = self.ctx.convert_ai_filter_to_report_data(
                     ai_filter_result, mode=mode,
                     new_titles=new_titles, rss_new_urls=rss_new_urls,
                 )
                 total_titles = sum(len(titles) for titles in data_source.values())
 
-                # AI 筛选的 RSS 结果替换关键词匹配的 RSS 结果
+                # Les résultats RSS du filtrage IA remplacent ceux de la correspondance par mots-clés
                 if ai_rss_stats:
                     rss_items = ai_rss_stats
             else:
-                # AI 筛选失败，回退到关键词匹配
-                error_msg = ai_filter_result.error if ai_filter_result else "未知错误"
-                print(f"[筛选] AI 筛选失败: {error_msg}，回退到关键词匹配")
+                # Échec du filtrage IA, repli sur la correspondance par mots-clés
+                error_msg = ai_filter_result.error if ai_filter_result else "erreur inconnue"
+                print(f"[Filtrage] Échec du filtrage IA : {error_msg}, repli sur la correspondance par mots-clés")
                 stats, total_titles = self.ctx.count_frequency(
                     data_source, word_groups, filter_words,
                     id_to_name, title_info, new_titles,
                     mode=mode, global_filters=global_filters, quiet=quiet,
                 )
         else:
-            # === 关键词匹配策略（默认）===
+            # === Stratégie de correspondance par mots-clés (par défaut) ===
             stats, total_titles = self.ctx.count_frequency(
                 data_source, word_groups, filter_words,
                 id_to_name, title_info, new_titles,
@@ -845,7 +845,7 @@ class NewsAnalyzer:
 
         self._hotlist_total_count = total_titles
 
-        # 如果是 platform 模式，转换数据结构
+        # En mode platform, on convertit la structure des données
         if self.ctx.display_mode == "platform" and stats:
             stats = convert_keyword_stats_to_platform_stats(
                 stats,
@@ -853,11 +853,11 @@ class NewsAnalyzer:
                 self.ctx.rank_threshold,
             )
 
-        # AI 分析（如果启用，用于 HTML 报告）
+        # Analyse IA (si activée, pour le rapport HTML)
         ai_result = None
         ai_config = self.ctx.config.get("AI_ANALYSIS", {})
         if ai_config.get("ENABLED", False) and stats:
-            # 获取模式策略来确定报告类型
+            # Récupère la stratégie de mode pour déterminer le type de rapport
             mode_strategy = self._get_mode_strategy()
             report_type = mode_strategy["report_type"]
             ai_result = self._run_ai_analysis(
@@ -866,9 +866,9 @@ class NewsAnalyzer:
                 standalone_data=standalone_data
             )
 
-        # 翻译 RSS 内容（如果启用）— 在 HTML 生成前执行，确保网页版也能展示翻译内容
-        # 注意：仅翻译 rss_items 和 rss_new_items，不翻译 standalone_data（通知前会重新生成）
-        # 热榜翻译在推送时由 dispatch_all 处理 report_data
+        # Traduction du contenu RSS (si activée) — exécutée avant la génération du HTML, pour que la version web puisse aussi afficher le contenu traduit
+        # Remarque : on ne traduit que rss_items et rss_new_items, pas standalone_data (qui est régénéré avant la notification)
+        # La traduction des tendances est gérée lors de l'envoi par dispatch_all sur report_data
         trans_config = self.ctx.config.get("AI_TRANSLATION", {})
         if trans_config.get("ENABLED", False):
             dispatcher = self.ctx.create_notification_dispatcher()
@@ -881,10 +881,10 @@ class NewsAnalyzer:
                     display_regions=display_regions,
                 )
 
-        # 计算 RSS 匹配条数（供 HTML 和推送共用）
+        # Calcule le nombre d'entrées RSS correspondantes (partagé entre le HTML et l'envoi)
         self._rss_matched_count = sum(stat.get("count", 0) for stat in rss_items) if rss_items else 0
 
-        # HTML生成（如果启用）— 使用翻译后的数据
+        # Génération du HTML (si activée) — utilise les données après traduction
         html_file = None
         if self.ctx.config["STORAGE"]["FORMATS"]["HTML"]:
             display_regions = self.ctx.config.get("DISPLAY", {}).get("REGIONS", {})
@@ -931,16 +931,16 @@ class NewsAnalyzer:
         current_results: Optional[Dict] = None,
         schedule: ResolvedSchedule = None,
     ) -> bool:
-        """统一的通知发送逻辑，包含所有判断条件，支持热榜+RSS合并推送+AI分析+独立展示区"""
+        """Logique d'envoi de notification unifiée, regroupant toutes les conditions ; prend en charge l'envoi combiné tendances + RSS + analyse IA + zone d'affichage autonome."""
         has_notification = self._has_notification_configured()
         cfg = self.ctx.config
 
-        # 检查是否有有效内容（热榜或RSS）
+        # Vérifie s'il existe un contenu valide (tendances ou RSS)
         has_news_content = self._has_valid_content(stats, new_titles)
         has_rss_content = bool(rss_items and len(rss_items) > 0)
         has_any_content = has_news_content or has_rss_content
 
-        # 计算热榜匹配条数
+        # Calcule le nombre d'entrées de tendances correspondantes
         news_count = sum(len(stat.get("titles", [])) for stat in stats) if stats else 0
         rss_count = sum(stat.get("count", 0) for stat in rss_items) if rss_items else 0
 
@@ -949,30 +949,30 @@ class NewsAnalyzer:
             and has_notification
             and has_any_content
         ):
-            # 输出推送内容统计
+            # Affiche les statistiques du contenu à envoyer
             content_parts = []
             if news_count > 0:
-                content_parts.append(f"热榜 {news_count} 条")
+                content_parts.append(f"Tendances : {news_count} entrée(s)")
             if rss_count > 0:
-                content_parts.append(f"RSS {rss_count} 条")
+                content_parts.append(f"RSS : {rss_count} entrée(s)")
             total_count = news_count + rss_count
-            print(f"[推送] 准备发送：{' + '.join(content_parts)}，合计 {total_count} 条")
+            print(f"[Envoi] Préparation de l'envoi : {' + '.join(content_parts)}, soit {total_count} entrée(s) au total")
 
-            # 调度系统决策
+            # Décision du système de planification
             if not schedule.push:
-                print("[推送] 调度器: 当前时间段不执行推送")
+                print("[Envoi] Planification : la plage horaire actuelle n'exécute pas d'envoi")
                 return False
 
             if schedule.once_push and schedule.period_key:
                 scheduler = self.ctx.create_scheduler()
                 date_str = self.ctx.format_date()
                 if scheduler.already_executed(schedule.period_key, "push", date_str):
-                    print(f"[推送] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天已推送过，跳过")
+                    print(f"[Envoi] Planification : la plage horaire {schedule.period_name or schedule.period_key} a déjà fait l'objet d'un envoi aujourd'hui, on l'ignore")
                     return False
                 else:
-                    print(f"[推送] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天首次推送")
+                    print(f"[Envoi] Planification : premier envoi de la journée pour la plage horaire {schedule.period_name or schedule.period_key}")
 
-            # AI 分析：优先使用传入的结果，避免重复分析
+            # Analyse IA : réutilise en priorité le résultat déjà obtenu, pour éviter une analyse redondante
             if ai_result is None:
                 ai_config = cfg.get("AI_ANALYSIS", {})
                 if ai_config.get("ENABLED", False):
@@ -981,10 +981,10 @@ class NewsAnalyzer:
                         current_results=current_results, schedule=schedule
                     )
 
-            # 准备报告数据
+            # Préparation des données du rapport
             report_data = self.ctx.prepare_report(stats, failed_ids, new_titles, id_to_name, mode, frequency_file=self.frequency_file)
 
-            # 注入元数据（用于推送头部展示）
+            # Injection des métadonnées (pour l'affichage de l'en-tête de l'envoi)
             report_data["hotlist_total"] = self._hotlist_total_count
             report_data["platform_total"] = len(self.ctx.platform_ids)
             report_data["rss_matched_count"] = self._rss_matched_count
@@ -992,11 +992,11 @@ class NewsAnalyzer:
             report_data["rss_source_total"] = self._rss_source_total
             report_data["rss_source_failed"] = self._rss_source_failed
 
-            # 是否发送版本更新信息
+            # Détermine s'il faut envoyer les informations de mise à jour de version
             update_info_to_send = self.update_info if cfg["SHOW_VERSION_UPDATE"] else None
 
-            # 使用 NotificationDispatcher 发送到所有渠道
-            # RSS/独立展示区数据已在分析流水线中翻译过，跳过重复翻译（仅翻译热榜 report_data）
+            # Utilise NotificationDispatcher pour envoyer vers tous les canaux
+            # Les données RSS / de la zone d'affichage autonome ont déjà été traduites dans le pipeline d'analyse ; on saute la traduction redondante (on ne traduit que les tendances dans report_data)
             dispatcher = self.ctx.create_notification_dispatcher()
             results = dispatcher.dispatch_all(
                 report_data=report_data,
@@ -1013,10 +1013,10 @@ class NewsAnalyzer:
             )
 
             if not results:
-                print("未配置任何通知渠道，跳过通知发送")
+                print("Aucun canal de notification configuré, envoi de la notification ignoré")
                 return False
 
-            # 记录推送成功
+            # Enregistrement de l'envoi réussi
             if any(results.values()):
                 if schedule.once_push and schedule.period_key:
                     scheduler = self.ctx.create_scheduler()
@@ -1026,9 +1026,9 @@ class NewsAnalyzer:
             return True
 
         elif cfg["ENABLE_NOTIFICATION"] and not has_notification:
-            print("⚠️ 警告：通知功能已启用但未配置任何通知渠道，将跳过通知发送")
+            print("⚠️ Avertissement : la fonction de notification est activée mais aucun canal de notification n'est configuré ; l'envoi de la notification sera ignoré")
         elif not cfg["ENABLE_NOTIFICATION"]:
-            print(f"跳过{report_type}通知：通知功能已禁用")
+            print(f"Notification « {report_type} » ignorée : la fonction de notification est désactivée")
         elif (
             cfg["ENABLE_NOTIFICATION"]
             and has_notification
@@ -1037,40 +1037,40 @@ class NewsAnalyzer:
             mode_strategy = self._get_mode_strategy()
             if self.report_mode == "incremental":
                 if not has_rss_content:
-                    print("跳过通知：增量模式下未检测到匹配的新闻和RSS")
+                    print("Notification ignorée : en mode incrémental, aucune actualité correspondante ni aucun flux RSS détecté")
                 else:
-                    print("跳过通知：增量模式下新闻未匹配到关键词")
+                    print("Notification ignorée : en mode incrémental, aucune actualité ne correspond aux mots-clés")
             else:
                 print(
-                    f"跳过通知：{mode_strategy['mode_name']}下未检测到匹配的新闻"
+                    f"Notification ignorée : en {mode_strategy['mode_name']}, aucune actualité correspondante détectée"
                 )
 
         return False
 
     def _initialize_and_check_config(self) -> bool:
-        """通用初始化和配置检查。返回 True 表示可以继续执行。"""
+        """Initialisation générique et vérification de la configuration. Renvoie True si l'exécution peut se poursuivre."""
         now = self.ctx.get_time()
-        print(f"当前北京时间: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Heure de Pékin actuelle : {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
         if not self.ctx.config["ENABLE_CRAWLER"]:
-            print("爬虫功能已禁用（ENABLE_CRAWLER=False），程序退出")
+            print("La fonction de collecte est désactivée (ENABLE_CRAWLER=False), le programme s'arrête")
             return False
 
         has_notification = self._has_notification_configured()
         if not self.ctx.config["ENABLE_NOTIFICATION"]:
-            print("通知功能已禁用（ENABLE_NOTIFICATION=False），将只进行数据抓取")
+            print("La fonction de notification est désactivée (ENABLE_NOTIFICATION=False), seule la collecte des données sera effectuée")
         elif not has_notification:
-            print("未配置任何通知渠道，将只进行数据抓取，不发送通知")
+            print("Aucun canal de notification configuré, seule la collecte des données sera effectuée, sans envoi de notification")
         else:
-            print("通知功能已启用，将发送通知")
+            print("La fonction de notification est activée, des notifications seront envoyées")
 
         mode_strategy = self._get_mode_strategy()
-        print(f"报告模式: {self.report_mode}")
-        print(f"运行模式: {mode_strategy['description']}")
+        print(f"Mode de rapport : {self.report_mode}")
+        print(f"Mode d'exécution : {mode_strategy['description']}")
         return True
 
     def _crawl_data(self) -> Tuple[Dict, Dict, List]:
-        """执行数据爬取"""
+        """Exécute la collecte des données."""
         ids = []
         domain_rules = {}
         for platform in self.ctx.platforms:
@@ -1083,60 +1083,60 @@ class NewsAnalyzer:
                 domain_rules[platform["id"]] = expected_domain
 
         print(
-            f"配置的监控平台: {[p.get('name', p['id']) for p in self.ctx.platforms]}"
+            f"Plateformes surveillées configurées : {[p.get('name', p['id']) for p in self.ctx.platforms]}"
         )
-        print(f"开始爬取数据，请求间隔 {self.request_interval} 毫秒")
+        print(f"Début de la collecte des données, intervalle entre les requêtes : {self.request_interval} millisecondes")
         Path("output").mkdir(parents=True, exist_ok=True)
 
         results, id_to_name, failed_ids = self.data_fetcher.crawl_websites(
             ids, self.request_interval, domain_rules=domain_rules
         )
 
-        # 转换为 NewsData 格式并保存到存储后端
+        # Conversion au format NewsData puis enregistrement dans le backend de stockage
         crawl_time = self.ctx.format_time()
         crawl_date = self.ctx.format_date()
         news_data = convert_crawl_results_to_news_data(
             results, id_to_name, failed_ids, crawl_time, crawl_date
         )
 
-        # 保存到存储后端（SQLite）
+        # Enregistrement dans le backend de stockage (SQLite)
         if self.storage_manager.save_news_data(news_data):
-            print(f"数据已保存到存储后端: {self.storage_manager.backend_name}")
+            print(f"Données enregistrées dans le backend de stockage : {self.storage_manager.backend_name}")
 
-        # 保存 TXT 快照（如果启用）
+        # Enregistrement de l'instantané TXT (si activé)
         txt_file = self.storage_manager.save_txt_snapshot(news_data)
         if txt_file:
-            print(f"TXT 快照已保存: {txt_file}")
+            print(f"Instantané TXT enregistré : {txt_file}")
 
         return results, id_to_name, failed_ids
 
     def _crawl_rss_data(self) -> Tuple[Optional[List[Dict]], Optional[List[Dict]], Optional[List[Dict]], set]:
         """
-        执行 RSS 数据抓取
+        Exécute la collecte des données RSS
 
         Returns:
-            (rss_items, rss_new_items, raw_rss_items, rss_new_urls) 元组：
-            - rss_items: 统计条目列表（按模式处理，用于统计区块）
-            - rss_new_items: 新增条目列表（用于新增区块）
-            - raw_rss_items: 原始 RSS 条目列表（用于独立展示区）
-            - rss_new_urls: 原始新增 RSS 条目的 URL 集合（用于 AI 模式 is_new 检测）
-            如果未启用或失败返回 (None, None, None, set())
+            tuple (rss_items, rss_new_items, raw_rss_items, rss_new_urls) :
+            - rss_items : liste des entrées statistiques (traitées selon le mode, pour le bloc des statistiques)
+            - rss_new_items : liste des nouvelles entrées (pour le bloc des nouveautés)
+            - raw_rss_items : liste des entrées RSS brutes (pour la zone d'affichage autonome)
+            - rss_new_urls : ensemble des URL des nouvelles entrées RSS brutes (pour la détection is_new en mode IA)
+            Renvoie (None, None, None, set()) si la fonction n'est pas activée ou en cas d'échec.
         """
         if not self.ctx.rss_enabled:
             return None, None, None, set()
 
         rss_feeds = self.ctx.rss_feeds
         if not rss_feeds:
-            print("[RSS] 未配置任何 RSS 源")
+            print("[RSS] Aucune source RSS configurée")
             return None, None, None, set()
 
         try:
             from trendradar.crawler.rss import RSSFetcher, RSSFeedConfig
 
-            # 构建 RSS 源配置
+            # Construction de la configuration des sources RSS
             feeds = []
             for feed_config in rss_feeds:
-                # 读取并验证单个 feed 的 max_age_days（可选）
+                # Lecture et validation du max_age_days de chaque flux (facultatif)
                 max_age_days_raw = feed_config.get("max_age_days")
                 max_age_days = None
                 if max_age_days_raw is not None:
@@ -1144,11 +1144,11 @@ class NewsAnalyzer:
                         max_age_days = int(max_age_days_raw)
                         if max_age_days < 0:
                             feed_id = feed_config.get("id", "unknown")
-                            print(f"[警告] RSS feed '{feed_id}' 的 max_age_days 为负数，将使用全局默认值")
+                            print(f"[Avertissement] Le max_age_days du flux RSS « {feed_id} » est négatif ; la valeur globale par défaut sera utilisée")
                             max_age_days = None
                     except (ValueError, TypeError):
                         feed_id = feed_config.get("id", "unknown")
-                        print(f"[警告] RSS feed '{feed_id}' 的 max_age_days 格式错误：{max_age_days_raw}")
+                        print(f"[Avertissement] Format de max_age_days incorrect pour le flux RSS « {feed_id} » : {max_age_days_raw}")
                         max_age_days = None
 
                 feed = RSSFeedConfig(
@@ -1157,22 +1157,22 @@ class NewsAnalyzer:
                     url=feed_config.get("url", ""),
                     max_items=feed_config.get("max_items", 50),
                     enabled=feed_config.get("enabled", True),
-                    max_age_days=max_age_days,  # None=使用全局，0=禁用，>0=覆盖
+                    max_age_days=max_age_days,  # None = valeur globale, 0 = désactivé, >0 = remplace
                 )
                 if feed.id and feed.url and feed.enabled:
                     feeds.append(feed)
 
             if not feeds:
-                print("[RSS] 没有启用的 RSS 源")
+                print("[RSS] Aucune source RSS activée")
                 return None, None, None, set()
 
-            # 创建抓取器
+            # Création du collecteur
             rss_config = self.ctx.rss_config
-            # RSS 代理：优先使用 RSS 专属代理，否则使用爬虫默认代理
+            # Proxy RSS : utilise en priorité le proxy dédié RSS, sinon le proxy par défaut du collecteur
             rss_proxy_url = rss_config.get("PROXY_URL", "") or self.proxy_url or ""
-            # 获取配置的时区
+            # Récupération du fuseau horaire configuré
             timezone = self.ctx.config.get("TIMEZONE", DEFAULT_TIMEZONE)
-            # 获取新鲜度过滤配置
+            # Récupération de la configuration du filtrage par fraîcheur
             freshness_config = rss_config.get("FRESHNESS_FILTER", {})
             freshness_enabled = freshness_config.get("ENABLED", True)
             default_max_age_days = freshness_config.get("MAX_AGE_DAYS", 3)
@@ -1188,55 +1188,55 @@ class NewsAnalyzer:
                 default_max_age_days=default_max_age_days,
             )
 
-            # 抓取数据
+            # Collecte des données
             rss_data = fetcher.fetch_all()
 
             self._rss_source_total = len(feeds)
             self._rss_source_failed = len(rss_data.failed_ids)
 
-            # 保存到存储后端
+            # Enregistrement dans le backend de stockage
             if self.storage_manager.save_rss_data(rss_data):
-                print(f"[RSS] 数据已保存到存储后端")
+                print(f"[RSS] Données enregistrées dans le backend de stockage")
 
-                # 处理 RSS 数据（按模式过滤）并返回用于合并推送
+                # Traite les données RSS (filtrage selon le mode) et les renvoie pour l'envoi combiné
                 return self._process_rss_data_by_mode(rss_data)
             else:
-                print(f"[RSS] 数据保存失败")
+                print(f"[RSS] Échec de l'enregistrement des données")
                 return None, None, None, set()
 
         except ImportError as e:
-            print(f"[RSS] 缺少依赖: {e}")
-            print("[RSS] 请安装 feedparser: pip install feedparser")
+            print(f"[RSS] Dépendance manquante : {e}")
+            print("[RSS] Veuillez installer feedparser : pip install feedparser")
             return None, None, None, set()
         except Exception as e:
-            print(f"[RSS] 抓取失败: {e}")
+            print(f"[RSS] Échec de la collecte : {e}")
             return None, None, None, set()
 
     def _process_rss_data_by_mode(self, rss_data) -> Tuple[Optional[List[Dict]], Optional[List[Dict]], Optional[List[Dict]], set]:
         """
-        按报告模式处理 RSS 数据，返回与热榜相同格式的统计结构
+        Traite les données RSS selon le mode de rapport et renvoie une structure statistique au même format que les tendances
 
-        三种模式：
-        - daily: 当日汇总，统计=当天所有条目，新增=本次新增条目
-        - current: 当前榜单，统计=当前榜单条目，新增=本次新增条目
-        - incremental: 增量模式，统计=新增条目，新增=无
+        Trois modes possibles :
+        - daily : synthèse de la journée, statistiques = toutes les entrées du jour, nouveautés = entrées ajoutées lors de cette exécution
+        - current : classement actuel, statistiques = entrées du classement actuel, nouveautés = entrées ajoutées lors de cette exécution
+        - incremental : mode incrémental, statistiques = entrées ajoutées, nouveautés = aucune
 
         Args:
-            rss_data: 当前抓取的 RSSData 对象
+            rss_data : objet RSSData de la collecte actuelle
 
         Returns:
-            (rss_stats, rss_new_stats, raw_rss_items, rss_new_urls) 元组：
-            - rss_stats: RSS 关键词统计列表（与热榜 stats 格式一致）
-            - rss_new_stats: RSS 新增关键词统计列表（与热榜 stats 格式一致）
-            - raw_rss_items: 原始 RSS 条目列表（用于独立展示区）
-            - rss_new_urls: 原始新增 RSS 条目的 URL 集合（未经关键词过滤，用于 AI 模式 is_new 检测）
+            tuple (rss_stats, rss_new_stats, raw_rss_items, rss_new_urls) :
+            - rss_stats : liste des statistiques RSS par mots-clés (même format que les stats des tendances)
+            - rss_new_stats : liste des statistiques RSS des nouveautés par mots-clés (même format que les stats des tendances)
+            - raw_rss_items : liste des entrées RSS brutes (pour la zone d'affichage autonome)
+            - rss_new_urls : ensemble des URL des nouvelles entrées RSS brutes (sans filtrage par mots-clés, pour la détection is_new en mode IA)
         """
         from trendradar.core.analyzer import count_rss_frequency
 
-        # 从 display.regions.rss 统一控制 RSS 分析和展示
+        # display.regions.rss contrôle de façon unifiée l'analyse et l'affichage RSS
         rss_display_enabled = self.ctx.config.get("DISPLAY", {}).get("REGIONS", {}).get("RSS", True)
 
-        # 加载关键词配置
+        # Chargement de la configuration des mots-clés
         try:
             word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
         except FileNotFoundError:
@@ -1248,11 +1248,11 @@ class NewsAnalyzer:
 
         rss_stats = None
         rss_new_stats = None
-        raw_rss_items = None  # 原始 RSS 条目列表（用于独立展示区）
-        rss_new_urls = set()  # 原始新增 RSS URLs（未经关键词过滤）
+        raw_rss_items = None  # liste des entrées RSS brutes (pour la zone d'affichage autonome)
+        rss_new_urls = set()  # URL RSS nouvelles brutes (sans filtrage par mots-clés)
 
-        # 1. 首先获取原始条目（用于独立展示区，不受 display.regions.rss 影响）
-        # 根据模式获取原始条目
+        # 1. On récupère d'abord les entrées brutes (pour la zone d'affichage autonome, indépendamment de display.regions.rss)
+        # Récupération des entrées brutes selon le mode
         if self.report_mode == "incremental":
             new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
             if new_items_dict:
@@ -1266,25 +1266,25 @@ class NewsAnalyzer:
             if all_data:
                 raw_rss_items = self._convert_rss_items_to_list(all_data.items, all_data.id_to_name)
 
-        # 如果 RSS 展示未启用，跳过关键词分析，只返回原始条目用于独立展示区
+        # Si l'affichage RSS n'est pas activé, on saute l'analyse par mots-clés et on ne renvoie que les entrées brutes pour la zone d'affichage autonome
         if not rss_display_enabled:
             return None, None, raw_rss_items, rss_new_urls
 
-        # 2. 获取新增条目（用于统计）
+        # 2. Récupération des nouvelles entrées (pour les statistiques)
         new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
         new_items_list = None
         if new_items_dict:
             new_items_list = self._convert_rss_items_to_list(new_items_dict, rss_data.id_to_name)
             if new_items_list:
-                print(f"[RSS] 检测到 {len(new_items_list)} 条新增")
-                # 收集原始新增 URLs（未经关键词过滤，用于 AI 模式 is_new 检测）
+                print(f"[RSS] {len(new_items_list)} nouvelle(s) entrée(s) détectée(s)")
+                # Rassemble les URL des nouveautés brutes (sans filtrage par mots-clés, pour la détection is_new en mode IA)
                 rss_new_urls = {item["url"] for item in new_items_list if item.get("url")}
 
-        # 3. 根据模式获取统计条目
+        # 3. Récupération des entrées statistiques selon le mode
         if self.report_mode == "incremental":
-            # 增量模式：统计条目就是新增条目
+            # Mode incrémental : les entrées statistiques sont les nouvelles entrées
             if not new_items_list:
-                print("[RSS] 增量模式：没有新增 RSS 条目")
+                print("[RSS] Mode incrémental : aucune nouvelle entrée RSS")
                 return None, None, raw_rss_items, rss_new_urls
 
             rss_stats, total = count_rss_frequency(
@@ -1292,7 +1292,7 @@ class NewsAnalyzer:
                 word_groups=word_groups,
                 filter_words=filter_words,
                 global_filters=global_filters,
-                new_items=new_items_list,  # 增量模式所有都是新增
+                new_items=new_items_list,  # en mode incrémental, toutes les entrées sont des nouveautés
                 max_news_per_keyword=max_news_per_keyword,
                 sort_by_position_first=sort_by_position_first,
                 timezone=timezone,
@@ -1300,15 +1300,15 @@ class NewsAnalyzer:
                 quiet=False,
             )
             if not rss_stats:
-                print("[RSS] 增量模式：关键词匹配后没有内容")
-                # 即使关键词匹配为空，也返回原始条目用于独立展示区
+                print("[RSS] Mode incrémental : aucun contenu après la correspondance par mots-clés")
+                # Même si la correspondance par mots-clés est vide, on renvoie les entrées brutes pour la zone d'affichage autonome
                 return None, None, raw_rss_items, rss_new_urls
 
         elif self.report_mode == "current":
-            # 当前榜单模式：统计=当前榜单所有条目
-            # raw_rss_items 已在前面获取
+            # Mode classement actuel : statistiques = toutes les entrées du classement actuel
+            # raw_rss_items a déjà été récupéré plus haut
             if not raw_rss_items:
-                print("[RSS] 当前榜单模式：没有 RSS 数据")
+                print("[RSS] Mode classement actuel : aucune donnée RSS")
                 return None, None, None, rss_new_urls
 
             rss_stats, total = count_rss_frequency(
@@ -1316,7 +1316,7 @@ class NewsAnalyzer:
                 word_groups=word_groups,
                 filter_words=filter_words,
                 global_filters=global_filters,
-                new_items=new_items_list,  # 标记新增
+                new_items=new_items_list,  # marquage des nouveautés
                 max_news_per_keyword=max_news_per_keyword,
                 sort_by_position_first=sort_by_position_first,
                 timezone=timezone,
@@ -1324,11 +1324,11 @@ class NewsAnalyzer:
                 quiet=False,
             )
             if not rss_stats:
-                print("[RSS] 当前榜单模式：关键词匹配后没有内容")
-                # 即使关键词匹配为空，也返回原始条目用于独立展示区
+                print("[RSS] Mode classement actuel : aucun contenu après la correspondance par mots-clés")
+                # Même si la correspondance par mots-clés est vide, on renvoie les entrées brutes pour la zone d'affichage autonome
                 return None, None, raw_rss_items, rss_new_urls
 
-            # 生成新增统计
+            # Génération des statistiques des nouveautés
             if new_items_list:
                 rss_new_stats, _ = count_rss_frequency(
                     rss_items=new_items_list,
@@ -1344,10 +1344,10 @@ class NewsAnalyzer:
                 )
 
         else:
-            # daily 模式：统计=当天所有条目
-            # raw_rss_items 已在前面获取
+            # Mode daily : statistiques = toutes les entrées du jour
+            # raw_rss_items a déjà été récupéré plus haut
             if not raw_rss_items:
-                print("[RSS] 当日汇总模式：没有 RSS 数据")
+                print("[RSS] Mode synthèse de la journée : aucune donnée RSS")
                 return None, None, None, rss_new_urls
 
             rss_stats, total = count_rss_frequency(
@@ -1355,7 +1355,7 @@ class NewsAnalyzer:
                 word_groups=word_groups,
                 filter_words=filter_words,
                 global_filters=global_filters,
-                new_items=new_items_list,  # 标记新增
+                new_items=new_items_list,  # marquage des nouveautés
                 max_news_per_keyword=max_news_per_keyword,
                 sort_by_position_first=sort_by_position_first,
                 timezone=timezone,
@@ -1363,11 +1363,11 @@ class NewsAnalyzer:
                 quiet=False,
             )
             if not rss_stats:
-                print("[RSS] 当日汇总模式：关键词匹配后没有内容")
-                # 即使关键词匹配为空，也返回原始条目用于独立展示区
+                print("[RSS] Mode synthèse de la journée : aucun contenu après la correspondance par mots-clés")
+                # Même si la correspondance par mots-clés est vide, on renvoie les entrées brutes pour la zone d'affichage autonome
                 return None, None, raw_rss_items, rss_new_urls
 
-            # 生成新增统计
+            # Génération des statistiques des nouveautés
             if new_items_list:
                 rss_new_stats, _ = count_rss_frequency(
                     rss_items=new_items_list,
@@ -1382,7 +1382,7 @@ class NewsAnalyzer:
                     quiet=True,
                 )
 
-        # 首次抓取时全部条目都是新增，清除新增统计以避免与主区域完全重复
+        # Lors de la première collecte, toutes les entrées sont des nouveautés ; on supprime alors les statistiques des nouveautés pour éviter une duplication totale avec la zone principale
         if rss_new_stats and rss_stats:
             main_count = sum(len(s.get("titles", [])) for s in rss_stats)
             new_count = sum(len(s.get("titles", [])) for s in rss_new_stats)
@@ -1393,12 +1393,12 @@ class NewsAnalyzer:
         return rss_stats, rss_new_stats, raw_rss_items, rss_new_urls
 
     def _convert_rss_items_to_list(self, items_dict: Dict, id_to_name: Dict) -> List[Dict]:
-        """将 RSS 条目字典转换为列表格式，并应用新鲜度过滤（用于推送）"""
+        """Convertit le dictionnaire d'entrées RSS en liste et applique le filtrage par fraîcheur (pour l'envoi)."""
         rss_items = []
         filtered_count = 0
-        filtered_details = []  # 用于 DEBUG 模式下的详细日志
+        filtered_details = []  # journal détaillé pour le mode DEBUG
 
-        # 获取新鲜度过滤配置
+        # Récupération de la configuration du filtrage par fraîcheur
         rss_config = self.ctx.rss_config
         freshness_config = rss_config.get("FRESHNESS_FILTER", {})
         freshness_enabled = freshness_config.get("ENABLED", True)
@@ -1406,7 +1406,7 @@ class NewsAnalyzer:
         timezone = self.ctx.config.get("TIMEZONE", DEFAULT_TIMEZONE)
         debug_mode = self.ctx.config.get("DEBUG", False)
 
-        # 构建 feed_id -> max_age_days 的映射
+        # Construction de la correspondance feed_id -> max_age_days
         feed_max_age_map = {}
         for feed_cfg in self.ctx.rss_feeds:
             feed_id = feed_cfg.get("id", "")
@@ -1418,17 +1418,17 @@ class NewsAnalyzer:
                     pass
 
         for feed_id, items in items_dict.items():
-            # 确定此 feed 的 max_age_days
+            # Détermine le max_age_days de ce flux
             max_days = feed_max_age_map.get(feed_id)
             if max_days is None:
                 max_days = default_max_age_days
 
             for item in items:
-                # 应用新鲜度过滤（仅在启用时）
+                # Application du filtrage par fraîcheur (uniquement s'il est activé)
                 if freshness_enabled and max_days > 0:
                     if item.published_at and not is_within_days(item.published_at, max_days, timezone):
                         filtered_count += 1
-                        # 记录详细信息用于 DEBUG 模式
+                        # Enregistre les informations détaillées pour le mode DEBUG
                         if debug_mode:
                             days_old = calculate_days_old(item.published_at, timezone)
                             feed_name = id_to_name.get(feed_id, feed_id)
@@ -1438,7 +1438,7 @@ class NewsAnalyzer:
                                 "days_old": days_old,
                                 "max_days": max_days,
                             })
-                        continue  # 跳过超过指定天数的文章
+                        continue  # ignore les articles dépassant le nombre de jours indiqué
 
                 rss_items.append({
                     "title": item.title,
@@ -1450,22 +1450,22 @@ class NewsAnalyzer:
                     "author": item.author,
                 })
 
-        # 输出过滤统计
+        # Affiche les statistiques de filtrage
         if filtered_count > 0:
-            print(f"[RSS] 新鲜度过滤：跳过 {filtered_count} 篇超过指定天数的旧文章（仍保留在数据库中）")
-            # DEBUG 模式下显示详细信息
+            print(f"[RSS] Filtrage par fraîcheur : {filtered_count} ancien(s) article(s) dépassant le nombre de jours indiqué ont été ignorés (toujours conservés dans la base de données)")
+            # Affiche les informations détaillées en mode DEBUG
             if debug_mode and filtered_details:
-                print(f"[RSS] 被过滤的文章详情（共 {len(filtered_details)} 篇）：")
-                for detail in filtered_details[:10]:  # 最多显示 10 条
-                    days_str = f"{detail['days_old']:.1f}" if detail['days_old'] else "未知"
-                    print(f"  - [{days_str}天前] [{detail['feed']}] {detail['title']} (限制: {detail['max_days']}天)")
+                print(f"[RSS] Détail des articles filtrés ({len(filtered_details)} article(s) au total) :")
+                for detail in filtered_details[:10]:  # affiche 10 entrées au maximum
+                    days_str = f"{detail['days_old']:.1f}" if detail['days_old'] else "inconnu"
+                    print(f"  - [il y a {days_str} jour(s)] [{detail['feed']}] {detail['title']} (limite : {detail['max_days']} jour(s))")
                 if len(filtered_details) > 10:
-                    print(f"  ... 还有 {len(filtered_details) - 10} 篇被过滤")
+                    print(f"  ... et {len(filtered_details) - 10} autre(s) article(s) filtré(s)")
 
         return rss_items
 
     def _filter_rss_by_keywords(self, rss_items: List[Dict]) -> List[Dict]:
-        """使用关键词文件过滤 RSS 条目"""
+        """Filtre les entrées RSS à l'aide du fichier de mots-clés."""
         try:
             word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
             if word_groups or filter_words or global_filters:
@@ -1478,18 +1478,18 @@ class NewsAnalyzer:
 
                 original_count = len(rss_items)
                 rss_items = filtered_items
-                print(f"[RSS] 关键词过滤后剩余 {len(rss_items)}/{original_count} 条")
+                print(f"[RSS] {len(rss_items)}/{original_count} entrée(s) restante(s) après le filtrage par mots-clés")
 
                 if not rss_items:
-                    print("[RSS] 关键词过滤后没有匹配内容")
+                    print("[RSS] Aucun contenu correspondant après le filtrage par mots-clés")
                     return []
         except FileNotFoundError:
-            # 关键词文件不存在时跳过过滤
+            # Si le fichier de mots-clés n'existe pas, on saute le filtrage
             pass
         return rss_items
 
     def _generate_rss_html_report(self, rss_items: list, feeds_info: dict) -> str:
-        """生成 RSS HTML 报告"""
+        """Génère le rapport HTML RSS."""
         try:
             from trendradar.report.rss_html import render_rss_html_content
             from pathlib import Path
@@ -1501,7 +1501,7 @@ class NewsAnalyzer:
                 get_time_func=self.ctx.get_time,
             )
 
-            # 保存 HTML 文件（扁平化结构：output/html/日期/）
+            # Enregistrement du fichier HTML (structure aplatie : output/html/date/)
             date_folder = self.ctx.format_date()
             time_filename = self.ctx.format_time()
             output_dir = Path("output") / "html" / date_folder
@@ -1511,11 +1511,11 @@ class NewsAnalyzer:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
-            print(f"[RSS] HTML 报告已生成: {file_path}")
+            print(f"[RSS] Rapport HTML généré : {file_path}")
             return str(file_path)
 
         except Exception as e:
-            print(f"[RSS] 生成 HTML 报告失败: {e}")
+            print(f"[RSS] Échec de la génération du rapport HTML : {e}")
             return None
 
     def _execute_mode_strategy(
@@ -1525,39 +1525,39 @@ class NewsAnalyzer:
         raw_rss_items: Optional[List[Dict]] = None,
         rss_new_urls: Optional[set] = None,
     ) -> Optional[str]:
-        """执行模式特定逻辑，支持热榜+RSS合并推送
+        """Exécute la logique propre au mode, avec prise en charge de l'envoi combiné tendances + RSS
 
-        简化后的逻辑：
-        - 每次运行都生成 HTML 报告（时间戳快照 + latest/{mode}.html + index.html）
-        - 根据模式发送通知
+        Logique simplifiée :
+        - chaque exécution génère un rapport HTML (instantané horodaté + latest/{mode}.html + index.html)
+        - envoi de la notification selon le mode
         """
-        # 调度系统
+        # Système de planification
         scheduler = self.ctx.create_scheduler()
         schedule = scheduler.resolve()
 
-        # 使用 schedule 决定的 report_mode 覆盖全局配置
+        # Le report_mode déterminé par schedule remplace la configuration globale
         effective_mode = schedule.report_mode
         if effective_mode != self.report_mode:
-            print(f"[调度] 报告模式覆盖: {self.report_mode} -> {effective_mode}")
+            print(f"[Planification] Mode de rapport remplacé : {self.report_mode} -> {effective_mode}")
         self.report_mode = effective_mode
 
-        # 重新获取 mode_strategy，确保 report_type 与覆盖后的 report_mode 一致
+        # On récupère à nouveau mode_strategy pour garantir la cohérence de report_type avec le report_mode après remplacement
         mode_strategy = self._get_mode_strategy()
 
-        # 使用 schedule 决定的 frequency_file 覆盖默认值
+        # Le frequency_file déterminé par schedule remplace la valeur par défaut
         self.frequency_file = schedule.frequency_file
 
-        # 使用 schedule 决定的筛选策略覆盖默认值
+        # La stratégie de filtrage déterminée par schedule remplace la valeur par défaut
         self.filter_method = schedule.filter_method or self.ctx.filter_method
 
-        # 使用 schedule 决定的 AI 筛选兴趣文件覆盖默认值
+        # Le fichier de centres d'intérêt du filtrage IA déterminé par schedule remplace la valeur par défaut
         self.interests_file = schedule.interests_file
 
-        # 如果调度器说不采集，则直接跳过
+        # Si le planificateur indique de ne pas collecter, on passe directement
         if not schedule.collect:
-            print("[调度] 当前时间段不执行数据采集，跳过分析流水线")
+            print("[Planification] La plage horaire actuelle n'exécute pas de collecte de données, le pipeline d'analyse est ignoré")
             return None
-        # 获取当前监控平台ID列表
+        # Récupère la liste des ID de plateformes actuellement surveillées
         current_platform_ids = self.ctx.platform_ids
 
         new_titles = self.ctx.detect_new_titles(current_platform_ids)
@@ -1569,7 +1569,7 @@ class NewsAnalyzer:
         ai_result = None
         title_info = None
 
-        # current 模式需要使用完整的历史数据
+        # Le mode current nécessite l'utilisation de l'ensemble des données historiques
         if self.report_mode == "current":
             analysis_data = self._load_analysis_data()
             if analysis_data:
@@ -1584,10 +1584,10 @@ class NewsAnalyzer:
                 ) = analysis_data
 
                 print(
-                    f"current模式：使用过滤后的历史数据，包含平台：{list(all_results.keys())}"
+                    f"Mode current : utilisation des données historiques filtrées, plateformes incluses : {list(all_results.keys())}"
                 )
 
-                # 使用历史数据准备独立展示区数据（包含完整的 title_info）
+                # Préparation des données de la zone d'affichage autonome à partir des données historiques (avec le title_info complet)
                 standalone_data = self._prepare_standalone_data(
                     all_results, historical_id_to_name, historical_title_info, raw_rss_items
                 )
@@ -1614,11 +1614,39 @@ class NewsAnalyzer:
                 id_to_name = combined_id_to_name
                 title_info = historical_title_info
                 results = all_results
+            elif not current_platform_ids:
+                # Mode « RSS seul » (fork halal) : aucune plateforme de palmarès surveillée, donc
+                # aucune donnée historique de palmarès n'est attendue. On génère le rapport à
+                # partir des données actuelles (flux RSS), comme le fait déjà le mode daily.
+                # NB : déviation assumée du « no logic change » pour faire fonctionner la config
+                # RSS-only imposée — voir CHANGES.md.
+                title_info = self._prepare_current_title_info(results, time_info)
+                standalone_data = self._prepare_standalone_data(
+                    results, id_to_name, title_info, raw_rss_items
+                )
+                stats, html_file, ai_result, rss_items = self._run_analysis_pipeline(
+                    results,
+                    self.report_mode,
+                    title_info,
+                    new_titles,
+                    word_groups,
+                    filter_words,
+                    id_to_name,
+                    failed_ids=failed_ids,
+                    global_filters=global_filters,
+                    rss_items=rss_items,
+                    rss_new_items=rss_new_items,
+                    standalone_data=standalone_data,
+                    schedule=schedule,
+                    rss_new_urls=rss_new_urls,
+                )
             else:
-                print("❌ 严重错误：无法读取刚保存的数据文件")
-                raise RuntimeError("数据一致性检查失败：保存后立即读取失败")
+                # Avec des plateformes de palmarès surveillées, une lecture vide signale une
+                # vraie incohérence de stockage (enregistrement puis lecture immédiate échouée).
+                print("❌ Erreur grave : impossible de lire le fichier de données qui vient d'être enregistré")
+                raise RuntimeError("Échec de la vérification de cohérence des données : lecture impossible immédiatement après l'enregistrement")
         elif self.report_mode == "daily":
-            # daily 模式：使用全天累计数据
+            # Mode daily : utilise les données cumulées de toute la journée
             analysis_data = self._load_analysis_data()
             if analysis_data:
                 (
@@ -1631,7 +1659,7 @@ class NewsAnalyzer:
                     _,
                 ) = analysis_data
 
-                # 使用历史数据准备独立展示区数据（包含完整的 title_info）
+                # Préparation des données de la zone d'affichage autonome à partir des données historiques (avec le title_info complet)
                 standalone_data = self._prepare_standalone_data(
                     all_results, historical_id_to_name, historical_title_info, raw_rss_items
                 )
@@ -1659,7 +1687,7 @@ class NewsAnalyzer:
                 title_info = historical_title_info
                 results = all_results
             else:
-                # 没有历史数据时使用当前数据
+                # En l'absence de données historiques, on utilise les données actuelles
                 title_info = self._prepare_current_title_info(results, time_info)
                 standalone_data = self._prepare_standalone_data(
                     results, id_to_name, title_info, raw_rss_items
@@ -1681,7 +1709,7 @@ class NewsAnalyzer:
                     rss_new_urls=rss_new_urls,
                 )
         else:
-            # incremental 模式：只使用当前抓取的数据
+            # Mode incremental : utilise uniquement les données de la collecte actuelle
             title_info = self._prepare_current_title_info(results, time_info)
             standalone_data = self._prepare_standalone_data(
                 results, id_to_name, title_info, raw_rss_items
@@ -1704,10 +1732,10 @@ class NewsAnalyzer:
             )
 
         if html_file:
-            print(f"HTML报告已生成: {html_file}")
-            print(f"最新报告已更新: output/html/latest/{self.report_mode}.html")
+            print(f"Rapport HTML généré : {html_file}")
+            print(f"Dernier rapport mis à jour : output/html/latest/{self.report_mode}.html")
 
-        # 发送通知
+        # Envoi de la notification
         if mode_strategy["should_send_notification"]:
             standalone_data = self._prepare_standalone_data(
                 results, id_to_name, title_info, raw_rss_items
@@ -1728,31 +1756,31 @@ class NewsAnalyzer:
                 schedule=schedule,
             )
 
-        # 打开浏览器（仅在非容器环境）
+        # Ouverture du navigateur (uniquement hors environnement conteneurisé)
         if self._should_open_browser() and html_file:
             file_url = "file://" + str(Path(html_file).resolve())
-            print(f"正在打开HTML报告: {file_url}")
+            print(f"Ouverture du rapport HTML en cours : {file_url}")
             webbrowser.open(file_url)
         elif self.is_docker_container and html_file:
-            print(f"HTML报告已生成（Docker环境）: {html_file}")
+            print(f"Rapport HTML généré (environnement Docker) : {html_file}")
 
         return html_file
 
     def run(self) -> None:
-        """执行分析流程"""
+        """Exécute le processus d'analyse."""
         try:
             if not self._initialize_and_check_config():
                 return
 
             mode_strategy = self._get_mode_strategy()
 
-            # 抓取热榜数据
+            # Collecte des données de tendances
             results, id_to_name, failed_ids = self._crawl_data()
 
-            # 抓取 RSS 数据（如果启用），返回统计条目、新增条目和原始条目
+            # Collecte des données RSS (si activée) ; renvoie les entrées statistiques, les nouvelles entrées et les entrées brutes
             rss_items, rss_new_items, raw_rss_items, rss_new_urls = self._crawl_rss_data()
 
-            # 执行模式策略，传递 RSS 数据用于合并推送
+            # Exécute la stratégie de mode, en transmettant les données RSS pour l'envoi combiné
             self._execute_mode_strategy(
                 mode_strategy, results, id_to_name, failed_ids,
                 rss_items=rss_items, rss_new_items=rss_new_items,
@@ -1760,16 +1788,16 @@ class NewsAnalyzer:
             )
 
         except Exception as e:
-            print(f"分析流程执行出错: {e}")
+            print(f"Erreur lors de l'exécution du processus d'analyse : {e}")
             if self.ctx.config.get("DEBUG", False):
                 raise
         finally:
-            # 清理资源（包括过期数据清理和数据库连接关闭）
+            # Nettoyage des ressources (y compris la purge des données expirées et la fermeture de la connexion à la base de données)
             self.ctx.cleanup()
 
 
 def _record_doctor_result(results: List[Tuple[str, str, str]], status: str, item: str, detail: str) -> None:
-    """记录并打印 doctor 检查结果"""
+    """Enregistre et affiche le résultat d'une vérification doctor."""
     icon_map = {
         "pass": "✅",
         "warn": "⚠️",
@@ -1787,7 +1815,7 @@ def _save_doctor_report(
     fail_count: int,
     config_path: Optional[str],
 ) -> None:
-    """保存 doctor 体检报告到 JSON 文件"""
+    """Enregistre le rapport de diagnostic doctor dans un fichier JSON."""
     report = {
         "version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1812,71 +1840,71 @@ def _save_doctor_report(
             json.dumps(report, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        print(f"体检报告已保存: {output_path}")
+        print(f"Rapport de diagnostic enregistré : {output_path}")
     except Exception as e:
-        print(f"⚠️ 体检报告保存失败: {e}")
+        print(f"⚠️ Échec de l'enregistrement du rapport de diagnostic : {e}")
 
 
 def _run_doctor(config_path: Optional[str] = None) -> bool:
-    """运行环境体检"""
+    """Exécute le diagnostic de l'environnement."""
     print("=" * 60)
-    print(f"TrendRadar v{__version__} 环境体检")
+    print(f"TrendRadar v{__version__} : diagnostic de l'environnement")
     print("=" * 60)
 
     results: List[Tuple[str, str, str]] = []
     config = None
 
-    # 1) Python 版本检查
+    # 1) Vérification de la version de Python
     py_ok = sys.version_info >= (3, 10)
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     if py_ok:
-        _record_doctor_result(results, "pass", "Python版本", f"{py_version} (满足 >= 3.10)")
+        _record_doctor_result(results, "pass", "Version de Python", f"{py_version} (satisfait >= 3.10)")
     else:
-        _record_doctor_result(results, "fail", "Python版本", f"{py_version} (不满足 >= 3.10)")
+        _record_doctor_result(results, "fail", "Version de Python", f"{py_version} (ne satisfait pas >= 3.10)")
 
-    # 2) 关键文件检查
+    # 2) Vérification des fichiers essentiels
     if config_path is None:
         config_path = os.environ.get("CONFIG_PATH", "config/config.yaml")
 
     required_files = [
-        (config_path, "主配置文件"),
-        ("config/frequency_words.txt", "关键词文件"),
+        (config_path, "Fichier de configuration principal"),
+        ("config/frequency_words.txt", "Fichier de mots-clés"),
     ]
     optional_files = [
-        ("config/timeline.yaml", "调度文件"),
+        ("config/timeline.yaml", "Fichier de planification"),
     ]
 
     for path_str, desc in required_files:
         if Path(path_str).exists():
-            _record_doctor_result(results, "pass", desc, f"已找到: {path_str}")
+            _record_doctor_result(results, "pass", desc, f"trouvé : {path_str}")
         else:
-            _record_doctor_result(results, "fail", desc, f"缺失: {path_str}")
+            _record_doctor_result(results, "fail", desc, f"manquant : {path_str}")
 
     for path_str, desc in optional_files:
         if Path(path_str).exists():
-            _record_doctor_result(results, "pass", desc, f"已找到: {path_str}")
+            _record_doctor_result(results, "pass", desc, f"trouvé : {path_str}")
         else:
-            _record_doctor_result(results, "warn", desc, f"未找到: {path_str}（将使用默认调度模板）")
+            _record_doctor_result(results, "warn", desc, f"introuvable : {path_str} (le modèle de planification par défaut sera utilisé)")
 
-    # 3) 配置加载检查
+    # 3) Vérification du chargement de la configuration
     try:
         config = load_config(config_path)
-        _record_doctor_result(results, "pass", "配置加载", f"加载成功: {config_path}")
+        _record_doctor_result(results, "pass", "Chargement de la configuration", f"chargement réussi : {config_path}")
     except Exception as e:
-        _record_doctor_result(results, "fail", "配置加载", f"加载失败: {e}")
+        _record_doctor_result(results, "fail", "Chargement de la configuration", f"échec du chargement : {e}")
 
-    # 后续检查依赖配置对象
+    # Les vérifications suivantes dépendent de l'objet de configuration
     if config:
-        # 4) 调度配置检查
+        # 4) Vérification de la configuration de planification
         try:
             ctx = AppContext(config)
             schedule = ctx.create_scheduler().resolve()
-            detail = f"调度解析成功（report_mode={schedule.report_mode}, ai_mode={schedule.ai_mode}）"
-            _record_doctor_result(results, "pass", "调度配置", detail)
+            detail = f"analyse de la planification réussie (report_mode={schedule.report_mode}, ai_mode={schedule.ai_mode})"
+            _record_doctor_result(results, "pass", "Configuration de planification", detail)
         except Exception as e:
-            _record_doctor_result(results, "fail", "调度配置", f"解析失败: {e}")
+            _record_doctor_result(results, "fail", "Configuration de planification", f"échec de l'analyse : {e}")
 
-        # 5) AI 配置检查（按功能场景区分严重级别）
+        # 5) Vérification de la configuration IA (le niveau de gravité dépend du scénario fonctionnel)
         ai_analysis_enabled = config.get("AI_ANALYSIS", {}).get("ENABLED", False)
         ai_translation_enabled = config.get("AI_TRANSLATION", {}).get("ENABLED", False)
         ai_filter_enabled = config.get("FILTER", {}).get("METHOD", "keyword") == "ai"
@@ -1887,19 +1915,19 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
                 from trendradar.ai.client import AIClient
                 valid, message = AIClient(config.get("AI", {})).validate_config()
                 if valid:
-                    _record_doctor_result(results, "pass", "AI配置", f"模型: {config.get('AI', {}).get('MODEL', '')}")
+                    _record_doctor_result(results, "pass", "Configuration IA", f"modèle : {config.get('AI', {}).get('MODEL', '')}")
                 else:
-                    # AI 分析/翻译是硬依赖；AI 筛选缺失时会自动回退关键词匹配
+                    # L'analyse et la traduction IA sont des dépendances strictes ; en cas d'absence, le filtrage IA bascule automatiquement sur la correspondance par mots-clés
                     if ai_analysis_enabled or ai_translation_enabled:
-                        _record_doctor_result(results, "fail", "AI配置", message)
+                        _record_doctor_result(results, "fail", "Configuration IA", message)
                     else:
-                        _record_doctor_result(results, "warn", "AI配置", f"{message}（AI 筛选将回退关键词模式）")
+                        _record_doctor_result(results, "warn", "Configuration IA", f"{message} (le filtrage IA basculera en mode mots-clés)")
             except Exception as e:
-                _record_doctor_result(results, "fail", "AI配置", f"校验异常: {e}")
+                _record_doctor_result(results, "fail", "Configuration IA", f"exception lors de la vérification : {e}")
         else:
-            _record_doctor_result(results, "warn", "AI配置", "未启用 AI 功能，跳过校验")
+            _record_doctor_result(results, "warn", "Configuration IA", "fonction IA non activée, vérification ignorée")
 
-        # 6) 存储配置检查
+        # 6) Vérification de la configuration de stockage
         try:
             storage_cfg = config.get("STORAGE", {})
             backend = storage_cfg.get("BACKEND", "auto")
@@ -1911,39 +1939,39 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
 
             if backend == "remote" and missing_remote_keys:
                 _record_doctor_result(
-                    results, "fail", "存储配置",
-                    f"remote 模式缺少配置: {', '.join(missing_remote_keys)}"
+                    results, "fail", "Configuration de stockage",
+                    f"configuration manquante pour le mode remote : {', '.join(missing_remote_keys)}"
                 )
             elif backend == "auto" and os.environ.get("GITHUB_ACTIONS") == "true" and missing_remote_keys:
                 _record_doctor_result(
-                    results, "warn", "存储配置",
-                    "GitHub Actions + auto 模式未完整配置远程存储，可能导致数据丢失"
+                    results, "warn", "Configuration de stockage",
+                    "GitHub Actions + mode auto : stockage distant incomplètement configuré, ce qui peut entraîner une perte de données"
                 )
             else:
                 sm = AppContext(config).get_storage_manager()
-                _record_doctor_result(results, "pass", "存储配置", f"当前后端: {sm.backend_name}")
+                _record_doctor_result(results, "pass", "Configuration de stockage", f"backend actuel : {sm.backend_name}")
         except Exception as e:
-            _record_doctor_result(results, "fail", "存储配置", f"检查失败: {e}")
+            _record_doctor_result(results, "fail", "Configuration de stockage", f"échec de la vérification : {e}")
 
-        # 7) 通知渠道配置检查
+        # 7) Vérification de la configuration des canaux de notification
         channel_details = []
         channel_issues = []
         max_accounts = config.get("MAX_ACCOUNTS_PER_CHANNEL", 3)
 
-        # 普通单值/多值渠道
+        # Canaux à valeur unique / valeurs multiples ordinaires
         for key, name in [
-            ("FEISHU_WEBHOOK_URL", "飞书"),
-            ("DINGTALK_WEBHOOK_URL", "钉钉"),
-            ("WEWORK_WEBHOOK_URL", "企业微信"),
+            ("FEISHU_WEBHOOK_URL", "Feishu"),
+            ("DINGTALK_WEBHOOK_URL", "DingTalk"),
+            ("WEWORK_WEBHOOK_URL", "WeCom"),
             ("BARK_URL", "Bark"),
             ("SLACK_WEBHOOK_URL", "Slack"),
-            ("GENERIC_WEBHOOK_URL", "通用Webhook"),
+            ("GENERIC_WEBHOOK_URL", "Webhook générique"),
         ]:
             values = parse_multi_account_config(config.get(key, ""))
             if values:
-                channel_details.append(f"{name}({min(len(values), max_accounts)}个)")
+                channel_details.append(f"{name} ({min(len(values), max_accounts)})")
 
-        # Telegram 配对校验
+        # Vérification de l'appariement Telegram
         tg_tokens = parse_multi_account_config(config.get("TELEGRAM_BOT_TOKEN", ""))
         tg_chats = parse_multi_account_config(config.get("TELEGRAM_CHAT_ID", ""))
         if tg_tokens or tg_chats:
@@ -1953,11 +1981,11 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
                 required_keys=["bot_token", "chat_id"],
             )
             if valid and count > 0:
-                channel_details.append(f"Telegram({min(count, max_accounts)}个)")
+                channel_details.append(f"Telegram ({min(count, max_accounts)})")
             else:
-                channel_issues.append("Telegram bot_token/chat_id 配置不完整或数量不一致")
+                channel_issues.append("Configuration Telegram bot_token/chat_id incomplète ou nombres incohérents")
 
-        # ntfy 配对校验（token 可选）
+        # Vérification de l'appariement ntfy (token facultatif)
         ntfy_server = config.get("NTFY_SERVER_URL", "")
         ntfy_topics = parse_multi_account_config(config.get("NTFY_TOPIC", ""))
         ntfy_tokens = parse_multi_account_config(config.get("NTFY_TOKEN", ""))
@@ -1968,13 +1996,13 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
                     "ntfy",
                 )
                 if valid and count > 0:
-                    channel_details.append(f"ntfy({min(count, max_accounts)}个)")
+                    channel_details.append(f"ntfy ({min(count, max_accounts)})")
                 else:
-                    channel_issues.append("ntfy topic/token 数量不一致")
+                    channel_issues.append("Nombres ntfy topic/token incohérents")
             else:
-                channel_details.append(f"ntfy({min(len(ntfy_topics), max_accounts)}个)")
+                channel_details.append(f"ntfy ({min(len(ntfy_topics), max_accounts)})")
 
-        # 邮件配置完整性
+        # Complétude de la configuration e-mail
         email_ready = all(
             [
                 config.get("EMAIL_FROM"),
@@ -1983,30 +2011,30 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
             ]
         )
         if email_ready:
-            channel_details.append("邮件")
+            channel_details.append("e-mail")
         elif any([config.get("EMAIL_FROM"), config.get("EMAIL_PASSWORD"), config.get("EMAIL_TO")]):
-            channel_issues.append("邮件配置不完整（需要 from/password/to 同时配置）")
+            channel_issues.append("Configuration e-mail incomplète (from/password/to doivent être configurés ensemble)")
 
         if channel_issues and not channel_details:
-            _record_doctor_result(results, "fail", "通知配置", "；".join(channel_issues))
+            _record_doctor_result(results, "fail", "Configuration des notifications", " ; ".join(channel_issues))
         elif channel_issues and channel_details:
-            detail = f"可用渠道: {', '.join(channel_details)}；问题: {'；'.join(channel_issues)}"
-            _record_doctor_result(results, "warn", "通知配置", detail)
+            detail = f"Canaux disponibles : {', '.join(channel_details)} ; problèmes : {' ; '.join(channel_issues)}"
+            _record_doctor_result(results, "warn", "Configuration des notifications", detail)
         elif channel_details:
-            _record_doctor_result(results, "pass", "通知配置", f"可用渠道: {', '.join(channel_details)}")
+            _record_doctor_result(results, "pass", "Configuration des notifications", f"Canaux disponibles : {', '.join(channel_details)}")
         else:
-            _record_doctor_result(results, "warn", "通知配置", "未配置任何通知渠道")
+            _record_doctor_result(results, "warn", "Configuration des notifications", "aucun canal de notification configuré")
 
-        # 8) 输出目录可写检查
+        # 8) Vérification de l'accès en écriture au répertoire de sortie
         try:
             output_dir = Path("output")
             output_dir.mkdir(parents=True, exist_ok=True)
             probe_file = output_dir / ".doctor_write_probe"
             probe_file.write_text("ok", encoding="utf-8")
             probe_file.unlink(missing_ok=True)
-            _record_doctor_result(results, "pass", "输出目录", f"可写: {output_dir}")
+            _record_doctor_result(results, "pass", "Répertoire de sortie", f"accessible en écriture : {output_dir}")
         except Exception as e:
-            _record_doctor_result(results, "fail", "输出目录", f"不可写: {e}")
+            _record_doctor_result(results, "fail", "Répertoire de sortie", f"non accessible en écriture : {e}")
 
     pass_count = sum(1 for status, _, _ in results if status == "pass")
     warn_count = sum(1 for status, _, _ in results if status == "warn")
@@ -2015,27 +2043,27 @@ def _run_doctor(config_path: Optional[str] = None) -> bool:
     _save_doctor_report(results, pass_count, warn_count, fail_count, config_path)
 
     print("-" * 60)
-    print(f"体检结果: ✅ {pass_count} 项通过  ⚠️ {warn_count} 项警告  ❌ {fail_count} 项失败")
+    print(f"Résultat du diagnostic : ✅ {pass_count} réussite(s)  ⚠️ {warn_count} avertissement(s)  ❌ {fail_count} échec(s)")
     print("=" * 60)
 
     if fail_count == 0:
-        print("体检通过。")
+        print("Diagnostic réussi.")
         return True
 
-    print("体检未通过，请先修复失败项。")
+    print("Diagnostic échoué, veuillez d'abord corriger les éléments en échec.")
     return False
 
 
 def _build_test_report_data(ctx: AppContext) -> Dict:
-    """构造通知测试用报告数据"""
+    """Construit les données de rapport utilisées pour le test de notification."""
     now = ctx.get_time()
     time_display = now.strftime("%H:%M")
-    title = f"TrendRadar 通知测试消息（{now.strftime('%Y-%m-%d %H:%M:%S')}）"
+    title = f"Message de test de notification TrendRadar ({now.strftime('%Y-%m-%d %H:%M:%S')})"
 
     return {
         "stats": [
             {
-                "word": "连通性测试",
+                "word": "test de connectivité",
                 "count": 1,
                 "titles": [
                     {
@@ -2048,7 +2076,7 @@ def _build_test_report_data(ctx: AppContext) -> Dict:
                         "count": 1,
                         "is_new": True,
                         "time_display": time_display,
-                        "matched_keyword": "连通性测试",
+                        "matched_keyword": "test de connectivité",
                     }
                 ],
             }
@@ -2060,36 +2088,36 @@ def _build_test_report_data(ctx: AppContext) -> Dict:
 
 
 def _create_test_html_file(ctx: AppContext) -> Optional[str]:
-    """创建邮件测试用 HTML 文件"""
+    """Crée le fichier HTML utilisé pour le test d'e-mail."""
     try:
         now = ctx.get_time()
         output_dir = Path("output") / "html" / ctx.format_date()
         output_dir.mkdir(parents=True, exist_ok=True)
         html_path = output_dir / f"notification_test_{ctx.format_time()}.html"
         html_content = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"><title>TrendRadar 通知测试</title></head>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Test de notification TrendRadar</title></head>
 <body>
-<h2>TrendRadar 通知连通性测试</h2>
-<p>测试时间：{now.strftime('%Y-%m-%d %H:%M:%S')} ({ctx.timezone})</p>
-<p>这是一条测试消息，用于验证邮件渠道是否可达。</p>
+<h2>TrendRadar - Test de connectivité des notifications</h2>
+<p>Heure du test : {now.strftime('%Y-%m-%d %H:%M:%S')} ({ctx.timezone})</p>
+<p>Ceci est un message de test, destiné à vérifier que le canal e-mail est bien joignable.</p>
 </body>
 </html>"""
         html_path.write_text(html_content, encoding="utf-8")
         return str(html_path)
     except Exception as e:
-        print(f"[测试通知] 创建测试 HTML 失败: {e}")
+        print(f"[Test de notification] Échec de la création du HTML de test : {e}")
         return None
 
 
 def _run_test_notification(config: Dict) -> bool:
-    """发送测试通知到已配置渠道"""
+    """Envoie une notification de test vers les canaux déjà configurés."""
     from trendradar.notification import NotificationDispatcher
 
     ctx = AppContext(config)
 
     try:
-        # 检查是否配置了通知渠道
+        # Vérifie si un canal de notification est configuré
         has_notification = any(
             [
                 config.get("FEISHU_WEBHOOK_URL"),
@@ -2104,10 +2132,10 @@ def _run_test_notification(config: Dict) -> bool:
             ]
         )
         if not has_notification:
-            print("未检测到可用通知渠道，请先在 config.yaml 或环境变量中配置。")
+            print("Aucun canal de notification disponible détecté, veuillez d'abord en configurer un dans config.yaml ou via une variable d'environnement.")
             return False
 
-        # 测试时固定展示区域，避免用户关闭 HOTLIST 导致测试内容为空
+        # On fige les zones d'affichage pendant le test, pour éviter qu'une désactivation de HOTLIST par l'utilisateur ne rende le contenu de test vide
         test_config = copy.deepcopy(config)
         test_display = test_config.setdefault("DISPLAY", {})
         test_regions = test_display.setdefault("REGIONS", {})
@@ -2121,13 +2149,13 @@ def _run_test_notification(config: Dict) -> bool:
             }
         )
 
-        # 测试时禁用翻译，避免触发额外 AI 调用
+        # On désactive la traduction pendant le test, pour éviter de déclencher des appels IA supplémentaires (et la consommation de quota associée)
         if "AI_TRANSLATION" in test_config:
             test_config["AI_TRANSLATION"]["ENABLED"] = False
 
         proxy_url = test_config.get("DEFAULT_PROXY", "") if test_config.get("USE_PROXY") else None
         if proxy_url:
-            print("[测试通知] 检测到代理配置，将使用代理发送")
+            print("[Test de notification] Configuration de proxy détectée, l'envoi se fera via le proxy")
 
         dispatcher = NotificationDispatcher(
             config=test_config,
@@ -2140,19 +2168,19 @@ def _run_test_notification(config: Dict) -> bool:
         html_file_path = _create_test_html_file(ctx)
 
         print("=" * 60)
-        print("通知连通性测试")
+        print("Test de connectivité des notifications")
         print("=" * 60)
 
         results = dispatcher.dispatch_all(
             report_data=report_data,
-            report_type="通知连通性测试",
+            report_type="Test de connectivité des notifications",
             proxy_url=proxy_url,
             mode="daily",
             html_file_path=html_file_path,
         )
 
         if not results:
-            print("没有可测试的有效通知渠道（可能配置不完整）。")
+            print("Aucun canal de notification valide à tester (la configuration est peut-être incomplète).")
             return False
 
         print("-" * 60)
@@ -2160,73 +2188,73 @@ def _run_test_notification(config: Dict) -> bool:
         for channel, ok in results.items():
             if ok:
                 success_count += 1
-                print(f"✅ {channel}: 测试成功")
+                print(f"✅ {channel} : test réussi")
             else:
-                print(f"❌ {channel}: 测试失败")
+                print(f"❌ {channel} : test échoué")
 
         print("-" * 60)
-        print(f"测试结果: {success_count}/{len(results)} 个渠道成功")
+        print(f"Résultat du test : {success_count}/{len(results)} canal/canaux réussi(s)")
         return success_count > 0
     finally:
         ctx.cleanup()
 
 
 def main():
-    """主程序入口"""
-    # 解析命令行参数
+    """Point d'entrée du programme principal."""
+    # Analyse des arguments de la ligne de commande
     parser = argparse.ArgumentParser(
-        description="TrendRadar - 热点新闻聚合与分析工具",
+        description="TrendRadar - outil d'agrégation et d'analyse des actualités tendance",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-调度状态命令:
-  --show-schedule        显示当前调度状态（时间段、行为开关）
-诊断命令:
-  --doctor               运行环境与配置体检
-  --test-notification    发送测试通知到已配置渠道
+Commandes d'état de la planification :
+  --show-schedule        affiche l'état actuel de la planification (plage horaire, interrupteurs de comportement)
+Commandes de diagnostic :
+  --doctor               exécute le diagnostic de l'environnement et de la configuration
+  --test-notification    envoie une notification de test vers les canaux déjà configurés
 
-示例:
-  python -m trendradar                    # 正常运行
-  python -m trendradar --show-schedule    # 查看当前调度状态
-  python -m trendradar --doctor           # 运行一键体检
-  python -m trendradar --test-notification # 测试通知渠道连通性
+Exemples :
+  python -m trendradar                    # exécution normale
+  python -m trendradar --show-schedule    # affiche l'état actuel de la planification
+  python -m trendradar --doctor           # exécute un diagnostic en une commande
+  python -m trendradar --test-notification # teste la connectivité des canaux de notification
 """
     )
     parser.add_argument(
         "--show-schedule",
         action="store_true",
-        help="显示当前调度状态"
+        help="affiche l'état actuel de la planification"
     )
     parser.add_argument(
         "--doctor",
         action="store_true",
-        help="运行环境与配置体检"
+        help="exécute le diagnostic de l'environnement et de la configuration"
     )
     parser.add_argument(
         "--test-notification",
         action="store_true",
-        help="发送测试通知到已配置渠道"
+        help="envoie une notification de test vers les canaux déjà configurés"
     )
 
     args = parser.parse_args()
 
     debug_mode = False
     try:
-        # 处理 doctor 命令（不依赖完整运行流程）
+        # Traitement de la commande doctor (ne dépend pas du processus d'exécution complet)
         if args.doctor:
             ok = _run_doctor()
             if not ok:
                 raise SystemExit(1)
             return
 
-        # 先加载配置
+        # Chargement de la configuration en premier
         config = load_config()
 
-        # 处理状态查看命令
+        # Traitement de la commande d'affichage de l'état
         if args.show_schedule:
             _handle_status_commands(config)
             return
 
-        # 处理通知测试命令
+        # Traitement de la commande de test de notification
         if args.test_notification:
             ok = _run_test_notification(config)
             if not ok:
@@ -2236,45 +2264,45 @@ def main():
         version_url = config.get("VERSION_CHECK_URL", "")
         configs_version_url = config.get("CONFIGS_VERSION_CHECK_URL", "")
 
-        # 统一版本检查（程序版本 + 配置文件版本，只请求一次远程）
+        # Vérification unifiée des versions (version du programme + version des fichiers de configuration, une seule requête distante)
         need_update = False
         remote_version = None
         if version_url:
             need_update, remote_version = check_all_versions(version_url, configs_version_url)
 
-        # 复用已加载的配置，避免重复加载
+        # Réutilise la configuration déjà chargée, pour éviter un double chargement
         analyzer = NewsAnalyzer(config=config)
 
-        # 设置更新信息（复用已获取的远程版本，不再重复请求）
+        # Définit les informations de mise à jour (réutilise la version distante déjà récupérée, sans nouvelle requête)
         if analyzer.is_github_actions and need_update and remote_version:
             analyzer.update_info = {
                 "current_version": __version__,
                 "remote_version": remote_version,
             }
 
-        # 获取 debug 配置
+        # Récupère la configuration debug
         debug_mode = analyzer.ctx.config.get("DEBUG", False)
         analyzer.run()
     except FileNotFoundError as e:
-        print(f"❌ 配置文件错误: {e}")
-        print("\n请确保以下文件存在:")
+        print(f"❌ Erreur de fichier de configuration : {e}")
+        print("\nVeuillez vous assurer que les fichiers suivants existent :")
         print("  • config/config.yaml")
         print("  • config/frequency_words.txt")
-        print("\n参考项目文档进行正确配置")
+        print("\nConsultez la documentation du projet pour une configuration correcte")
     except Exception as e:
-        print(f"❌ 程序运行错误: {e}")
+        print(f"❌ Erreur lors de l'exécution du programme : {e}")
         if debug_mode:
             raise
 
 
 def _handle_status_commands(config: Dict) -> None:
-    """处理状态查看命令 - 显示当前调度状态"""
+    """Traite la commande d'affichage de l'état - affiche l'état actuel de la planification."""
     from trendradar.context import AppContext
 
     ctx = AppContext(config)
 
     print("=" * 60)
-    print(f"TrendRadar v{__version__} 调度状态")
+    print(f"TrendRadar v{__version__} : état de la planification")
     print("=" * 60)
 
     try:
@@ -2284,42 +2312,44 @@ def _handle_status_commands(config: Dict) -> None:
         now = ctx.get_time()
         date_str = ctx.format_date()
 
-        print(f"\n⏰ 当前时间: {now.strftime('%Y-%m-%d %H:%M:%S')} ({ctx.timezone})")
-        print(f"📅 当前日期: {date_str}")
+        print(f"\n⏰ Heure actuelle : {now.strftime('%Y-%m-%d %H:%M:%S')} ({ctx.timezone})")
+        print(f"📅 Date actuelle : {date_str}")
 
-        print(f"\n📋 调度信息:")
-        print(f"  日计划: {schedule.day_plan}")
+        print(f"\n📋 Informations de planification :")
+        print(f"  Plan du jour : {schedule.day_plan}")
         if schedule.period_key:
-            print(f"  当前时间段: {schedule.period_name or schedule.period_key} ({schedule.period_key})")
+            print(f"  Plage horaire actuelle : {schedule.period_name or schedule.period_key} ({schedule.period_key})")
         else:
-            print(f"  当前时间段: 无（使用默认配置）")
+            print(f"  Plage horaire actuelle : aucune (utilisation de la configuration par défaut)")
 
-        print(f"\n🔧 行为开关:")
-        print(f"  采集数据: {'✅ 是' if schedule.collect else '❌ 否'}")
-        print(f"  AI 分析:  {'✅ 是' if schedule.analyze else '❌ 否'}")
-        print(f"  推送通知: {'✅ 是' if schedule.push else '❌ 否'}")
-        print(f"  报告模式: {schedule.report_mode}")
-        print(f"  AI 模式:  {schedule.ai_mode}")
+        print(f"\n🔧 Interrupteurs de comportement :")
+        print(f"  Collecte des données : {'✅ oui' if schedule.collect else '❌ non'}")
+        print(f"  Analyse IA :  {'✅ oui' if schedule.analyze else '❌ non'}")
+        print(f"  Notification : {'✅ oui' if schedule.push else '❌ non'}")
+        print(f"  Mode de rapport : {schedule.report_mode}")
+        print(f"  Mode IA :  {schedule.ai_mode}")
 
         if schedule.period_key:
-            print(f"\n🔁 一次性控制:")
+            print(f"\n🔁 Contrôle d'unicité :")
             if schedule.once_analyze:
                 already_analyzed = scheduler.already_executed(schedule.period_key, "analyze", date_str)
-                print(f"  AI 分析:  仅一次 {'(今日已执行 ⚠️)' if already_analyzed else '(今日未执行 ✅)'}")
+                etat_a = "(déjà exécuté aujourd'hui ⚠️)" if already_analyzed else "(pas encore exécuté aujourd'hui ✅)"
+                print(f"  Analyse IA :  une seule fois {etat_a}")
             else:
-                print(f"  AI 分析:  不限次数")
+                print(f"  Analyse IA :  nombre de fois illimité")
             if schedule.once_push:
                 already_pushed = scheduler.already_executed(schedule.period_key, "push", date_str)
-                print(f"  推送通知: 仅一次 {'(今日已执行 ⚠️)' if already_pushed else '(今日未执行 ✅)'}")
+                etat_p = "(déjà exécuté aujourd'hui ⚠️)" if already_pushed else "(pas encore exécuté aujourd'hui ✅)"
+                print(f"  Notification : une seule fois {etat_p}")
             else:
-                print(f"  推送通知: 不限次数")
+                print(f"  Notification : nombre de fois illimité")
 
     except Exception as e:
-        print(f"\n❌ 获取调度状态失败: {e}")
+        print(f"\n❌ Échec de la récupération de l'état de la planification : {e}")
 
     print("\n" + "=" * 60)
 
-    # 清理资源
+    # Nettoyage des ressources
     ctx.cleanup()
 
 
