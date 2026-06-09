@@ -143,11 +143,22 @@ fiable, ~centimes par run), `fallback_models: []`. Modifiable dans `config/confi
 Robustesse en place : chargement `.env`, `litellm.drop_params=True`, extraction JSON équilibrée
 tolérant les modèles de raisonnement.
 
-## 8. Limitations & recommandations (non implémentées)
+## 9. Coaching d'investissement & correctifs analyse IA
 
-- **Modèle** : `claude-sonnet-4` est utilisé tel que demandé ; des variantes plus récentes
-  existent sur OpenRouter (`anthropic/claude-sonnet-4.5`, `anthropic/claude-sonnet-4.6`) si l'on
-  souhaite monter en gamme.
+- **Analyse IA en mode RSS-only** : l'analyse était conditionnée aux stats de palmarès (vides ici)
+  et s'affichait donc « Désactivé ». Correctif (`trendradar/__main__.py`) : l'analyse se lance dès
+  qu'il y a des stats **ou** des items RSS.
+- **Prompt « coach »** (`config/ai_analysis_prompt.txt`) : réorienté pour détecter une niche
+  exploitable sur le point d'exploser à la hausse et produire un PLAN D'ACTION concret (niche,
+  pourquoi maintenant, action investir/créer, étapes 30-90 j, fenêtre, ticket & plus-value, risque).
+- **Plus de signaux** : `ai_filter.min_score` abaissé 0.7 → 0.5 (plus de niches remontées).
+- **Libellé** : « Heure de Pékin » → « Heure locale » (l'heure suit déjà le fuseau configuré).
+
+## 10. Limitations & recommandations (non implémentées)
+
+- **Modèle** : `openrouter/deepseek/deepseek-v4-flash` retenu (fiable, bon marché) ; des modèles
+  plus haut de gamme existent (`anthropic/claude-sonnet-4.5`, `anthropic/claude-sonnet-4.6`) si
+  l'on souhaite monter en gamme.
 - **Flux non vérifiés** : confirmer les URL des flux en TODO avant de les activer.
 - **Verticales sans flux RSS dédié vérifié** (mode modeste, cosmétiques, voyage) : couvertes via
   les flux halal généralistes (Salaam Gateway, Al-Kanz…) ; ajouter des flux dédiés est recommandé.

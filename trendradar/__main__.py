@@ -854,9 +854,11 @@ class NewsAnalyzer:
             )
 
         # Analyse IA (si activée, pour le rapport HTML)
+        # On lance l'analyse dès qu'il y a du contenu à analyser : stats de palmarès OU
+        # items RSS (mode RSS-only du fork halal — les palmarès sont désactivés).
         ai_result = None
         ai_config = self.ctx.config.get("AI_ANALYSIS", {})
-        if ai_config.get("ENABLED", False) and stats:
+        if ai_config.get("ENABLED", False) and (stats or rss_items):
             # Récupère la stratégie de mode pour déterminer le type de rapport
             mode_strategy = self._get_mode_strategy()
             report_type = mode_strategy["report_type"]
@@ -1050,7 +1052,7 @@ class NewsAnalyzer:
     def _initialize_and_check_config(self) -> bool:
         """Initialisation générique et vérification de la configuration. Renvoie True si l'exécution peut se poursuivre."""
         now = self.ctx.get_time()
-        print(f"Heure de Pékin actuelle : {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Heure locale actuelle : {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
         if not self.ctx.config["ENABLE_CRAWLER"]:
             print("La fonction de collecte est désactivée (ENABLE_CRAWLER=False), le programme s'arrête")

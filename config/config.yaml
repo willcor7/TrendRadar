@@ -227,8 +227,8 @@ ai_filter:
   batch_size: 200                         # Nombre de titres envoyés à l'IA par lot
   batch_interval: 2                       # Intervalle entre lots (secondes), 0=sans attente
 
-  min_score: 0.7                          # Score minimal pour pousser (0.0~1.0), plus élevé = plus strict
-                                          # Démarrer entre 0.5 et 0.7, 0=pas de filtrage
+  min_score: 0.5                          # Score minimal pour pousser (0.0~1.0), plus élevé = plus strict
+                                          # 0.5 = plus de niches remontées (recommandé pour le coaching) ; 0=pas de filtrage
 
   # Fichier de centres d'intérêt (défaut config/ai_interests.txt, aucune config nécessaire)
   # Fichier personnalisé dans config/custom/ai/ puis indiquer le nom :
