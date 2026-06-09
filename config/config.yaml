@@ -389,7 +389,7 @@ ai:
   #   - anthropic/claude-sonnet-4-20250514, openai/gpt-4o, gemini/gemini-2.5-flash, ollama/llama3
   # Liste complète : https://docs.litellm.ai/docs/providers et https://openrouter.ai/models
 
-  model: "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"
+  model: "openrouter/deepseek/deepseek-v4-flash"
 
   api_key: ""                       # Clé API (utiliser la variable d'environnement AI_API_KEY = clé OpenRouter)
 
@@ -406,8 +406,8 @@ ai:
 
   # Options avancées
   num_retries: 1                    # Nombre de tentatives en cas d'échec
-  fallback_models:                  # Modèles de secours (gratuits, pour rester à coût nul)
-    - "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+  fallback_models: []               # Pas de fallback (le primaire payant est fiable ; évite le
+                                    # chemin de fallback asynchrone bruyant de LiteLLM). Réversible.
 
   # Paramètres supplémentaires (rarement nécessaires)
   # extra_params:

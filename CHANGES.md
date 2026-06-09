@@ -125,11 +125,23 @@ l'URL renvoie un flux valide avant activation). Les palmarès se réactivent en 
 - **Scan CJK** : 0 caractère chinois résiduel dans le code, la config, l'éditeur web, le serveur
   MCP, l'infra et la documentation (hors ponctuation CJK volontairement conservée dans des regex
   de traitement de texte de `mcp_server/`).
-- **Dry-run** : 11 flux RSS récupérés (194 entrées), rapports **FR + EN** générés sans erreur,
+- **Dry-run** : 11 flux RSS récupérés (~194 entrées), rapports **FR + EN** générés sans erreur,
   console en français fluide. Le filtrage/analyse/traduction IA nécessite `AI_API_KEY` (sinon
   repli gracieux sur la correspondance par mots-clés).
 - **Éditeur web** : bascule FR/EN fonctionnelle et persistée, français par défaut (vérifié au
   navigateur).
+- **Dry-run IA complet (clé OpenRouter via `.env`)** : extraction des étiquettes halal,
+  classification IA des RSS (≈140 → correspondances filtrées par score ≥ 0.7), **traduction des
+  titres en français (8/8)**, section « Analyse IA » présente dans les rapports FR + EN, 0 CJK.
+
+## 8. Modèle IA — décision finale
+
+Les modèles **gratuits** OpenRouter se sont révélés **non fiables** pour ce pipeline multi-appels
+(`nvidia/nemotron-3-ultra-550b-a55b:free` → timeout ; `meta-llama/llama-3.3-70b-instruct:free` →
+429 rate-limited). Modèle retenu : **`openrouter/deepseek/deepseek-v4-flash`** (payant, rapide,
+fiable, ~centimes par run), `fallback_models: []`. Modifiable dans `config/config.yaml`.
+Robustesse en place : chargement `.env`, `litellm.drop_params=True`, extraction JSON équilibrée
+tolérant les modèles de raisonnement.
 
 ## 8. Limitations & recommandations (non implémentées)
 
