@@ -10,7 +10,12 @@ modèles nationaux chinois, etc.).
 import os
 from typing import Any, Dict, List
 
+import litellm
 from litellm import completion
+
+# Ignore silencieusement les paramètres non pris en charge par un fournisseur/modèle
+# (évite une erreur HTTP 400 selon le modèle, p. ex. certains modèles OpenRouter gratuits).
+litellm.drop_params = True
 
 
 class AIClient:

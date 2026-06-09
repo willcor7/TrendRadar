@@ -519,7 +519,12 @@ class AIFilter:
         return results
 
     def _extract_json(self, response: str) -> Optional[str]:
-        """Extrait la chaîne JSON de la réponse de l'IA"""
+        """Extrait la chaîne JSON de la réponse de l'IA.
+
+        Gère les blocs ```json/```, mais aussi un éventuel préambule ou suffixe
+        de raisonnement (modèles de raisonnement) en isolant le premier objet
+        ``{...}`` ou tableau ``[...]`` JSON équilibré.
+        """
         if not response or not response.strip():
             return None
 
@@ -537,7 +542,57 @@ class AIFilter:
                 json_str = parts[1]
 
         json_str = json_str.strip()
+        if not json_str:
+            return None
+
+        # Isole le premier JSON équilibré pour tolérer du texte avant/après
+        # (préambule de raisonnement). Si rien n'est trouvé, on garde json_str tel quel.
+        balanced = self._first_balanced_json(json_str)
+        if balanced:
+            json_str = balanced
+
         return json_str if json_str else None
+
+    @staticmethod
+    def _first_balanced_json(text: str) -> Optional[str]:
+        """Renvoie la première sous-chaîne JSON équilibrée (``{...}`` ou ``[...]``).
+
+        Tient compte des chaînes entre guillemets et des échappements pour ne pas
+        compter les accolades situées à l'intérieur d'une valeur texte.
+        """
+        start = None
+        open_ch = close_ch = ""
+        for i, ch in enumerate(text):
+            if ch in "{[":
+                start = i
+                open_ch = ch
+                close_ch = "}" if ch == "{" else "]"
+                break
+        if start is None:
+            return None
+
+        depth = 0
+        in_str = False
+        esc = False
+        for j in range(start, len(text)):
+            c = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif c == "\\":
+                    esc = True
+                elif c == '"':
+                    in_str = False
+                continue
+            if c == '"':
+                in_str = True
+            elif c == open_ch:
+                depth += 1
+            elif c == close_ch:
+                depth -= 1
+                if depth == 0:
+                    return text[start:j + 1]
+        return None
 
     def _print_formatted_json(self, response: str) -> None:
         """Affiche de façon formatée le JSON contenu dans la réponse de l'IA, pour faciliter la lecture en debug"""
