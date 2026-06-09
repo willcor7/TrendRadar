@@ -92,6 +92,12 @@ dry-run (rapports FR+EN générés à partir de 11 flux RSS).
 Ne **jamais** mettre de secret dans `config.yaml`. Utiliser des variables d'environnement /
 GitHub Secrets (elles surchargent `config.yaml`) :
 
+> **Chargement `.env` (local)** : au démarrage, `trendradar/__main__.py::_load_dotenv()` charge
+> automatiquement un fichier `.env` (répertoire courant puis racine du dépôt) dans
+> `os.environ`, **sans écraser** les variables déjà définies. Copiez `.env.example` en `.env`,
+> renseignez `AI_API_KEY`, etc. Le fichier `.env` est ignoré par git (`.gitignore`).
+> Priorité : variables d'environnement réelles > `.env` > `config.yaml`.
+
 | Variable | Usage |
 |---|---|
 | `AI_API_KEY` | Clé OpenRouter (filtrage / traduction / analyse IA) |

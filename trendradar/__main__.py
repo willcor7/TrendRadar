@@ -2199,8 +2199,41 @@ def _run_test_notification(config: Dict) -> bool:
         ctx.cleanup()
 
 
+def _load_dotenv() -> None:
+    """Charge les variables d'un fichier .env dans os.environ (sans rien écraser).
+
+    Recherche un fichier .env dans le répertoire courant puis à la racine du dépôt.
+    Les vraies variables d'environnement gardent la priorité (env > .env). Aucune
+    dépendance externe. Format : lignes ``CLE=valeur`` ; ``#`` = commentaire ;
+    préfixe ``export`` et guillemets simples/doubles tolérés.
+    """
+    seen = set()
+    for path in (Path.cwd() / ".env", Path(__file__).resolve().parent.parent / ".env"):
+        try:
+            resolved = path.resolve()
+            if resolved in seen or not path.is_file():
+                continue
+            seen.add(resolved)
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                if line.lower().startswith("export "):
+                    line = line[7:].lstrip()
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+        except OSError:
+            continue
+
+
 def main():
     """Point d'entrée du programme principal."""
+    # Charge un éventuel fichier .env (clés API, secrets) avant toute lecture de config
+    _load_dotenv()
+
     # Analyse des arguments de la ligne de commande
     parser = argparse.ArgumentParser(
         description="TrendRadar - outil d'agrégation et d'analyse des actualités tendance",

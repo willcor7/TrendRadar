@@ -10,6 +10,9 @@ output/rss/
 output/index.html
 output/news/2026-*.db
 
+# Secrets — fichier .env local (clés API, jetons) — NE PAS committer
+/.env
+
 # Divers
 .DS_Store
 *.log
